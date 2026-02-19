@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --external:@prisma/client --external:bcrypt --external:pino --external:pino-pretty",
-    "start": "node dist/server.js",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.cjs --format=cjs --external:@prisma/client --external:bcrypt --external:pino --external:pino-pretty",
+    "start": "node dist/server.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

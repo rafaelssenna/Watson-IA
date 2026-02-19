@@ -7,7 +7,7 @@
     "postinstall": "pnpm db:generate",
     "dev": "turbo run dev",
     "build": "turbo run build --filter=@watson/api",
-    "start": "node apps/api/dist/server.js",
+    "start": "node apps/api/dist/server.cjs",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "db:generate": "turbo run db:generate",

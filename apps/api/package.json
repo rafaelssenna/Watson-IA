@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && tsc-alias",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --external:@prisma/client --external:bcrypt --external:pino --external:pino-pretty",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit"
   },
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.11.0",
+    "esbuild": "^0.20.0",
     "tsc-alias": "^1.8.8",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"

@@ -73,10 +73,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       // Actions
       initialize: async () => {
-        set({ isLoading: true });
+        // Wait a bit for persist hydration
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         const accessToken = get().accessToken;
         const refreshToken = get().refreshToken;
+
+        console.log("Auth init - tokens:", { hasAccess: !!accessToken, hasRefresh: !!refreshToken });
 
         if (!accessToken || !refreshToken) {
           set({ isLoading: false, isAuthenticated: false });
@@ -84,10 +87,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }
 
         try {
-          // Try to get current user
+          // Try to get current user with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const response = await api.get("/auth/me", {
             headers: { Authorization: `Bearer ${accessToken}` },
+            signal: controller.signal,
           });
+
+          clearTimeout(timeoutId);
 
           if (response.data.success) {
             set({
@@ -95,21 +104,19 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isAuthenticated: true,
               isLoading: false,
             });
+          } else {
+            set({ isLoading: false, isAuthenticated: false });
           }
         } catch (error) {
-          // Token might be expired, try to refresh
-          try {
-            await get().refreshAccessToken();
-          } catch {
-            // Refresh failed, logout
-            set({
-              user: null,
-              accessToken: null,
-              refreshToken: null,
-              isAuthenticated: false,
-              isLoading: false,
-            });
-          }
+          console.log("Auth init error:", error);
+          // Token might be expired or network error, just go to login
+          set({
+            user: null,
+            accessToken: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
         }
       },
 

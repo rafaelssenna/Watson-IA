@@ -1,0 +1,651 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ============================================
+// ORGANIZATION & AUTH
+// ============================================
+
+model Organization {
+  id                   String             @id @default(cuid())
+  name                 String
+  slug                 String             @unique
+  logo                 String?
+  subscriptionStatus   SubscriptionStatus @default(TRIAL)
+  trialEndsAt          DateTime?
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?
+  currentPeriodEnd     DateTime?
+  timezone             String             @default("America/Sao_Paulo")
+  businessHours        Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  users               User[]
+  whatsappConnections WhatsAppConnection[]
+  contacts            Contact[]
+  conversations       Conversation[]
+  messages            Message[]
+  personas            Persona[]
+  triggers            Trigger[]
+  automations         Automation[]
+  knowledgeBases      KnowledgeBase[]
+  funnels             Funnel[]
+  tags                Tag[]
+  dailyMetrics        DailyMetrics[]
+
+  @@index([slug])
+  @@index([stripeCustomerId])
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PAUSED
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  avatarUrl      String?
+  role           UserRole  @default(OWNER)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lastLoginAt    DateTime?
+  pushToken      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  assignedConversations Conversation[] @relation("AssignedUser")
+  internalNotes         InternalNote[]
+  tasks                 Task[]
+
+  @@index([email])
+  @@index([organizationId])
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  AGENT
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ============================================
+// WHATSAPP CONNECTION
+// ============================================
+
+model WhatsAppConnection {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connectionType ConnectionType   @default(UAZAPI)
+  uazapiToken    String?
+  uazapiInstance String?
+  phoneNumberId  String?
+  wabaId         String?
+  accessToken    String?
+  status         ConnectionStatus @default(DISCONNECTED)
+  phoneNumber    String?
+  displayName    String?
+  profilePicUrl  String?
+  lastConnectedAt    DateTime?
+  lastDisconnectedAt DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([phoneNumber])
+}
+
+enum ConnectionType {
+  UAZAPI
+  CLOUD_API
+  BAILEYS
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  CONNECTING
+  NEEDS_QR
+  BANNED
+}
+
+// ============================================
+// CRM - CONTACTS
+// ============================================
+
+model Contact {
+  id              String         @id @default(cuid())
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  waId            String
+  phone           String?
+  name            String?
+  pushName        String?
+  profilePicUrl   String?
+  email           String?
+  city            String?
+  state           String?
+  company         String?
+  customFields    Json?
+  leadScore       Int            @default(0)
+  clientProfile   ClientProfile?
+  purchaseIntent  PurchaseIntent?
+  funnelId        String?
+  funnel          Funnel?        @relation(fields: [funnelId], references: [id])
+  funnelStageId   String?
+  funnelStage     FunnelStage?   @relation(fields: [funnelStageId], references: [id])
+  estimatedTicket Decimal?       @db.Decimal(10, 2)
+  totalPurchases  Decimal?       @db.Decimal(10, 2)
+  status          ContactStatus  @default(ACTIVE)
+  lastInteractionAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  conversations Conversation[]
+  tags          ContactTag[]
+  internalNotes InternalNote[]
+  tasks         Task[]
+
+  @@unique([organizationId, waId])
+  @@index([organizationId])
+  @@index([leadScore])
+  @@index([funnelStageId])
+}
+
+enum ClientProfile {
+  NEW_LEAD
+  INTERESTED
+  NEGOTIATING
+  CUSTOMER
+  VIP
+  CHURNED
+  INACTIVE
+}
+
+enum PurchaseIntent {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum ContactStatus {
+  ACTIVE
+  BLOCKED
+  ARCHIVED
+}
+
+model Tag {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  color          String       @default("#6366f1")
+  contacts       ContactTag[]
+
+  @@unique([organizationId, name])
+}
+
+model ContactTag {
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([contactId, tagId])
+}
+
+// ============================================
+// CONVERSATIONS & MESSAGES
+// ============================================
+
+model Conversation {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId          String
+  contact            Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status             ConversationStatus @default(OPEN)
+  intent             String?
+  urgency            UrgencyLevel       @default(NORMAL)
+  closingProbability Int?
+  reputationalRisk   RiskLevel?
+  sentiment          Sentiment?
+  assignedToId       String?
+  assignedTo         User?              @relation("AssignedUser", fields: [assignedToId], references: [id])
+  mode               ConversationMode   @default(AI_ASSISTED)
+  activePersonaId    String?
+  activePersona      Persona?           @relation(fields: [activePersonaId], references: [id])
+  messageCount       Int                @default(0)
+  lastMessageAt      DateTime?
+  firstResponseTime  Int?
+  avgResponseTime    Int?
+  lastAiAction       AiAction?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  closedAt           DateTime?
+
+  messages Message[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([status])
+  @@index([urgency])
+  @@index([lastMessageAt])
+}
+
+enum ConversationStatus {
+  OPEN
+  WAITING_CLIENT
+  WAITING_AGENT
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum UrgencyLevel {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum RiskLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Sentiment {
+  VERY_NEGATIVE
+  NEGATIVE
+  NEUTRAL
+  POSITIVE
+  VERY_POSITIVE
+}
+
+enum ConversationMode {
+  AI_AUTO
+  AI_ASSISTED
+  HUMAN_ONLY
+}
+
+enum AiAction {
+  AUTO_REPLIED
+  SUGGESTED_RESPONSE
+  ESCALATED_TO_HUMAN
+  MARKED_PRIORITY
+  SENT_TRIGGER_CONTENT
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  waMessageId    String?          @unique
+  direction      MessageDirection
+  type           MessageType      @default(TEXT)
+  content        String?
+  mediaUrl       String?
+  mediaType      String?
+  fileName       String?
+  caption        String?
+  isAiGenerated  Boolean          @default(false)
+  aiConfidence   Float?
+  status         MessageStatus    @default(PENDING)
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  scheduledFor   DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([conversationId])
+  @@index([waMessageId])
+  @@index([createdAt])
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  STICKER
+  LOCATION
+  CONTACT
+  TEMPLATE
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// ============================================
+// KNOWLEDGE BASE
+// ============================================
+
+model KnowledgeBase {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  type           KnowledgeBaseType
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  documents KnowledgeDocument[]
+  faqs      FAQ[]
+
+  @@index([organizationId])
+}
+
+enum KnowledgeBaseType {
+  GENERAL
+  PRODUCTS
+  SERVICES
+  POLICIES
+  OBJECTIONS
+  SALES_ARGUMENTS
+}
+
+model KnowledgeDocument {
+  id               String           @id @default(cuid())
+  knowledgeBaseId  String
+  knowledgeBase    KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  title            String
+  originalFileName String?
+  mimeType         String?
+  fileUrl          String?
+  status           ProcessingStatus @default(PENDING)
+  extractedText    String?          @db.Text
+  chunkCount       Int?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  processedAt      DateTime?
+
+  chunks DocumentChunk[]
+
+  @@index([knowledgeBaseId])
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model DocumentChunk {
+  id         String                           @id @default(cuid())
+  documentId String
+  document   KnowledgeDocument                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    String                           @db.Text
+  chunkIndex Int
+  tokenCount Int?
+  embedding  Unsupported("vector(768)")?
+  createdAt  DateTime                         @default(now())
+
+  @@index([documentId])
+}
+
+model FAQ {
+  id                String                           @id @default(cuid())
+  knowledgeBaseId   String
+  knowledgeBase     KnowledgeBase                    @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  question          String
+  answer            String                           @db.Text
+  category          String?
+  priority          Int                              @default(0)
+  questionEmbedding Unsupported("vector(768)")?
+  createdAt         DateTime                         @default(now())
+  updatedAt         DateTime                         @updatedAt
+
+  @@index([knowledgeBaseId])
+}
+
+// ============================================
+// PERSONA SYSTEM
+// ============================================
+
+model Persona {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  isDefault          Boolean      @default(false)
+  isActive           Boolean      @default(true)
+  type               PersonaType
+  formalityLevel     Int          @default(50)
+  persuasiveness     Int          @default(50)
+  energyLevel        Int          @default(50)
+  empathyLevel       Int          @default(50)
+  systemPrompt       String?      @db.Text
+  customInstructions String?      @db.Text
+  responseExamples   Json?
+  scheduleConfig     Json?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  conversations Conversation[]
+
+  @@index([organizationId])
+}
+
+enum PersonaType {
+  OWNER
+  SECRETARY
+  TECHNICAL
+  COMMERCIAL
+  AGGRESSIVE_SALES
+  CUSTOM
+}
+
+// ============================================
+// TRIGGERS & AUTOMATIONS
+// ============================================
+
+model Trigger {
+  id              String      @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  isActive        Boolean     @default(true)
+  priority        Int         @default(0)
+  triggerType     TriggerType
+  conditions      Json
+  actions         Json
+  timesTriggered  Int         @default(0)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([organizationId])
+  @@index([triggerType])
+}
+
+enum TriggerType {
+  KEYWORD
+  INTENT
+  PRODUCT_MENTION
+  URGENCY
+  SENTIMENT
+  SCHEDULE
+  FUNNEL_STAGE
+}
+
+model Automation {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  isActive       Boolean        @default(true)
+  type           AutomationType
+  config         Json
+  timesExecuted  Int            @default(0)
+  lastExecutedAt DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+}
+
+enum AutomationType {
+  FOLLOW_UP
+  POST_SERVICE
+  SATISFACTION_SURVEY
+  REACTIVATION
+  SCHEDULED_MESSAGE
+  BIRTHDAY
+  REMINDER
+}
+
+// ============================================
+// FUNNEL & TASKS
+// ============================================
+
+model Funnel {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  isDefault      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  stages   FunnelStage[]
+  contacts Contact[]
+
+  @@index([organizationId])
+}
+
+model FunnelStage {
+  id             String   @id @default(cuid())
+  funnelId       String
+  funnel         Funnel   @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  name           String
+  color          String   @default("#6366f1")
+  order          Int
+  onEnterActions Json?
+  onExitActions  Json?
+
+  contacts Contact[]
+
+  @@index([funnelId])
+}
+
+model InternalNote {
+  id          String   @id @default(cuid())
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  content     String   @db.Text
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([contactId])
+}
+
+model Task {
+  id           String       @id @default(cuid())
+  contactId    String?
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  dueDate      DateTime?
+  priority     TaskPriority @default(MEDIUM)
+  status       TaskStatus   @default(PENDING)
+  assignedToId String?
+  assignedTo   User?        @relation(fields: [assignedToId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  completedAt  DateTime?
+
+  @@index([contactId])
+  @@index([assignedToId])
+  @@index([dueDate])
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model DailyMetrics {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  date                DateTime     @db.Date
+  newConversations    Int          @default(0)
+  closedConversations Int          @default(0)
+  activeConversations Int          @default(0)
+  inboundMessages     Int          @default(0)
+  outboundMessages    Int          @default(0)
+  aiGeneratedMessages Int          @default(0)
+  avgResponseTime     Int?
+  responseRate        Float?
+  hotLeadsCount       Int          @default(0)
+  conversionsCount    Int          @default(0)
+  createdAt           DateTime     @default(now())
+
+  @@unique([organizationId, date])
+  @@index([organizationId])
+  @@index([date])
+}

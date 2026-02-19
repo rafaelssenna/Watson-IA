@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@watson/shared";
 import bcrypt from "bcrypt";
@@ -15,7 +15,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       return reply.badRequest(result.error.message);
     }
 
-    const { email, password, name, organizationName, phone } = result.data;
+    const { email, password, name, organizationName } = result.data;
 
     // Check if email exists
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -264,7 +264,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Logout
-  fastify.post("/logout", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.post("/logout", { preHandler: [fastify.authenticate] }, async (request) => {
     const { refreshToken } = request.body as { refreshToken?: string };
 
     if (refreshToken) {
@@ -278,7 +278,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   // Get current user
   fastify.get("/me", { preHandler: [fastify.authenticate] }, async (request) => {
-    const { userId, orgId } = request.user as { userId: string; orgId: string };
+    const { userId } = request.user as { userId: string; orgId: string };
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

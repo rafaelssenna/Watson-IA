@@ -153,7 +153,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
 
   // Send message
   fastify.post<{ Params: { id: string }; Body: any }>("/:id/messages", { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    const { orgId, userId } = request.user;
+    const { orgId } = request.user;
     const { id } = request.params;
 
     const result = sendMessageSchema.safeParse(request.body);

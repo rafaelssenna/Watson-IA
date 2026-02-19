@@ -7,6 +7,9 @@ import sensible from "@fastify/sensible";
 import websocket from "@fastify/websocket";
 import { Server } from "socket.io";
 
+// Type augmentation
+import "./types.js";
+
 // Import plugins
 import authenticatePlugin from "./plugins/authenticate.js";
 

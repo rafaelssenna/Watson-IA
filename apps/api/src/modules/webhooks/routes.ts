@@ -23,7 +23,8 @@ export async function webhookRoutes(fastify: FastifyInstance) {
     const orgId = connection.organizationId;
 
     // Handle different event types
-    const eventType = payload.event || payload.type;
+    const typedPayload = payload as Record<string, any>;
+    const eventType = typedPayload.event || typedPayload.type;
 
     switch (eventType) {
       case "messages.upsert":
@@ -48,7 +49,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
   });
 
   // Stripe Webhook
-  fastify.post("/stripe", async (request, reply) => {
+  fastify.post("/stripe", async () => {
     // TODO: Implement Stripe webhook handling
     return { received: true };
   });
@@ -63,7 +64,6 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     const content = message.body || message.text || message.message?.conversation || "";
     const messageId = message.key?.id || message.id;
     const pushName = message.pushName || message.notifyName;
-    const timestamp = message.messageTimestamp || Date.now();
 
     if (!waId || !content) {
       fastify.log.warn({ payload }, "Invalid message payload");

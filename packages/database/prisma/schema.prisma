@@ -1,13 +1,14 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [vector]
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
+
+// NOTE: pgvector extension will be added later for embeddings
+// When Railway supports it, add: extensions = [vector]
 
 // ============================================
 // ORGANIZATION & AUTH
@@ -415,29 +416,29 @@ enum ProcessingStatus {
 }
 
 model DocumentChunk {
-  id         String                           @id @default(cuid())
+  id         String            @id @default(cuid())
   documentId String
-  document   KnowledgeDocument                @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  content    String                           @db.Text
+  document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    String            @db.Text
   chunkIndex Int
   tokenCount Int?
-  embedding  Unsupported("vector(768)")?
-  createdAt  DateTime                         @default(now())
+  // embedding field will be added when pgvector is available
+  createdAt  DateTime          @default(now())
 
   @@index([documentId])
 }
 
 model FAQ {
-  id                String                           @id @default(cuid())
-  knowledgeBaseId   String
-  knowledgeBase     KnowledgeBase                    @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
-  question          String
-  answer            String                           @db.Text
-  category          String?
-  priority          Int                              @default(0)
-  questionEmbedding Unsupported("vector(768)")?
-  createdAt         DateTime                         @default(now())
-  updatedAt         DateTime                         @updatedAt
+  id              String        @id @default(cuid())
+  knowledgeBaseId String
+  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  question        String
+  answer          String        @db.Text
+  category        String?
+  priority        Int           @default(0)
+  // questionEmbedding field will be added when pgvector is available
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([knowledgeBaseId])
 }

@@ -59,6 +59,20 @@ function RootNavigator() {
         <>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
+            name="conversation/[id]"
+            options={{
+              headerShown: true,
+              presentation: "card",
+            }}
+          />
+          <Stack.Screen
+            name="contact/[id]"
+            options={{
+              headerShown: true,
+              presentation: "card",
+            }}
+          />
+          <Stack.Screen
             name="(modals)"
             options={{ presentation: "modal" }}
           />

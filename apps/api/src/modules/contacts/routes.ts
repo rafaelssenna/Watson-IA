@@ -272,6 +272,37 @@ export async function contactRoutes(fastify: FastifyInstance) {
     });
   });
 
+  // Get contact conversations
+  fastify.get<{ Params: { id: string } }>("/:id/conversations", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id } = request.params;
+
+    const contact = await prisma.contact.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!contact) {
+      return reply.notFound("Contato nao encontrado");
+    }
+
+    const conversations = await prisma.conversation.findMany({
+      where: { contactId: id, organizationId: orgId },
+      orderBy: { lastMessageAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        intent: true,
+        messageCount: true,
+        lastMessageAt: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: conversations,
+    };
+  });
+
   // Move contact in funnel
   fastify.patch<{ Params: { id: string }; Body: { funnelStageId: string } }>("/:id/funnel", { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { orgId } = request.user;

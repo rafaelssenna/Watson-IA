@@ -5,17 +5,3 @@ declare module "fastify" {
     io: Server;
   }
 }
-
-export interface JwtPayload {
-  userId: string;
-  orgId: string;
-  email: string;
-  role: string;
-}
-
-declare module "@fastify/jwt" {
-  interface FastifyJWT {
-    payload: JwtPayload;
-    user: JwtPayload;
-  }
-}

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import * as SecureStore from "expo-secure-store";
 import { api } from "@/services/api";
+import { tokenManager } from "@/services/tokenManager";
 
 interface User {
   id: string;
@@ -91,7 +92,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-          const response = await api.get("/auth/me", {
+          const response = await api.get<{ success: boolean; data: User }>("/auth/me", {
             headers: { Authorization: `Bearer ${accessToken}` },
             signal: controller.signal,
           });
@@ -124,7 +125,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
 
         try {
-          const response = await api.post("/auth/login", { email, password });
+          const response = await api.post<{
+            success: boolean;
+            data: { user: User; accessToken: string; refreshToken: string };
+          }>("/auth/login", { email, password });
 
           if (response.data.success) {
             const { user, accessToken, refreshToken } = response.data.data;
@@ -140,7 +144,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         } catch (error: any) {
           set({ isLoading: false });
           throw new Error(
-            error.response?.data?.error?.message || "Erro ao fazer login"
+            error.response?.data?.error?.message || error.message || "Erro ao fazer login"
           );
         }
       },
@@ -149,7 +153,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
 
         try {
-          const response = await api.post("/auth/register", data);
+          const response = await api.post<{
+            success: boolean;
+            data: { user: User; accessToken: string; refreshToken: string };
+          }>("/auth/register", data);
 
           if (response.data.success) {
             const { user, accessToken, refreshToken } = response.data.data;
@@ -165,7 +172,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         } catch (error: any) {
           set({ isLoading: false });
           throw new Error(
-            error.response?.data?.error?.message || "Erro ao criar conta"
+            error.response?.data?.error?.message || error.message || "Erro ao criar conta"
           );
         }
       },
@@ -194,7 +201,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           throw new Error("No refresh token");
         }
 
-        const response = await api.post("/auth/refresh", { refreshToken });
+        const response = await api.post<{
+          success: boolean;
+          data: { accessToken: string; refreshToken: string };
+        }>("/auth/refresh", { refreshToken });
 
         if (response.data.success) {
           const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
@@ -206,7 +216,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           // Fetch user data with new token
-          const userResponse = await api.get("/auth/me", {
+          const userResponse = await api.get<{ success: boolean; data: User }>("/auth/me", {
             headers: { Authorization: `Bearer ${newAccessToken}` },
           });
 
@@ -232,3 +242,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
   )
 );
+
+// Initialize token manager with auth store functions
+tokenManager.setGetAccessToken(() => useAuthStore.getState().accessToken);
+tokenManager.setRefreshToken(() => useAuthStore.getState().refreshAccessToken());
+tokenManager.setLogout(() => useAuthStore.getState().logout());

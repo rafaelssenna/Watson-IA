@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/stores/authStore";
+import { tokenManager } from "./tokenManager";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api/v1";
 
@@ -26,7 +26,7 @@ class ApiClient {
 
     // Add auth token if available and not skipped
     if (!skipAuth) {
-      const accessToken = useAuthStore.getState().accessToken;
+      const accessToken = tokenManager.getAccessToken();
       if (accessToken) {
         (headers as Record<string, string>)["Authorization"] = `Bearer ${accessToken}`;
       }
@@ -43,12 +43,12 @@ class ApiClient {
       // Handle 401 - try to refresh token
       if (response.status === 401 && !skipAuth) {
         try {
-          await useAuthStore.getState().refreshAccessToken();
+          await tokenManager.refreshToken();
           // Retry the request
           return this.request(endpoint, options);
         } catch {
           // Refresh failed, logout
-          useAuthStore.getState().logout();
+          tokenManager.logout();
         }
       }
 

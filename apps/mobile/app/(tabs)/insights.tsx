@@ -1,12 +1,17 @@
-import { YStack, XStack, H2, Text, Card } from "tamagui";
+import { YStack, XStack, H2, Text, Card, useTheme } from "tamagui";
 import { ScrollView } from "react-native";
 
 export default function InsightsScreen() {
+  const theme = useTheme();
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background.val }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+    >
       <YStack gap="$4">
-        <Text fontSize="$6" fontWeight="bold">Relatorios</Text>
-        <Text color="$colorSubtle" marginBottom="$4">
+        <Text fontSize="$6" fontWeight="bold" color="$color">Relatorios</Text>
+        <Text color="$gray8" marginBottom="$4">
           Analise detalhada do desempenho do Watson AI
         </Text>
 
@@ -19,13 +24,13 @@ export default function InsightsScreen() {
         </XStack>
 
         {/* Conversion Metrics */}
-        <Card padding="$4" bordered>
-          <H2 fontSize="$5" marginBottom="$4">Taxa de Conversao</H2>
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$4" color="$color">Taxa de Conversao</H2>
           <YStack alignItems="center">
             <Text fontSize={60} fontWeight="bold" color="$green10">
               12.5%
             </Text>
-            <Text color="$colorSubtle">+2.3% vs periodo anterior</Text>
+            <Text color="$gray8">+2.3% vs periodo anterior</Text>
           </YStack>
           <XStack marginTop="$4" justifyContent="space-around">
             <MetricItem label="Leads" value="150" />
@@ -35,8 +40,8 @@ export default function InsightsScreen() {
         </Card>
 
         {/* Response Metrics */}
-        <Card padding="$4" bordered>
-          <H2 fontSize="$5" marginBottom="$4">Metricas de Resposta</H2>
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$4" color="$color">Metricas de Resposta</H2>
           <XStack justifyContent="space-around">
             <MetricItem label="Taxa de Resposta" value="94%" color="$green10" />
             <MetricItem label="Tempo Medio" value="3min" />
@@ -45,23 +50,23 @@ export default function InsightsScreen() {
         </Card>
 
         {/* AI Performance */}
-        <Card padding="$4" bordered>
-          <H2 fontSize="$5" marginBottom="$4">Performance Watson AI</H2>
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$4" color="$color">Performance Watson AI</H2>
           <XStack justifyContent="space-around">
             <MetricItem label="Auto-Respostas" value="78%" />
             <MetricItem label="Sugeridas" value="18%" />
             <MetricItem label="Escaladas" value="4%" />
           </XStack>
-          <YStack marginTop="$4" padding="$3" backgroundColor="$backgroundHover" borderRadius="$3">
-            <Text fontSize="$2" color="$colorSubtle">
+          <YStack marginTop="$4" padding="$3" backgroundColor="$gray5" borderRadius="$3">
+            <Text fontSize="$2" color="$gray8">
               Watson respondeu automaticamente 78% das mensagens com uma taxa de aprovacao de 92%.
             </Text>
           </YStack>
         </Card>
 
         {/* Top Products */}
-        <Card padding="$4" bordered>
-          <H2 fontSize="$5" marginBottom="$4">Produtos Mais Perguntados</H2>
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$4" color="$color">Produtos Mais Perguntados</H2>
           <YStack gap="$3">
             <ProductItem rank={1} name="Produto A" count={45} />
             <ProductItem rank={2} name="Produto B" count={32} />
@@ -72,9 +77,9 @@ export default function InsightsScreen() {
         </Card>
 
         {/* Peak Hours */}
-        <Card padding="$4" bordered>
-          <H2 fontSize="$5" marginBottom="$4">Horarios de Pico</H2>
-          <Text color="$colorSubtle" marginBottom="$3">
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$4" color="$color">Horarios de Pico</H2>
+          <Text color="$gray8" marginBottom="$3">
             Maior volume de mensagens
           </Text>
           <YStack gap="$2">
@@ -97,7 +102,7 @@ function PeriodChip({ label, active = false }: { label: string; active?: boolean
       paddingHorizontal="$3"
       paddingVertical="$2"
       borderRadius="$3"
-      backgroundColor={active ? "$blue10" : "$backgroundHover"}
+      backgroundColor={active ? "$blue10" : "$backgroundStrong"}
     >
       <Text
         fontSize="$2"
@@ -124,7 +129,7 @@ function MetricItem({
       <Text fontSize="$7" fontWeight="bold" color={color}>
         {value}
       </Text>
-      <Text fontSize="$2" color="$colorSubtle">
+      <Text fontSize="$2" color="$gray8">
         {label}
       </Text>
     </YStack>
@@ -146,7 +151,7 @@ function ProductItem({
         width={24}
         height={24}
         borderRadius={12}
-        backgroundColor={rank <= 3 ? "$blue10" : "$backgroundHover"}
+        backgroundColor={rank <= 3 ? "$blue10" : "$gray5"}
         alignItems="center"
         justifyContent="center"
       >
@@ -154,8 +159,8 @@ function ProductItem({
           {rank}
         </Text>
       </YStack>
-      <Text flex={1}>{name}</Text>
-      <Text color="$colorSubtle">{count} perguntas</Text>
+      <Text flex={1} color="$color">{name}</Text>
+      <Text color="$gray8">{count} perguntas</Text>
     </XStack>
   );
 }
@@ -163,8 +168,8 @@ function ProductItem({
 function HourBar({ hour, percentage }: { hour: string; percentage: number }) {
   return (
     <XStack alignItems="center" gap="$3">
-      <Text width={50} fontSize="$2" color="$colorSubtle">{hour}</Text>
-      <YStack flex={1} height={20} backgroundColor="$backgroundHover" borderRadius="$2">
+      <Text width={50} fontSize="$2" color="$gray8">{hour}</Text>
+      <YStack flex={1} height={20} backgroundColor="$gray5" borderRadius="$2" overflow="hidden">
         <YStack
           height="100%"
           width={`${percentage}%`}
@@ -172,7 +177,7 @@ function HourBar({ hour, percentage }: { hour: string; percentage: number }) {
           borderRadius="$2"
         />
       </YStack>
-      <Text width={40} fontSize="$2" textAlign="right">{percentage}%</Text>
+      <Text width={40} fontSize="$2" textAlign="right" color="$color">{percentage}%</Text>
     </XStack>
   );
 }

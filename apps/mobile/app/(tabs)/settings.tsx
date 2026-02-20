@@ -1,11 +1,12 @@
 import { Pressable } from "react-native";
 import { router } from "expo-router";
-import { YStack, XStack, Text, Card, Separator } from "tamagui";
+import { YStack, XStack, Text, Card, Separator, useTheme } from "tamagui";
 import { ScrollView } from "react-native";
 import { useAuthStore } from "@/stores/authStore";
 
 export default function SettingsScreen() {
   const { user, logout } = useAuthStore();
+  const theme = useTheme();
 
   const handleLogout = async () => {
     await logout();
@@ -13,10 +14,13 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background.val }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+    >
       <YStack gap="$4">
         {/* User Card */}
-        <Card padding="$4" bordered>
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
           <XStack gap="$4" alignItems="center">
             <YStack
               width={60}
@@ -31,8 +35,8 @@ export default function SettingsScreen() {
               </Text>
             </YStack>
             <YStack flex={1}>
-              <Text fontSize="$5" fontWeight="bold">{user?.name}</Text>
-              <Text color="$colorSubtle">{user?.email}</Text>
+              <Text fontSize="$5" fontWeight="bold" color="$color">{user?.name}</Text>
+              <Text color="$gray8" fontSize="$3">{user?.email}</Text>
               <Text fontSize="$2" color="$blue10" marginTop="$1">
                 {user?.organizationName}
               </Text>
@@ -42,129 +46,118 @@ export default function SettingsScreen() {
 
         {/* Watson Configuration */}
         <YStack>
-          <Text fontSize="$4" fontWeight="600" marginBottom="$3" color="$colorSubtle">
+          <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
             CONFIGURACOES DO WATSON
           </Text>
-          <Card bordered>
+          <Card backgroundColor="$backgroundStrong" borderRadius="$4" overflow="hidden">
             <SettingsItem
               icon="📚"
               title="Base de Conhecimento"
               description="PDFs, FAQs e informacoes da empresa"
-              onPress={() => router.push("/settings/knowledge")}
             />
-            <Separator />
+            <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="🎭"
               title="Persona"
               description="Configure a personalidade do Watson"
-              onPress={() => router.push("/settings/persona")}
             />
-            <Separator />
+            <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="⚡"
               title="Triggers"
               description="Gatilhos inteligentes"
-              onPress={() => router.push("/settings/triggers")}
             />
-            <Separator />
+            <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="🔄"
               title="Automacoes"
               description="Follow-ups e mensagens programadas"
-              onPress={() => router.push("/settings/automations")}
             />
           </Card>
         </YStack>
 
         {/* WhatsApp */}
         <YStack>
-          <Text fontSize="$4" fontWeight="600" marginBottom="$3" color="$colorSubtle">
+          <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
             WHATSAPP
           </Text>
-          <Card bordered>
+          <Card backgroundColor="$backgroundStrong" borderRadius="$4" overflow="hidden">
             <SettingsItem
               icon="📱"
               title="Conexao WhatsApp"
               description="Status e configuracoes da conexao"
               badge="Conectado"
               badgeColor="$green10"
-              onPress={() => router.push("/settings/whatsapp")}
             />
           </Card>
         </YStack>
 
         {/* CRM */}
         <YStack>
-          <Text fontSize="$4" fontWeight="600" marginBottom="$3" color="$colorSubtle">
+          <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
             CRM
           </Text>
-          <Card bordered>
+          <Card backgroundColor="$backgroundStrong" borderRadius="$4" overflow="hidden">
             <SettingsItem
               icon="🏷️"
               title="Tags"
               description="Gerenciar tags de contatos"
-              onPress={() => router.push("/settings/tags")}
             />
-            <Separator />
+            <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="📊"
               title="Funil de Vendas"
               description="Configurar etapas do funil"
-              onPress={() => router.push("/settings/funnel")}
             />
           </Card>
         </YStack>
 
         {/* Account */}
         <YStack>
-          <Text fontSize="$4" fontWeight="600" marginBottom="$3" color="$colorSubtle">
+          <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
             CONTA
           </Text>
-          <Card bordered>
+          <Card backgroundColor="$backgroundStrong" borderRadius="$4" overflow="hidden">
             <SettingsItem
               icon="💳"
               title="Assinatura"
               description="Gerenciar plano e pagamento"
               badge="Trial"
               badgeColor="$yellow10"
-              onPress={() => router.push("/settings/billing")}
             />
-            <Separator />
+            <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="👥"
               title="Equipe"
               description="Gerenciar membros da equipe"
-              onPress={() => router.push("/settings/team")}
             />
-            <Separator />
+            <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="🔔"
               title="Notificacoes"
               description="Preferencias de notificacao"
-              onPress={() => router.push("/settings/notifications")}
             />
           </Card>
         </YStack>
 
         {/* Danger Zone */}
-        <YStack marginTop="$4">
+        <YStack marginTop="$2">
           <Pressable onPress={handleLogout}>
             <Card
               padding="$4"
-              bordered
-              borderColor="$red10"
-              pressStyle={{ opacity: 0.8 }}
+              backgroundColor="$red5"
+              borderRadius="$4"
             >
               <XStack alignItems="center" justifyContent="center" gap="$2">
-                <Text>🚪</Text>
-                <Text color="$red10" fontWeight="600">Sair da Conta</Text>
+                <Text fontSize={18}>🚪</Text>
+                <Text color="$red10" fontWeight="600" fontSize="$4">Sair da Conta</Text>
               </XStack>
             </Card>
           </Pressable>
         </YStack>
 
         {/* Version */}
-        <Text textAlign="center" color="$colorSubtle" fontSize="$2" marginTop="$4">
+        <Text textAlign="center" color="$gray8" fontSize="$2" marginTop="$4">
           Watson AI v1.0.0
         </Text>
       </YStack>
@@ -178,36 +171,34 @@ function SettingsItem({
   description,
   badge,
   badgeColor,
-  onPress,
 }: {
   icon: string;
   title: string;
   description: string;
   badge?: string;
   badgeColor?: string;
-  onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress}>
-      <XStack padding="$4" alignItems="center" gap="$3" pressStyle={{ opacity: 0.8 }}>
+    <Pressable>
+      <XStack padding="$4" alignItems="center" gap="$3">
         <Text fontSize={24}>{icon}</Text>
         <YStack flex={1}>
           <XStack alignItems="center" gap="$2">
-            <Text fontWeight="600">{title}</Text>
+            <Text fontWeight="600" color="$color" fontSize="$4">{title}</Text>
             {badge && (
               <YStack
                 backgroundColor={badgeColor || "$blue10"}
                 paddingHorizontal="$2"
-                paddingVertical="$1"
+                paddingVertical={2}
                 borderRadius="$2"
               >
-                <Text fontSize="$1" color="white">{badge}</Text>
+                <Text fontSize={10} color="white" fontWeight="600">{badge}</Text>
               </YStack>
             )}
           </XStack>
-          <Text fontSize="$2" color="$colorSubtle">{description}</Text>
+          <Text fontSize="$2" color="$gray8" marginTop={2}>{description}</Text>
         </YStack>
-        <Text color="$colorSubtle">›</Text>
+        <Text color="$gray7" fontSize="$5">›</Text>
       </XStack>
     </Pressable>
   );

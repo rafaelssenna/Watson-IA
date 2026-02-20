@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { FlatList, RefreshControl, Pressable } from "react-native";
 import { router } from "expo-router";
-import { YStack, XStack, Text, Input, Card } from "tamagui";
+import { YStack, XStack, Text, Input, Card, useTheme } from "tamagui";
 import { api } from "@/services/api";
 
 interface Conversation {
@@ -24,6 +24,7 @@ export default function ConversationsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const theme = useTheme();
 
   const fetchConversations = async () => {
     try {
@@ -65,8 +66,8 @@ export default function ConversationsScreen() {
 
   if (isLoading) {
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center">
-        <Text>Carregando...</Text>
+      <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
+        <Text color="$color">Carregando...</Text>
       </YStack>
     );
   }
@@ -77,9 +78,13 @@ export default function ConversationsScreen() {
       <YStack padding="$4" paddingBottom="$2">
         <Input
           placeholder="Buscar conversas..."
+          placeholderTextColor={theme.gray7.val}
           value={search}
           onChangeText={setSearch}
           size="$4"
+          backgroundColor="$backgroundStrong"
+          borderColor="$gray6"
+          color="$color"
         />
       </YStack>
 
@@ -102,7 +107,7 @@ export default function ConversationsScreen() {
         ListEmptyComponent={
           <YStack alignItems="center" padding="$8">
             <Text fontSize={48}>💬</Text>
-            <Text marginTop="$4" color="$colorSubtle">
+            <Text marginTop="$4" color="$gray8">
               Nenhuma conversa encontrada
             </Text>
           </YStack>
@@ -122,8 +127,8 @@ function ConversationCard({
   const urgencyColors: Record<string, string> = {
     CRITICAL: "$red10",
     HIGH: "$yellow10",
-    NORMAL: "$colorSubtle",
-    LOW: "$colorSubtle",
+    NORMAL: "$gray8",
+    LOW: "$gray8",
   };
 
   const formatTime = (dateStr: string) => {
@@ -139,7 +144,7 @@ function ConversationCard({
 
   return (
     <Pressable onPress={onPress}>
-      <Card padding="$4" bordered pressStyle={{ opacity: 0.8 }}>
+      <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
         <XStack gap="$3">
           {/* Avatar */}
           <YStack
@@ -158,16 +163,16 @@ function ConversationCard({
           {/* Content */}
           <YStack flex={1}>
             <XStack justifyContent="space-between" alignItems="center">
-              <Text fontWeight="600" numberOfLines={1} flex={1}>
+              <Text fontWeight="600" numberOfLines={1} flex={1} color="$color">
                 {conversation.contactName || conversation.contactPhone}
               </Text>
-              <Text fontSize="$2" color="$colorSubtle">
+              <Text fontSize="$2" color="$gray8">
                 {formatTime(conversation.lastMessageAt)}
               </Text>
             </XStack>
 
             <Text
-              color="$colorSubtle"
+              color="$gray8"
               fontSize="$3"
               numberOfLines={1}
               marginTop="$1"
@@ -212,7 +217,7 @@ function FilterChip({
       paddingHorizontal="$3"
       paddingVertical="$2"
       borderRadius="$4"
-      backgroundColor={active ? "$blue10" : "$backgroundHover"}
+      backgroundColor={active ? "$blue10" : "$backgroundStrong"}
       alignItems="center"
       gap="$1"
     >

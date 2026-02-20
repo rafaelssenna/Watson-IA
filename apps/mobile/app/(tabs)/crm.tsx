@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { FlatList, RefreshControl, Pressable } from "react-native";
 import { router } from "expo-router";
-import { YStack, XStack, Text, Input, Card } from "tamagui";
+import { YStack, XStack, Text, Input, Card, useTheme } from "tamagui";
 import { api } from "@/services/api";
 
 interface Contact {
@@ -27,6 +27,7 @@ export default function CRMScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const theme = useTheme();
 
   const fetchContacts = async () => {
     try {
@@ -68,8 +69,8 @@ export default function CRMScreen() {
 
   if (isLoading) {
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center">
-        <Text>Carregando...</Text>
+      <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
+        <Text color="$color">Carregando...</Text>
       </YStack>
     );
   }
@@ -80,20 +81,24 @@ export default function CRMScreen() {
       <YStack padding="$4" paddingBottom="$2">
         <Input
           placeholder="Buscar contatos..."
+          placeholderTextColor={theme.gray7.val}
           value={search}
           onChangeText={setSearch}
           size="$4"
+          backgroundColor="$backgroundStrong"
+          borderColor="$gray6"
+          color="$color"
         />
       </YStack>
 
       {/* Stats */}
       <XStack paddingHorizontal="$4" gap="$3" marginBottom="$3">
-        <Card flex={1} padding="$3" bordered>
-          <Text fontSize="$2" color="$colorSubtle">Total</Text>
-          <Text fontSize="$6" fontWeight="bold">{contacts.length}</Text>
+        <Card flex={1} padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <Text fontSize="$2" color="$gray8">Total</Text>
+          <Text fontSize="$6" fontWeight="bold" color="$color">{contacts.length}</Text>
         </Card>
-        <Card flex={1} padding="$3" bordered>
-          <Text fontSize="$2" color="$colorSubtle">Score Alto</Text>
+        <Card flex={1} padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <Text fontSize="$2" color="$gray8">Score Alto</Text>
           <Text fontSize="$6" fontWeight="bold" color="$green10">
             {contacts.filter(c => c.leadScore >= 70).length}
           </Text>
@@ -112,7 +117,7 @@ export default function CRMScreen() {
         ListEmptyComponent={
           <YStack alignItems="center" padding="$8">
             <Text fontSize={48}>👥</Text>
-            <Text marginTop="$4" color="$colorSubtle">
+            <Text marginTop="$4" color="$gray8">
               Nenhum contato encontrado
             </Text>
           </YStack>
@@ -141,12 +146,12 @@ function ContactCard({
   const getScoreColor = (score: number) => {
     if (score >= 70) return "$green10";
     if (score >= 40) return "$yellow10";
-    return "$colorSubtle";
+    return "$gray8";
   };
 
   return (
     <Pressable onPress={onPress}>
-      <Card padding="$4" bordered pressStyle={{ opacity: 0.8 }}>
+      <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
         <XStack gap="$3">
           {/* Avatar */}
           <YStack
@@ -165,7 +170,7 @@ function ContactCard({
           {/* Content */}
           <YStack flex={1}>
             <XStack justifyContent="space-between" alignItems="center">
-              <Text fontWeight="600" numberOfLines={1} flex={1}>
+              <Text fontWeight="600" numberOfLines={1} flex={1} color="$color">
                 {contact.name || contact.phone}
               </Text>
               <XStack
@@ -180,7 +185,7 @@ function ContactCard({
               </XStack>
             </XStack>
 
-            <Text color="$colorSubtle" fontSize="$2" marginTop="$1">
+            <Text color="$gray8" fontSize="$2" marginTop="$1">
               {contact.phone} {contact.email && `• ${contact.email}`}
             </Text>
 
@@ -216,10 +221,10 @@ function ContactCard({
 
             {/* Meta */}
             <XStack marginTop="$2" gap="$4">
-              <Text fontSize="$1" color="$colorSubtle">
+              <Text fontSize="$1" color="$gray8">
                 📅 {formatDate(contact.lastInteractionAt)}
               </Text>
-              <Text fontSize="$1" color="$colorSubtle">
+              <Text fontSize="$1" color="$gray8">
                 💬 {contact.conversationCount} conversas
               </Text>
             </XStack>

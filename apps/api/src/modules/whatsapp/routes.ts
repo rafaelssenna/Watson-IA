@@ -63,6 +63,7 @@ async function createUazapiInstance(orgId: string, orgName: string): Promise<{ t
 }
 
 // Helper: Get or create WhatsApp connection
+// Now uses the instance token directly from env (no admin token needed)
 async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
   fastify.log.info(`[getOrCreateConnection] Starting for orgId: ${orgId}`);
 
@@ -72,57 +73,36 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
 
   fastify.log.info(`[getOrCreateConnection] Existing connection: ${connection ? `id=${connection.id}, hasToken=${!!connection.uazapiToken}` : 'none'}`);
 
-  // If no connection or no token, try to create instance
-  if (!connection || !connection.uazapiToken) {
-    fastify.log.info(`[getOrCreateConnection] Need to create instance. UAZAPI_ADMIN_TOKEN exists: ${!!UAZAPI_ADMIN_TOKEN}`);
-
+  // If no connection, create one using the instance token from env
+  if (!connection) {
     if (!UAZAPI_ADMIN_TOKEN) {
       fastify.log.error("[getOrCreateConnection] UAZAPI_ADMIN_TOKEN is not configured");
-      return { connection: null, error: "UAZAPI_ADMIN_TOKEN nao configurado no servidor" };
+      return { connection: null, error: "Token Uazapi nao configurado no servidor" };
     }
 
-    // Get org name for instance metadata
-    const org = await prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { name: true },
+    fastify.log.info(`[getOrCreateConnection] Creating connection with env token (length: ${UAZAPI_ADMIN_TOKEN.length})`);
+
+    connection = await prisma.whatsAppConnection.create({
+      data: {
+        organizationId: orgId,
+        connectionType: "UAZAPI",
+        uazapiToken: UAZAPI_ADMIN_TOKEN,
+        uazapiInstance: "watson-instance",
+        status: "DISCONNECTED",
+      },
     });
-    fastify.log.info(`[getOrCreateConnection] Org name: ${org?.name}`);
+    fastify.log.info(`[getOrCreateConnection] Created new connection: ${connection.id}`);
+  }
 
-    fastify.log.info("[getOrCreateConnection] Creating Uazapi instance...");
-    const instance = await createUazapiInstance(orgId, org?.name || "Unknown");
-
-    if (!instance) {
-      fastify.log.error("[getOrCreateConnection] Failed to create Uazapi instance");
-      return { connection: null, error: "Erro ao criar instancia Uazapi" };
-    }
-
-    fastify.log.info(`[getOrCreateConnection] Instance created: ${instance.instanceName}, token length: ${instance.token?.length}`);
-
-    // Create or update connection with new token
-    if (connection) {
-      connection = await prisma.whatsAppConnection.update({
-        where: { id: connection.id },
-        data: {
-          uazapiToken: instance.token,
-          uazapiInstance: instance.instanceName,
-          status: "DISCONNECTED",
-        },
-      });
-      fastify.log.info(`[getOrCreateConnection] Updated existing connection`);
-    } else {
-      connection = await prisma.whatsAppConnection.create({
-        data: {
-          organizationId: orgId,
-          connectionType: "UAZAPI",
-          uazapiToken: instance.token,
-          uazapiInstance: instance.instanceName,
-          status: "DISCONNECTED",
-        },
-      });
-      fastify.log.info(`[getOrCreateConnection] Created new connection: ${connection.id}`);
-    }
-
-    fastify.log.info(`Created Uazapi instance ${instance.instanceName} for org ${orgId}`);
+  // If connection exists but has no token, update with env token
+  if (!connection.uazapiToken && UAZAPI_ADMIN_TOKEN) {
+    connection = await prisma.whatsAppConnection.update({
+      where: { id: connection.id },
+      data: {
+        uazapiToken: UAZAPI_ADMIN_TOKEN,
+      },
+    });
+    fastify.log.info(`[getOrCreateConnection] Updated connection with env token`);
   }
 
   return { connection, error: null };

@@ -1,9 +1,11 @@
 import { Tabs } from "expo-router";
-import { useColorScheme } from "react-native";
+import { useColorScheme, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "tamagui";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const isDark = colorScheme === "dark";
 
   // Watson theme colors
@@ -15,6 +17,9 @@ export default function TabLayout() {
     primary: "#2563eb",
   };
 
+  // Calculate safe bottom padding
+  const bottomPadding = Math.max(insets.bottom, 10);
+
   return (
     <Tabs
       screenOptions={{
@@ -24,13 +29,23 @@ export default function TabLayout() {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 65,
-          paddingBottom: 10,
+          height: 60 + bottomPadding,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
+          // Android specific shadow
+          ...Platform.select({
+            android: {
+              elevation: 8,
+            },
+          }),
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "500",
+          marginTop: -2,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
         headerStyle: {
           backgroundColor: colors.background,
@@ -40,6 +55,9 @@ export default function TabLayout() {
         headerTintColor: colors.text,
         headerTitleStyle: {
           fontWeight: "600",
+        },
+        headerSafeAreaInsets: {
+          top: insets.top,
         },
       }}
     >
@@ -85,7 +103,7 @@ export default function TabLayout() {
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
-    <Text fontSize={22} opacity={focused ? 1 : 0.5}>
+    <Text fontSize={24} opacity={focused ? 1 : 0.5}>
       {name}
     </Text>
   );

@@ -35,7 +35,7 @@ async function createUazapiInstance(orgId: string, orgName: string): Promise<{ t
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${UAZAPI_ADMIN_TOKEN}`,
+        admintoken: UAZAPI_ADMIN_TOKEN,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -132,7 +132,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
       try {
         const response = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
           headers: {
-            Authorization: `Bearer ${connection.uazapiToken}`,
+            token: connection.uazapiToken,
           },
         });
 
@@ -202,7 +202,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
       const response = await fetch(`${UAZAPI_BASE_URL}/instance/connect`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${connection.uazapiToken}`,
+          token: connection.uazapiToken,
           "Content-Type": "application/json",
         },
         // No body = QR Code mode
@@ -275,7 +275,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${connection.uazapiToken}`,
+          token: connection.uazapiToken,
           "Content-Type": "application/json",
         },
         body,
@@ -332,7 +332,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
       await fetch(`${UAZAPI_BASE_URL}/instance/disconnect`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${connection.uazapiToken}`,
+          token: connection.uazapiToken,
         },
       });
 
@@ -381,7 +381,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
     try {
       const response = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          token: token,
         },
       });
 

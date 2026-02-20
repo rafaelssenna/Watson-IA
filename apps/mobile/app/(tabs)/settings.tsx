@@ -86,8 +86,7 @@ export default function SettingsScreen() {
               icon="📱"
               title="Conexao WhatsApp"
               description="Status e configuracoes da conexao"
-              badge="Conectado"
-              badgeColor="$green10"
+              onPress={() => router.push("/settings/whatsapp")}
             />
           </Card>
         </YStack>
@@ -171,15 +170,17 @@ function SettingsItem({
   description,
   badge,
   badgeColor,
+  onPress,
 }: {
   icon: string;
   title: string;
   description: string;
   badge?: string;
   badgeColor?: string;
+  onPress?: () => void;
 }) {
   return (
-    <Pressable>
+    <Pressable onPress={onPress}>
       <XStack padding="$4" alignItems="center" gap="$3">
         <Text fontSize={24}>{icon}</Text>
         <YStack flex={1}>

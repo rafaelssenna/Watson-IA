@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { ScrollView, RefreshControl } from "react-native";
 import { YStack, XStack, H2, Text, Card, useTheme } from "tamagui";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
+
+type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 interface DashboardData {
   activeConversations: number;
@@ -67,26 +70,26 @@ export default function DashboardScreen() {
           <StatCard
             title="Conversas Ativas"
             value={data?.activeConversations || 0}
-            icon="💬"
+            icon="chatbubbles-outline"
             color="$blue10"
           />
           <StatCard
             title="Intencao de Compra"
             value={data?.purchaseIntentCount || 0}
-            icon="🛒"
+            icon="cart-outline"
             color="$green10"
           />
           <StatCard
             title="Urgentes"
             value={data?.urgentCount || 0}
-            icon="🔥"
+            icon="flame-outline"
             color="$red10"
             highlight={data?.urgentCount ? data.urgentCount > 0 : false}
           />
           <StatCard
             title="Esfriando"
             value={data?.coolingCount || 0}
-            icon="❄️"
+            icon="snow-outline"
             color="$yellow10"
           />
         </XStack>
@@ -114,7 +117,7 @@ export default function DashboardScreen() {
         {(data?.hotLeadsNotResponded ?? 0) > 0 && (
           <Card padding="$4" backgroundColor="$red10" borderRadius="$4">
             <XStack alignItems="center" gap="$3">
-              <Text fontSize={24}>⚠️</Text>
+              <Ionicons name="warning-outline" size={24} color="white" />
               <YStack flex={1}>
                 <Text color="white" fontWeight="bold">
                   {data?.hotLeadsNotResponded} leads quentes sem resposta
@@ -148,9 +151,11 @@ export default function DashboardScreen() {
                 <Text fontSize="$8" fontWeight="bold" color="$color">
                   {data?.conversationTrend || 0}%
                 </Text>
-                <Text fontSize="$4" color={(data?.conversationTrend ?? 0) >= 0 ? "$green10" : "$red10"}>
-                  {(data?.conversationTrend ?? 0) >= 0 ? "↑" : "↓"}
-                </Text>
+                <Ionicons
+                  name={(data?.conversationTrend ?? 0) >= 0 ? "arrow-up" : "arrow-down"}
+                  size={20}
+                  color={(data?.conversationTrend ?? 0) >= 0 ? "#22c55e" : "#ef4444"}
+                />
               </XStack>
               <Text color="$gray8" fontSize="$2">vs Ontem</Text>
             </YStack>
@@ -170,10 +175,22 @@ function StatCard({
 }: {
   title: string;
   value: number;
-  icon: string;
+  icon: IoniconsName;
   color: string;
   highlight?: boolean;
 }) {
+  const theme = useTheme();
+
+  // Map tamagui colors to hex
+  const colorMap: Record<string, string> = {
+    "$blue10": "#2563eb",
+    "$green10": "#22c55e",
+    "$red10": "#ef4444",
+    "$yellow10": "#eab308",
+  };
+
+  const iconColor = highlight ? "white" : (colorMap[color] || theme.gray8.val);
+
   return (
     <Card
       flex={1}
@@ -183,7 +200,7 @@ function StatCard({
       borderRadius="$4"
     >
       <XStack alignItems="center" gap="$2" marginBottom="$2">
-        <Text fontSize={18}>{icon}</Text>
+        <Ionicons name={icon} size={18} color={iconColor} />
         <Text
           fontSize="$2"
           color={highlight ? "white" : "$gray8"}

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { FlatList, RefreshControl, Pressable } from "react-native";
 import { router } from "expo-router";
 import { YStack, XStack, Text, Input, Card, useTheme } from "tamagui";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 
 interface Contact {
@@ -116,7 +117,7 @@ export default function CRMScreen() {
         }
         ListEmptyComponent={
           <YStack alignItems="center" padding="$8">
-            <Text fontSize={48}>👥</Text>
+            <Ionicons name="people-outline" size={48} color="#71717a" />
             <Text marginTop="$4" color="$gray8">
               Nenhum contato encontrado
             </Text>
@@ -134,6 +135,8 @@ function ContactCard({
   contact: Contact;
   onPress: () => void;
 }) {
+  const theme = useTheme();
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Nunca";
     const date = new Date(dateStr);
@@ -220,13 +223,19 @@ function ContactCard({
             </XStack>
 
             {/* Meta */}
-            <XStack marginTop="$2" gap="$4">
-              <Text fontSize="$1" color="$gray8">
-                📅 {formatDate(contact.lastInteractionAt)}
-              </Text>
-              <Text fontSize="$1" color="$gray8">
-                💬 {contact.conversationCount} conversas
-              </Text>
+            <XStack marginTop="$2" gap="$4" alignItems="center">
+              <XStack alignItems="center" gap="$1">
+                <Ionicons name="calendar-outline" size={12} color={theme.gray8.val} />
+                <Text fontSize="$1" color="$gray8">
+                  {formatDate(contact.lastInteractionAt)}
+                </Text>
+              </XStack>
+              <XStack alignItems="center" gap="$1">
+                <Ionicons name="chatbubble-outline" size={12} color={theme.gray8.val} />
+                <Text fontSize="$1" color="$gray8">
+                  {contact.conversationCount} conversas
+                </Text>
+              </XStack>
             </XStack>
           </YStack>
         </XStack>

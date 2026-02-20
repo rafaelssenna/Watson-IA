@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { useColorScheme, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Text } from "tamagui";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -66,45 +66,47 @@ export default function TabLayout() {
         options={{
           title: "Dashboard",
           headerTitle: "Watson AI",
-          tabBarIcon: ({ focused }) => <TabIcon name="📊" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="conversations"
         options={{
           title: "Conversas",
-          tabBarIcon: ({ focused }) => <TabIcon name="💬" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="crm"
         options={{
           title: "CRM",
-          tabBarIcon: ({ focused }) => <TabIcon name="👥" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="insights"
         options={{
           title: "Insights",
-          tabBarIcon: ({ focused }) => <TabIcon name="📈" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="stats-chart-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Ajustes",
-          tabBarIcon: ({ focused }) => <TabIcon name="⚙️" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
-  );
-}
-
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  return (
-    <Text fontSize={24} opacity={focused ? 1 : 0.5}>
-      {name}
-    </Text>
   );
 }

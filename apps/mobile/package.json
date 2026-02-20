@@ -14,9 +14,10 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
-    "@watson/shared": "workspace:*",
+    "@expo/vector-icons": "^15.0.3",
     "@tamagui/config": "^1.116.0",
     "@tamagui/font-inter": "^1.116.0",
+    "@watson/shared": "workspace:*",
     "expo": "~54.0.0",
     "expo-asset": "~12.0.12",
     "expo-constants": "~18.0.13",

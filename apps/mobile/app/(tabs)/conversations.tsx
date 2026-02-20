@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { FlatList, RefreshControl, Pressable } from "react-native";
 import { router } from "expo-router";
 import { YStack, XStack, Text, Input, Card, useTheme } from "tamagui";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 
 interface Conversation {
@@ -106,7 +107,7 @@ export default function ConversationsScreen() {
         }
         ListEmptyComponent={
           <YStack alignItems="center" padding="$8">
-            <Text fontSize={48}>💬</Text>
+            <Ionicons name="chatbubbles-outline" size={48} color="#71717a" />
             <Text marginTop="$4" color="$gray8">
               Nenhuma conversa encontrada
             </Text>

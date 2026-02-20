@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { ScrollView, Pressable, Image } from "react-native";
-import { Stack, router } from "expo-router";
+import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, Button, Input, Spinner, useTheme } from "tamagui";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 
 type ConnectionMethod = "qrcode" | "code" | null;
@@ -105,7 +106,6 @@ export default function WhatsAppConnectionScreen() {
     setError("");
 
     try {
-      // Format phone: remove non-digits and ensure country code
       const formattedPhone = phone.replace(/\D/g, "");
 
       const response = await api.post<{
@@ -166,7 +166,7 @@ export default function WhatsAppConnectionScreen() {
               alignItems="center"
               justifyContent="center"
             >
-              <Text fontSize={50}>✓</Text>
+              <Ionicons name="checkmark" size={50} color="white" />
             </YStack>
 
             <Text fontSize="$6" fontWeight="bold" color="$color" textAlign="center">
@@ -188,7 +188,7 @@ export default function WhatsAppConnectionScreen() {
             >
               <YStack gap="$2">
                 <XStack alignItems="center" gap="$2">
-                  <Text fontSize={20}>📱</Text>
+                  <Ionicons name="logo-whatsapp" size={20} color={theme.color.val} />
                   <Text color="$color" fontWeight="600">Status</Text>
                 </XStack>
                 <Text color="$green10" fontSize="$4">Conectado e funcionando</Text>
@@ -246,7 +246,7 @@ export default function WhatsAppConnectionScreen() {
                 <Text color="$color" fontWeight="600">Como escanear:</Text>
                 <YStack gap="$2">
                   <Text color="$gray8" fontSize="$3">1. Abra o WhatsApp no seu celular</Text>
-                  <Text color="$gray8" fontSize="$3">2. Toque em Menu (⋮) ou Configuracoes</Text>
+                  <Text color="$gray8" fontSize="$3">2. Toque em Menu ou Configuracoes</Text>
                   <Text color="$gray8" fontSize="$3">3. Selecione "Dispositivos conectados"</Text>
                   <Text color="$gray8" fontSize="$3">4. Toque em "Conectar dispositivo"</Text>
                   <Text color="$gray8" fontSize="$3">5. Aponte a camera para este QR Code</Text>
@@ -304,7 +304,7 @@ export default function WhatsAppConnectionScreen() {
                 <Text color="$color" fontWeight="600">Como usar o codigo:</Text>
                 <YStack gap="$2">
                   <Text color="$gray8" fontSize="$3">1. Abra o WhatsApp no seu celular</Text>
-                  <Text color="$gray8" fontSize="$3">2. Toque em Menu (⋮) ou Configuracoes</Text>
+                  <Text color="$gray8" fontSize="$3">2. Toque em Menu ou Configuracoes</Text>
                   <Text color="$gray8" fontSize="$3">3. Selecione "Dispositivos conectados"</Text>
                   <Text color="$gray8" fontSize="$3">4. Toque em "Conectar dispositivo"</Text>
                   <Text color="$gray8" fontSize="$3">5. Toque em "Conectar com numero"</Text>
@@ -318,9 +318,12 @@ export default function WhatsAppConnectionScreen() {
               <Text color="$gray8">Aguardando conexao...</Text>
             </XStack>
 
-            <Text color="$yellow10" fontSize="$2" textAlign="center" marginTop="$2">
-              O codigo expira em 5 minutos
-            </Text>
+            <XStack alignItems="center" gap="$1" marginTop="$2">
+              <Ionicons name="time-outline" size={14} color="#eab308" />
+              <Text color="$yellow10" fontSize="$2">
+                O codigo expira em 5 minutos
+              </Text>
+            </XStack>
 
             <Button
               onPress={resetConnection}
@@ -349,7 +352,7 @@ export default function WhatsAppConnectionScreen() {
           <YStack gap="$4">
             <Card backgroundColor="$blue5" padding="$4" borderRadius="$4">
               <XStack gap="$3" alignItems="flex-start">
-                <Text fontSize={24}>💡</Text>
+                <Ionicons name="bulb-outline" size={24} color="#2563eb" />
                 <YStack flex={1}>
                   <Text color="$blue10" fontWeight="600" fontSize="$4">
                     Use QR Code quando:
@@ -404,7 +407,7 @@ export default function WhatsAppConnectionScreen() {
           <YStack gap="$4">
             <Card backgroundColor="$green5" padding="$4" borderRadius="$4">
               <XStack gap="$3" alignItems="flex-start">
-                <Text fontSize={24}>💡</Text>
+                <Ionicons name="bulb-outline" size={24} color="#22c55e" />
                 <YStack flex={1}>
                   <Text color="$green10" fontWeight="600" fontSize="$4">
                     Use Codigo quando:
@@ -501,7 +504,7 @@ export default function WhatsAppConnectionScreen() {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Text fontSize={32}>📱</Text>
+                  <Ionicons name="qr-code-outline" size={32} color="#2563eb" />
                 </YStack>
                 <YStack flex={1}>
                   <Text fontSize="$5" fontWeight="bold" color="$color">
@@ -511,7 +514,7 @@ export default function WhatsAppConnectionScreen() {
                     Escaneie com outro celular
                   </Text>
                 </YStack>
-                <Text color="$blue10" fontSize="$5">›</Text>
+                <Ionicons name="chevron-forward" size={20} color="#2563eb" />
               </XStack>
 
               <Card
@@ -520,9 +523,12 @@ export default function WhatsAppConnectionScreen() {
                 borderRadius="$3"
                 marginTop="$3"
               >
-                <Text color="$blue10" fontSize="$2">
-                  📌 Recomendado quando voce vai usar OUTRO celular para escanear o QR Code
-                </Text>
+                <XStack alignItems="center" gap="$2">
+                  <Ionicons name="information-circle-outline" size={16} color="#2563eb" />
+                  <Text color="$blue10" fontSize="$2" flex={1}>
+                    Recomendado quando voce vai usar OUTRO celular para escanear o QR Code
+                  </Text>
+                </XStack>
               </Card>
             </Card>
           </Pressable>
@@ -545,7 +551,7 @@ export default function WhatsAppConnectionScreen() {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Text fontSize={32}>🔢</Text>
+                  <Ionicons name="keypad-outline" size={32} color="#22c55e" />
                 </YStack>
                 <YStack flex={1}>
                   <Text fontSize="$5" fontWeight="bold" color="$color">
@@ -555,7 +561,7 @@ export default function WhatsAppConnectionScreen() {
                     Digite o codigo no WhatsApp
                   </Text>
                 </YStack>
-                <Text color="$green10" fontSize="$5">›</Text>
+                <Ionicons name="chevron-forward" size={20} color="#22c55e" />
               </XStack>
 
               <Card
@@ -564,9 +570,12 @@ export default function WhatsAppConnectionScreen() {
                 borderRadius="$3"
                 marginTop="$3"
               >
-                <Text color="$green10" fontSize="$2">
-                  📌 Recomendado quando voce vai conectar usando ESTE MESMO celular
-                </Text>
+                <XStack alignItems="center" gap="$2">
+                  <Ionicons name="information-circle-outline" size={16} color="#22c55e" />
+                  <Text color="$green10" fontSize="$2" flex={1}>
+                    Recomendado quando voce vai conectar usando ESTE MESMO celular
+                  </Text>
+                </XStack>
               </Card>
             </Card>
           </Pressable>

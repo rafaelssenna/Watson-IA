@@ -197,8 +197,8 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
               phoneNumber: data.status?.jid?.user || connection.phoneNumber,
               displayName: data.instance?.profileName || connection.displayName,
               profilePicUrl: data.instance?.profilePicUrl,
-              qrcode: data.instance?.qrcode,
-              pairingCode: data.instance?.pairingCode,
+              qrcode: data.instance?.qrcode || data.qrcode,
+              pairingCode: data.instance?.paircode || data.paircode,
             },
           };
         }
@@ -250,6 +250,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
       }
 
       const data = await response.json();
+      fastify.log.info(`[WhatsApp QR Code] Uazapi response: ${JSON.stringify(data)}`);
 
       // Update connection status
       await prisma.whatsAppConnection.update({
@@ -257,10 +258,13 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
         data: { status: "CONNECTING" },
       });
 
+      // Uazapi may return qrcode at different paths
+      const qrcode = data.instance?.qrcode || data.qrcode;
+
       return {
         success: true,
         data: {
-          qrcode: data.instance?.qrcode,
+          qrcode: qrcode,
           status: "CONNECTING",
         },
       };
@@ -333,12 +337,14 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
         data: { status: "CONNECTING" },
       });
 
-      fastify.log.info(`[WhatsApp Connect Code] Success - pairingCode: ${data.instance?.pairingCode}`);
+      // Uazapi uses 'paircode' not 'pairingCode'
+      const pairingCode = data.instance?.paircode || data.paircode;
+      fastify.log.info(`[WhatsApp Connect Code] Success - pairingCode: ${pairingCode}`);
 
       return {
         success: true,
         data: {
-          pairingCode: data.instance?.pairingCode,
+          pairingCode: pairingCode,
           status: "CONNECTING",
         },
       };

@@ -21,6 +21,7 @@ import { dashboardRoutes } from "./modules/dashboard/routes.js";
 import { personaRoutes } from "./modules/personas/routes.js";
 import { knowledgeRoutes } from "./modules/knowledge/routes.js";
 import { webhookRoutes } from "./modules/webhooks/routes.js";
+import { whatsappRoutes } from "./modules/whatsapp/routes.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -119,6 +120,7 @@ async function buildServer() {
   await fastify.register(personaRoutes, { prefix: "/api/v1/personas" });
   await fastify.register(knowledgeRoutes, { prefix: "/api/v1/knowledge" });
   await fastify.register(webhookRoutes, { prefix: "/api/v1/webhooks" });
+  await fastify.register(whatsappRoutes, { prefix: "/api/v1/whatsapp" });
 
   return fastify;
 }

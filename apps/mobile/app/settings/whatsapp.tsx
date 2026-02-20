@@ -33,17 +33,29 @@ export default function WhatsAppConnectionScreen() {
     try {
       const response = await api.get<{
         success: boolean;
-        data: { status: ConnectionStatus; phone?: string };
+        data: {
+          status: string;
+          hasConnection: boolean;
+          phoneNumber?: string;
+          displayName?: string;
+          qrcode?: string;
+          pairingCode?: string;
+        };
       }>("/whatsapp/status");
 
       if (response.data.success) {
-        setConnectionState({
-          status: response.data.data.status,
-          phone: response.data.data.phone,
-        });
+        const data = response.data.data;
+        const status = data.status?.toLowerCase() as ConnectionStatus;
+
+        setConnectionState((prev) => ({
+          status: status || "disconnected",
+          phone: data.phoneNumber || prev.phone,
+          qrcode: data.qrcode || prev.qrcode,
+          pairingCode: data.pairingCode || prev.pairingCode,
+        }));
       }
-    } catch (err) {
-      console.log("Status check error:", err);
+    } catch (err: any) {
+      console.log("Status check error:", err.response?.data || err.message);
     }
   };
 
@@ -66,16 +78,18 @@ export default function WhatsAppConnectionScreen() {
       const response = await api.post<{
         success: boolean;
         data: { qrcode?: string; status: ConnectionStatus };
-      }>("/whatsapp/connect", {});
+      }>("/whatsapp/connect/qrcode", {});
 
       if (response.data.success && response.data.data.qrcode) {
         setConnectionState({
           status: "connecting",
           qrcode: response.data.data.qrcode,
         });
+      } else {
+        setError("QR Code nao recebido. Verifique a configuracao do Uazapi.");
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao gerar QR Code");
+      setError(err.response?.data?.error || err.message || "Erro ao gerar QR Code");
     } finally {
       setIsLoading(false);
     }
@@ -97,16 +111,18 @@ export default function WhatsAppConnectionScreen() {
       const response = await api.post<{
         success: boolean;
         data: { pairingCode?: string; status: ConnectionStatus };
-      }>("/whatsapp/connect", { phone: formattedPhone });
+      }>("/whatsapp/connect/code", { phone: formattedPhone });
 
       if (response.data.success && response.data.data.pairingCode) {
         setConnectionState({
           status: "connecting",
           pairingCode: response.data.data.pairingCode,
         });
+      } else {
+        setError("Codigo de pareamento nao recebido. Verifique a configuracao do Uazapi.");
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao gerar codigo de pareamento");
+      setError(err.response?.data?.error || err.message || "Erro ao gerar codigo de pareamento");
     } finally {
       setIsLoading(false);
     }

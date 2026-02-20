@@ -76,6 +76,13 @@ function RootNavigator() {
             name="(modals)"
             options={{ presentation: "modal" }}
           />
+          <Stack.Screen
+            name="settings"
+            options={{
+              headerShown: false,
+              presentation: "card",
+            }}
+          />
         </>
       )}
     </Stack>

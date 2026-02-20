@@ -105,6 +105,21 @@ async function configureWebhook(instanceToken: string, connectionId: string): Pr
   }
 }
 
+// Helper: Verify if a Uazapi token is still valid
+async function verifyUazapiToken(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
+      headers: { token },
+    });
+    // 401 = Invalid token (instance deleted)
+    // 200 = Token is valid
+    return response.status !== 401;
+  } catch (error) {
+    console.error("[verifyUazapiToken] Exception:", error);
+    return false;
+  }
+}
+
 // Helper: Get or create WhatsApp connection
 // Creates a new Uazapi instance if needed using the admin token
 async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
@@ -116,11 +131,19 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
 
   fastify.log.info(`[getOrCreateConnection] Existing connection: ${connection ? `id=${connection.id}, hasToken=${!!connection.uazapiToken}, instance=${connection.uazapiInstance}` : 'none'}`);
 
-  // If connection exists with a valid instance (not placeholder), just return it
-  // Don't verify token here - let the actual API call verify it
+  // If connection exists with a valid instance (not placeholder), verify the token first
   if (connection?.uazapiToken && connection.uazapiInstance && connection.uazapiInstance !== "watson-instance") {
-    fastify.log.info(`[getOrCreateConnection] Using existing instance: ${connection.uazapiInstance}`);
-    return { connection, error: null };
+    fastify.log.info(`[getOrCreateConnection] Verifying existing token for instance: ${connection.uazapiInstance}`);
+
+    const tokenValid = await verifyUazapiToken(connection.uazapiToken);
+
+    if (tokenValid) {
+      fastify.log.info(`[getOrCreateConnection] Token is valid, using existing instance`);
+      return { connection, error: null };
+    }
+
+    // Token is invalid (instance was deleted), need to create a new one
+    fastify.log.warn(`[getOrCreateConnection] Token is invalid, instance was likely deleted. Creating new instance...`);
   }
 
   // Need to create a new instance

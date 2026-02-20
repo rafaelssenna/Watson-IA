@@ -3,6 +3,7 @@ import { ScrollView, Pressable, Image } from "react-native";
 import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, Button, Input, Spinner, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { api } from "@/services/api";
 
 type ConnectionMethod = "qrcode" | "code" | null;
@@ -23,14 +24,22 @@ export default function WhatsAppConnectionScreen() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [waitingForCode, setWaitingForCode] = useState(false); // Track if user chose code method
   const theme = useTheme();
+
+  const copyToClipboard = async (text: string) => {
+    await Clipboard.setStringAsync(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Check current status on mount
   useEffect(() => {
     checkStatus();
   }, []);
 
-  const checkStatus = async () => {
+  const checkStatus = async (preserveCurrentMethod = false) => {
     try {
       const response = await api.get<{
         success: boolean;
@@ -48,12 +57,24 @@ export default function WhatsAppConnectionScreen() {
         const data = response.data.data;
         const status = data.status?.toLowerCase() as ConnectionStatus;
 
-        setConnectionState((prev) => ({
-          status: status || "disconnected",
-          phone: data.phoneNumber || prev.phone,
-          qrcode: data.qrcode || prev.qrcode,
-          pairingCode: data.pairingCode || prev.pairingCode,
-        }));
+        setConnectionState((prev) => {
+          // If user is waiting for pairing code, only update status, not the codes
+          // This prevents switching to QR code screen
+          if (preserveCurrentMethod && prev.pairingCode) {
+            return {
+              ...prev,
+              status: status || prev.status,
+              phone: data.phoneNumber || prev.phone,
+            };
+          }
+
+          return {
+            status: status || "disconnected",
+            phone: data.phoneNumber || prev.phone,
+            qrcode: data.qrcode || prev.qrcode,
+            pairingCode: data.pairingCode || prev.pairingCode,
+          };
+        });
       }
     } catch (err: any) {
       console.log("Status check error:", err.response?.data || err.message);
@@ -65,7 +86,8 @@ export default function WhatsAppConnectionScreen() {
     if (connectionState.status !== "connecting") return;
 
     const interval = setInterval(async () => {
-      await checkStatus();
+      // Pass true to preserve current method (don't switch from code to qrcode)
+      await checkStatus(true);
     }, 3000);
 
     return () => clearInterval(interval);
@@ -288,11 +310,27 @@ export default function WhatsAppConnectionScreen() {
               Codigo de Pareamento
             </Text>
 
-            <Card backgroundColor="$blue10" padding="$6" borderRadius="$4">
-              <Text fontSize={32} fontWeight="bold" color="white" letterSpacing={8}>
-                {connectionState.pairingCode}
-              </Text>
-            </Card>
+            <Pressable onPress={() => copyToClipboard(connectionState.pairingCode || "")}>
+              <Card backgroundColor="$blue10" padding="$6" borderRadius="$4">
+                <Text fontSize={32} fontWeight="bold" color="white" letterSpacing={8} textAlign="center">
+                  {connectionState.pairingCode}
+                </Text>
+              </Card>
+            </Pressable>
+
+            <Button
+              onPress={() => copyToClipboard(connectionState.pairingCode || "")}
+              size="$4"
+              backgroundColor={copied ? "$green10" : "$blue5"}
+              marginTop="$2"
+            >
+              <XStack gap="$2" alignItems="center">
+                <Ionicons name={copied ? "checkmark" : "copy-outline"} size={18} color={copied ? "white" : "#2563eb"} />
+                <Text color={copied ? "white" : "$blue10"} fontWeight="600">
+                  {copied ? "Copiado!" : "Copiar Codigo"}
+                </Text>
+              </XStack>
+            </Button>
 
             <Card
               backgroundColor="$backgroundStrong"

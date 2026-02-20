@@ -62,6 +62,49 @@ async function createUazapiInstance(orgId: string, orgName: string): Promise<{ t
   }
 }
 
+// Helper: Configure webhook for instance
+async function configureWebhook(instanceToken: string, connectionId: string): Promise<boolean> {
+  // Use the webhooks endpoint with the connection ID
+  const webhookBaseUrl = process.env.WATSON_WEBHOOK_URL || "https://watson-ia-production.up.railway.app/api/v1/webhooks";
+  const webhookUrl = `${webhookBaseUrl}/uazapi/${connectionId}`;
+
+  console.log(`[configureWebhook] Configuring webhook for connection: ${connectionId}`);
+  console.log(`[configureWebhook] Webhook URL: ${webhookUrl}`);
+
+  try {
+    const response = await fetch(`${UAZAPI_BASE_URL}/webhook`, {
+      method: "POST",
+      headers: {
+        token: instanceToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        enabled: true,
+        url: webhookUrl,
+        events: ["messages", "connection"],
+        excludeMessages: ["wasSentByApi", "isGroupYes"],
+        addUrlEvents: false,
+        addUrlTypesMessages: false,
+      }),
+    });
+
+    console.log(`[configureWebhook] Response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[configureWebhook] Failed: ${errorText}`);
+      return false;
+    }
+
+    const data = await response.json();
+    console.log(`[configureWebhook] Success: ${JSON.stringify(data)}`);
+    return true;
+  } catch (error) {
+    console.error("[configureWebhook] Exception:", error);
+    return false;
+  }
+}
+
 // Helper: Get or create WhatsApp connection
 // Creates a new Uazapi instance if needed using the admin token
 async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
@@ -73,20 +116,11 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
 
   fastify.log.info(`[getOrCreateConnection] Existing connection: ${connection ? `id=${connection.id}, hasToken=${!!connection.uazapiToken}, instance=${connection.uazapiInstance}` : 'none'}`);
 
-  // If connection exists with a valid instance token, verify it works
-  if (connection?.uazapiToken && connection.uazapiInstance !== "watson-instance") {
-    try {
-      const statusResponse = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
-        headers: { token: connection.uazapiToken },
-      });
-      if (statusResponse.ok) {
-        fastify.log.info(`[getOrCreateConnection] Existing instance token is valid`);
-        return { connection, error: null };
-      }
-      fastify.log.warn(`[getOrCreateConnection] Existing token invalid, will create new instance`);
-    } catch (e) {
-      fastify.log.warn(`[getOrCreateConnection] Token check failed, will create new instance`);
-    }
+  // If connection exists with a valid instance (not placeholder), just return it
+  // Don't verify token here - let the actual API call verify it
+  if (connection?.uazapiToken && connection.uazapiInstance && connection.uazapiInstance !== "watson-instance") {
+    fastify.log.info(`[getOrCreateConnection] Using existing instance: ${connection.uazapiInstance}`);
+    return { connection, error: null };
   }
 
   // Need to create a new instance
@@ -135,6 +169,14 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
       },
     });
     fastify.log.info(`[getOrCreateConnection] Created new connection: ${connection.id}`);
+  }
+
+  // Configure webhook for the new instance (now that we have the connection ID)
+  const webhookConfigured = await configureWebhook(instanceResult.token, connection.id);
+  if (webhookConfigured) {
+    fastify.log.info(`[getOrCreateConnection] Webhook configured successfully`);
+  } else {
+    fastify.log.warn(`[getOrCreateConnection] Failed to configure webhook, but continuing`);
   }
 
   return { connection, error: null };

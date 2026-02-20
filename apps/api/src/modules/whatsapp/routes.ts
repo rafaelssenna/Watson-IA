@@ -8,53 +8,76 @@ const UAZAPI_ADMIN_TOKEN = process.env.UAZAPI_ADMIN_TOKEN;
 
 // Helper: Create instance on Uazapi
 async function createUazapiInstance(orgId: string, orgName: string): Promise<{ token: string; instanceName: string } | null> {
+  console.log(`[createUazapiInstance] Starting - orgId: ${orgId}, orgName: ${orgName}`);
+  console.log(`[createUazapiInstance] UAZAPI_ADMIN_TOKEN exists: ${!!UAZAPI_ADMIN_TOKEN}, length: ${UAZAPI_ADMIN_TOKEN?.length}`);
+  console.log(`[createUazapiInstance] UAZAPI_BASE_URL: ${UAZAPI_BASE_URL}`);
+
   if (!UAZAPI_ADMIN_TOKEN) {
+    console.error("[createUazapiInstance] No admin token");
     return null;
   }
 
   try {
     // Generate unique instance name
     const instanceName = `watson-${orgId.slice(0, 8)}-${crypto.randomBytes(3).toString("hex")}`;
+    console.log(`[createUazapiInstance] Instance name: ${instanceName}`);
 
-    const response = await fetch(`${UAZAPI_BASE_URL}/instance/init`, {
+    const url = `${UAZAPI_BASE_URL}/instance/init`;
+    const body = {
+      name: instanceName,
+      systemName: "WatsonAI",
+      adminField01: orgId,
+      adminField02: orgName,
+    };
+    console.log(`[createUazapiInstance] Calling: ${url}`);
+    console.log(`[createUazapiInstance] Body: ${JSON.stringify(body)}`);
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${UAZAPI_ADMIN_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        name: instanceName,
-        systemName: "WatsonAI",
-        adminField01: orgId,
-        adminField02: orgName,
-      }),
+      body: JSON.stringify(body),
     });
 
+    console.log(`[createUazapiInstance] Response status: ${response.status}`);
+
     if (!response.ok) {
-      console.error("Failed to create Uazapi instance:", await response.text());
+      const errorText = await response.text();
+      console.error(`[createUazapiInstance] Failed: ${errorText}`);
       return null;
     }
 
     const data = await response.json();
+    console.log(`[createUazapiInstance] Success - token length: ${data.token?.length}, name: ${data.name}`);
+
     return {
       token: data.token,
       instanceName: data.name || instanceName,
     };
   } catch (error) {
-    console.error("Error creating Uazapi instance:", error);
+    console.error("[createUazapiInstance] Exception:", error);
     return null;
   }
 }
 
 // Helper: Get or create WhatsApp connection
 async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
+  fastify.log.info(`[getOrCreateConnection] Starting for orgId: ${orgId}`);
+
   let connection = await prisma.whatsAppConnection.findFirst({
     where: { organizationId: orgId },
   });
 
+  fastify.log.info(`[getOrCreateConnection] Existing connection: ${connection ? `id=${connection.id}, hasToken=${!!connection.uazapiToken}` : 'none'}`);
+
   // If no connection or no token, try to create instance
   if (!connection || !connection.uazapiToken) {
+    fastify.log.info(`[getOrCreateConnection] Need to create instance. UAZAPI_ADMIN_TOKEN exists: ${!!UAZAPI_ADMIN_TOKEN}`);
+
     if (!UAZAPI_ADMIN_TOKEN) {
+      fastify.log.error("[getOrCreateConnection] UAZAPI_ADMIN_TOKEN is not configured");
       return { connection: null, error: "UAZAPI_ADMIN_TOKEN nao configurado no servidor" };
     }
 
@@ -63,11 +86,17 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
       where: { id: orgId },
       select: { name: true },
     });
+    fastify.log.info(`[getOrCreateConnection] Org name: ${org?.name}`);
 
+    fastify.log.info("[getOrCreateConnection] Creating Uazapi instance...");
     const instance = await createUazapiInstance(orgId, org?.name || "Unknown");
+
     if (!instance) {
+      fastify.log.error("[getOrCreateConnection] Failed to create Uazapi instance");
       return { connection: null, error: "Erro ao criar instancia Uazapi" };
     }
+
+    fastify.log.info(`[getOrCreateConnection] Instance created: ${instance.instanceName}, token length: ${instance.token?.length}`);
 
     // Create or update connection with new token
     if (connection) {
@@ -79,6 +108,7 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
           status: "DISCONNECTED",
         },
       });
+      fastify.log.info(`[getOrCreateConnection] Updated existing connection`);
     } else {
       connection = await prisma.whatsAppConnection.create({
         data: {
@@ -89,6 +119,7 @@ async function getOrCreateConnection(orgId: string, fastify: FastifyInstance) {
           status: "DISCONNECTED",
         },
       });
+      fastify.log.info(`[getOrCreateConnection] Created new connection: ${connection.id}`);
     }
 
     fastify.log.info(`Created Uazapi instance ${instance.instanceName} for org ${orgId}`);
@@ -232,46 +263,65 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
     const { orgId } = request.user as { userId: string; orgId: string };
     const { phone } = request.body;
 
+    fastify.log.info(`[WhatsApp Connect Code] Started - orgId: ${orgId}, phone: ${phone}`);
+    fastify.log.info(`[WhatsApp Connect Code] UAZAPI_ADMIN_TOKEN exists: ${!!UAZAPI_ADMIN_TOKEN}`);
+
     if (!phone) {
+      fastify.log.warn("[WhatsApp Connect Code] Phone is missing");
       return reply.badRequest("Numero de telefone obrigatorio");
     }
 
     // Clean phone number - keep only digits
     const cleanPhone = phone.replace(/\D/g, "");
+    fastify.log.info(`[WhatsApp Connect Code] Clean phone: ${cleanPhone}`);
 
     // Get or create connection (auto-creates instance if needed)
+    fastify.log.info("[WhatsApp Connect Code] Getting or creating connection...");
     const { connection, error } = await getOrCreateConnection(orgId, fastify);
 
     if (!connection) {
+      fastify.log.error(`[WhatsApp Connect Code] Connection failed: ${error}`);
       return reply.badRequest(error || "Erro ao configurar conexao WhatsApp");
     }
 
+    fastify.log.info(`[WhatsApp Connect Code] Connection ready - id: ${connection.id}, token exists: ${!!connection.uazapiToken}`);
+
     try {
-      const response = await fetch(`${UAZAPI_BASE_URL}/instance/connect`, {
+      const url = `${UAZAPI_BASE_URL}/instance/connect`;
+      const body = JSON.stringify({ phone: cleanPhone });
+      fastify.log.info(`[WhatsApp Connect Code] Calling Uazapi: ${url}`);
+      fastify.log.info(`[WhatsApp Connect Code] Request body: ${body}`);
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${connection.uazapiToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phone: cleanPhone }),
+        body,
       });
+
+      fastify.log.info(`[WhatsApp Connect Code] Uazapi response status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        fastify.log.error("Uazapi connect error:", errorText);
+        fastify.log.error(`[WhatsApp Connect Code] Uazapi error response: ${errorText}`);
         return reply.code(response.status).send({
           success: false,
-          error: "Erro ao conectar com Uazapi",
+          error: `Erro Uazapi: ${errorText}`,
         });
       }
 
       const data = await response.json();
+      fastify.log.info(`[WhatsApp Connect Code] Uazapi response data: ${JSON.stringify(data)}`);
 
       // Update connection status
       await prisma.whatsAppConnection.update({
         where: { id: connection.id },
         data: { status: "CONNECTING" },
       });
+
+      fastify.log.info(`[WhatsApp Connect Code] Success - pairingCode: ${data.instance?.pairingCode}`);
 
       return {
         success: true,
@@ -281,7 +331,7 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
         },
       };
     } catch (error) {
-      fastify.log.error("Uazapi connect error:", error);
+      fastify.log.error("[WhatsApp Connect Code] Exception:", error);
       return reply.internalServerError("Erro ao conectar com Uazapi");
     }
   });

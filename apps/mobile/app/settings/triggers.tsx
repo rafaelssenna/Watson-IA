@@ -93,7 +93,8 @@ export default function TriggersScreen() {
       if (existingTrigger) {
         // Toggle existing trigger
         const response = await api.post<{ success: boolean; data: Trigger }>(
-          `/triggers/${existingTrigger.id}/toggle`
+          `/triggers/${existingTrigger.id}/toggle`,
+          {}
         );
         if (response.data.success) {
           setTriggers((prev) =>

@@ -23,6 +23,8 @@ import { personaRoutes } from "./modules/personas/routes.js";
 import { knowledgeRoutes } from "./modules/knowledge/routes.js";
 import { webhookRoutes } from "./modules/webhooks/routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/routes.js";
+import { automationRoutes } from "./modules/automations/routes.js";
+import { startAutomationScheduler, stopAutomationScheduler } from "./services/automation.service.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -127,6 +129,7 @@ async function buildServer() {
   await fastify.register(knowledgeRoutes, { prefix: "/api/v1/knowledge" });
   await fastify.register(webhookRoutes, { prefix: "/api/v1/webhooks" });
   await fastify.register(whatsappRoutes, { prefix: "/api/v1/whatsapp" });
+  await fastify.register(automationRoutes, { prefix: "/api/v1/automations" });
 
   return fastify;
 }
@@ -140,6 +143,20 @@ async function start() {
 
     server.log.info(`Watson API running on http://${HOST}:${PORT}`);
     server.log.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+
+    // Start automation scheduler
+    startAutomationScheduler(server.log);
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      server.log.info("Shutting down server...");
+      stopAutomationScheduler(server.log);
+      await server.close();
+      process.exit(0);
+    };
+
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
   } catch (err) {
     console.error("Failed to start server:", err);
     process.exit(1);

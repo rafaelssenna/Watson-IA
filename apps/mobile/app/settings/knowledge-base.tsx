@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Pressable, Alert, ActivityIndicator } from "react-native";
+import { useEffect, useState, useRef } from "react";
+import { Pressable, Alert, ActivityIndicator, TextInput } from "react-native";
 import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,17 +21,45 @@ export default function KnowledgeBaseScreen() {
     fetchKnowledgeFiles,
     uploadKnowledgeFile,
     deleteKnowledgeFile,
+    updatePersona,
   } = usePersonaStore();
+
+  const [customInstructions, setCustomInstructions] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Load custom instructions when persona is loaded
+  useEffect(() => {
+    if (selectedPersona && !formInitialized) {
+      setCustomInstructions(selectedPersona.customInstructions || "");
+      setFormInitialized(true);
+    }
+  }, [selectedPersona, formInitialized]);
 
   const loadData = async () => {
     const persona = await fetchDefaultPersona();
     if (persona) {
       fetchKnowledgeFiles(persona.id);
     }
+  };
+
+  const handleSaveInstructions = async () => {
+    if (!selectedPersona?.id) return;
+
+    setSaving(true);
+    try {
+      await updatePersona(selectedPersona.id, {
+        customInstructions: customInstructions.trim() || undefined,
+      });
+      Alert.alert("Sucesso", "Instrucoes salvas com sucesso");
+    } catch (error: any) {
+      Alert.alert("Erro", error.message || "Erro ao salvar instrucoes");
+    }
+    setSaving(false);
   };
 
   const handlePickFile = async () => {
@@ -108,11 +136,13 @@ export default function KnowledgeBaseScreen() {
         options={{
           title: "Base de Conhecimento",
           headerRight: () => (
-            <Pressable onPress={handlePickFile} disabled={isUploading}>
-              {isUploading ? (
+            <Pressable onPress={handleSaveInstructions} disabled={saving}>
+              {saving ? (
                 <ActivityIndicator size="small" color={WATSON_TEAL} />
               ) : (
-                <Ionicons name="add-circle" size={28} color={WATSON_TEAL} />
+                <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
+                  Salvar
+                </Text>
               )}
             </Pressable>
           ),
@@ -136,6 +166,36 @@ export default function KnowledgeBaseScreen() {
                 </Text>
               </YStack>
             </XStack>
+          </Card>
+
+          {/* Custom Instructions */}
+          <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+            <XStack alignItems="center" gap="$2" marginBottom="$2">
+              <Ionicons name="create-outline" size={20} color={WATSON_TEAL} />
+              <Text fontSize="$3" fontWeight="600" color="$color">
+                Instrucoes Adicionais
+              </Text>
+            </XStack>
+            <Text fontSize="$2" color="$gray8" marginBottom="$3">
+              Regras especificas do seu negocio que a IA deve seguir
+            </Text>
+            <TextInput
+              value={customInstructions}
+              onChangeText={setCustomInstructions}
+              placeholder="Ex: Nosso prazo de entrega e de 3-5 dias uteis. Temos frete gratis acima de R$200..."
+              placeholderTextColor={theme.gray8.val}
+              multiline
+              numberOfLines={5}
+              style={{
+                backgroundColor: theme.background.val,
+                borderRadius: 8,
+                padding: 12,
+                fontSize: 16,
+                color: theme.color.val,
+                minHeight: 120,
+                textAlignVertical: "top",
+              }}
+            />
           </Card>
 
           {/* Supported Formats */}

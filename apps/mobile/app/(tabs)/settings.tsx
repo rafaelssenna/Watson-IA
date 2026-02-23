@@ -80,6 +80,7 @@ export default function SettingsScreen() {
               icon="sync-outline"
               title="Automacoes"
               description="Follow-ups e mensagens programadas"
+              onPress={() => router.push("/settings/automations")}
             />
           </Card>
         </YStack>

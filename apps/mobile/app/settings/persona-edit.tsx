@@ -31,7 +31,6 @@ export default function PersonaEditScreen() {
   const [businessHoursStart, setBusinessHoursStart] = useState("09:00");
   const [businessHoursEnd, setBusinessHoursEnd] = useState("18:00");
   const [workDays, setWorkDays] = useState<string[]>(["seg", "ter", "qua", "qui", "sex"]);
-  const [customInstructions, setCustomInstructions] = useState("");
   const [saving, setSaving] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
   const loadedPersonaId = useRef<string | null>(null);
@@ -64,7 +63,6 @@ export default function PersonaEditScreen() {
       setBusinessHoursStart(selectedPersona.businessHoursStart || "09:00");
       setBusinessHoursEnd(selectedPersona.businessHoursEnd || "18:00");
       setWorkDays(selectedPersona.workDays || ["seg", "ter", "qua", "qui", "sex"]);
-      setCustomInstructions(selectedPersona.customInstructions || "");
       setFormInitialized(true);
     }
   }, [selectedPersona, formInitialized]);
@@ -91,7 +89,6 @@ export default function PersonaEditScreen() {
       businessHoursStart: businessHoursStart || undefined,
       businessHoursEnd: businessHoursEnd || undefined,
       workDays: workDays.length > 0 ? workDays : undefined,
-      customInstructions: customInstructions.trim() || undefined,
       isDefault: true,
     };
 
@@ -531,33 +528,6 @@ export default function PersonaEditScreen() {
                 value={systemPrompt}
                 onChangeText={setSystemPrompt}
                 placeholder="Voce e um assistente especializado em..."
-                placeholderTextColor={theme.gray8.val}
-                multiline
-                numberOfLines={4}
-                style={{
-                  backgroundColor: theme.background.val,
-                  borderRadius: 8,
-                  padding: 12,
-                  fontSize: 16,
-                  color: theme.color.val,
-                  minHeight: 100,
-                  textAlignVertical: "top",
-                }}
-              />
-            </Card>
-
-            {/* Custom Instructions */}
-            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-                Instrucoes Adicionais
-              </Text>
-              <Text fontSize="$2" color="$gray8" marginBottom="$3">
-                Regras especificas do seu negocio
-              </Text>
-              <TextInput
-                value={customInstructions}
-                onChangeText={setCustomInstructions}
-                placeholder="Ex: Nosso prazo de entrega e de 3-5 dias uteis..."
                 placeholderTextColor={theme.gray8.val}
                 multiline
                 numberOfLines={4}

@@ -551,18 +551,57 @@ model Automation {
   description    String?
   isActive       Boolean        @default(true)
   type           AutomationType
-  config         Json
+
+  // Follow-up specific fields
+  triggerDelayHours          Int?      // Hours after last client message
+  messageTemplate            String?   @db.Text
+  useAI                      Boolean   @default(false) // Generate message with AI
+  maxExecutionsPerConversation Int      @default(1)
+  respectBusinessHours       Boolean   @default(true)
+  onlyWhenWaitingClient      Boolean   @default(true) // Only trigger when waiting for client response
+
+  // Legacy config for complex automations
+  config         Json?
   timesExecuted  Int            @default(0)
   lastExecutedAt DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
+  executions AutomationExecution[]
+
   @@index([organizationId])
   @@index([type])
+  @@index([isActive])
+}
+
+model AutomationExecution {
+  id             String     @id @default(cuid())
+  automationId   String
+  automation     Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  conversationId String
+  messageId      String?    // The message sent by the automation
+  status         ExecutionStatus @default(PENDING)
+  scheduledFor   DateTime?
+  executedAt     DateTime?
+  error          String?
+  createdAt      DateTime   @default(now())
+
+  @@index([automationId])
+  @@index([conversationId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+enum ExecutionStatus {
+  PENDING
+  EXECUTED
+  FAILED
+  CANCELLED
 }
 
 enum AutomationType {
-  FOLLOW_UP
+  FOLLOW_UP_INACTIVITY
+  OUT_OF_HOURS
   POST_SERVICE
   SATISFACTION_SURVEY
   REACTIVATION

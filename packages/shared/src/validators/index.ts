@@ -56,8 +56,9 @@ export type UpdateConversationInput = z.infer<typeof updateConversationSchema>;
 // Persona Validators
 export const createPersonaSchema = z.object({
   name: z.string().min(2, "Nome obrigatorio"),
-  type: z.enum(["OWNER", "SECRETARY", "TECHNICAL", "COMMERCIAL", "AGGRESSIVE_SALES", "CUSTOM"]),
+  type: z.enum(["OWNER", "SECRETARY", "TECHNICAL", "COMMERCIAL", "AGGRESSIVE_SALES", "CUSTOM"]).default("CUSTOM"),
   description: z.string().optional(),
+  systemPrompt: z.string().optional(),
   formalityLevel: z.number().min(0).max(100).default(50),
   persuasiveness: z.number().min(0).max(100).default(50),
   energyLevel: z.number().min(0).max(100).default(50),

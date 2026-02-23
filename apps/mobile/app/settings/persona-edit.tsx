@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Pressable, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme, Switch } from "tamagui";
@@ -22,14 +22,21 @@ export default function PersonaEditScreen() {
   const [customInstructions, setCustomInstructions] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
+  const loadedPersonaId = useRef<string | null>(null);
 
   useEffect(() => {
+    // Reset when navigating to a different persona or creating new
+    if (id !== loadedPersonaId.current) {
+      setFormInitialized(false);
+      loadedPersonaId.current = id || null;
+    }
+
     if (isEditing && id) {
       fetchPersona(id);
     } else {
-      // Clear selected persona when creating new
+      // Clear and reset for new persona
       setSelectedPersona(null);
-      // Reset form to defaults
       setName("");
       setSystemPrompt("");
       setFormalityLevel(50);
@@ -38,21 +45,24 @@ export default function PersonaEditScreen() {
       setEmpathyLevel(70);
       setCustomInstructions("");
       setIsDefault(false);
+      setFormInitialized(true);
     }
   }, [id]);
 
   useEffect(() => {
-    if (isEditing && selectedPersona) {
+    // Only populate form once when persona is first loaded
+    if (isEditing && selectedPersona && selectedPersona.id === id && !formInitialized) {
       setName(selectedPersona.name);
       setSystemPrompt(selectedPersona.systemPrompt || "");
-      setFormalityLevel(selectedPersona.formalityLevel);
-      setPersuasiveness(selectedPersona.persuasiveness);
-      setEnergyLevel(selectedPersona.energyLevel);
-      setEmpathyLevel(selectedPersona.empathyLevel);
+      setFormalityLevel(selectedPersona.formalityLevel ?? 50);
+      setPersuasiveness(selectedPersona.persuasiveness ?? 50);
+      setEnergyLevel(selectedPersona.energyLevel ?? 50);
+      setEmpathyLevel(selectedPersona.empathyLevel ?? 70);
       setCustomInstructions(selectedPersona.customInstructions || "");
       setIsDefault(selectedPersona.isDefault);
+      setFormInitialized(true);
     }
-  }, [selectedPersona]);
+  }, [selectedPersona, formInitialized, id]);
 
   const handleSave = async () => {
     if (!name.trim()) {

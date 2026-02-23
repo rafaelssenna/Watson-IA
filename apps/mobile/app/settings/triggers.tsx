@@ -3,8 +3,7 @@ import { Pressable, Alert, ActivityIndicator, TextInput, Switch } from "react-na
 import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme, Separator } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuthStore } from "@/stores/authStore";
-import api from "@/services/api";
+import { api } from "@/services/api";
 
 // Watson IA brand colors
 const WATSON_TEAL = "#0d9488";
@@ -98,7 +97,6 @@ const INTENT_OPTIONS = [
 
 export default function TriggersScreen() {
   const theme = useTheme();
-  const { accessToken } = useAuthStore();
 
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,9 +119,7 @@ export default function TriggersScreen() {
 
   const fetchTriggers = async () => {
     try {
-      const response = await api.get("/triggers", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await api.get<{ success: boolean; data: Trigger[] }>("/triggers");
       setTriggers(response.data.data || []);
     } catch (error) {
       console.error("Error fetching triggers:", error);
@@ -134,11 +130,7 @@ export default function TriggersScreen() {
 
   const handleToggle = async (trigger: Trigger) => {
     try {
-      await api.post(
-        `/triggers/${trigger.id}/toggle`,
-        {},
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      await api.post(`/triggers/${trigger.id}/toggle`);
       setTriggers((prev) =>
         prev.map((t) =>
           t.id === trigger.id ? { ...t, isActive: !t.isActive } : t
@@ -157,9 +149,7 @@ export default function TriggersScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await api.delete(`/triggers/${trigger.id}`, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            await api.delete(`/triggers/${trigger.id}`);
             setTriggers((prev) => prev.filter((t) => t.id !== trigger.id));
           } catch (error) {
             Alert.alert("Erro", "Nao foi possivel excluir o trigger");
@@ -229,25 +219,25 @@ export default function TriggersScreen() {
 
     try {
       if (editingTrigger) {
-        const response = await api.patch(
+        const response = await api.patch<{ success: boolean; data: Trigger }>(
           `/triggers/${editingTrigger.id}`,
-          { name, triggerType: selectedType, conditions, actions },
-          { headers: { Authorization: `Bearer ${accessToken}` } }
+          { name, triggerType: selectedType, conditions, actions }
         );
         setTriggers((prev) =>
           prev.map((t) => (t.id === editingTrigger.id ? response.data.data : t))
         );
       } else {
-        const response = await api.post(
+        const response = await api.post<{ success: boolean; data: Trigger }>(
           "/triggers",
-          { name, triggerType: selectedType, conditions, actions },
-          { headers: { Authorization: `Bearer ${accessToken}` } }
+          { name, triggerType: selectedType, conditions, actions }
         );
         setTriggers((prev) => [response.data.data, ...prev]);
       }
       resetForm();
-    } catch (error) {
-      Alert.alert("Erro", "Nao foi possivel salvar o trigger");
+    } catch (error: any) {
+      console.error("Error saving trigger:", error?.response?.data || error);
+      const errorMsg = error?.response?.data?.message || "Nao foi possivel salvar o trigger";
+      Alert.alert("Erro", errorMsg);
     } finally {
       setSaving(false);
     }
@@ -318,7 +308,6 @@ export default function TriggersScreen() {
             setSkipAIResponse={setSkipAIResponse}
             onCancel={resetForm}
             isEditing={!!editingTrigger}
-            accessToken={accessToken}
           />
         ) : (
           <TriggerList
@@ -587,7 +576,6 @@ function TriggerForm({
   setSkipAIResponse: (v: boolean) => void;
   onCancel: () => void;
   isEditing: boolean;
-  accessToken: string | null;
 }) {
   const [generatingMessage, setGeneratingMessage] = useState(false);
 
@@ -624,14 +612,13 @@ function TriggerForm({
     }
 
     try {
-      const response = await api.post(
+      const response = await api.post<{ success: boolean; data: { message: string } }>(
         "/personas/generate-message",
         {
           triggerType: selectedType,
           context,
           messageType: "trigger_response",
-        },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        }
       );
 
       if (response.data.success && response.data.data?.message) {

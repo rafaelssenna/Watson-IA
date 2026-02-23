@@ -24,27 +24,31 @@ export async function webhookRoutes(fastify: FastifyInstance) {
 
     const orgId = connection.organizationId;
 
-    // Handle different event types
+    // Handle different event types from Uazapi
     const typedPayload = payload as Record<string, any>;
-    const eventType = typedPayload.event || typedPayload.type;
+    const eventType = typedPayload.event || typedPayload.type || "";
 
-    switch (eventType) {
-      case "messages.upsert":
-      case "message":
-        await handleIncomingMessage(fastify, orgId, payload);
-        break;
+    fastify.log.info({ eventType, hasMessage: !!typedPayload.message, hasData: !!typedPayload.data }, "Processing webhook event");
 
-      case "messages.update":
-      case "message.status":
-        await handleMessageStatus(fastify, orgId, payload);
-        break;
-
-      case "connection.update":
-        await handleConnectionUpdate(fastify, connectionId, payload);
-        break;
-
-      default:
-        fastify.log.info({ eventType }, "Unhandled webhook event type");
+    // Check if this is a message event (Uazapi sends 'messages' event for incoming messages)
+    if (eventType === "messages" || eventType === "messages.upsert" || eventType === "message") {
+      await handleIncomingMessage(fastify, orgId, payload);
+    }
+    // Check if this is a status update
+    else if (eventType === "messages.update" || eventType === "message.status" || eventType === "status") {
+      await handleMessageStatus(fastify, orgId, payload);
+    }
+    // Check if this is a connection update
+    else if (eventType === "connection.update" || eventType === "connection") {
+      await handleConnectionUpdate(fastify, connectionId, payload);
+    }
+    // If no event type but has message data, treat as incoming message
+    else if (typedPayload.message || typedPayload.data?.message) {
+      fastify.log.info("No event type but has message data, treating as incoming message");
+      await handleIncomingMessage(fastify, orgId, payload);
+    }
+    else {
+      fastify.log.info({ eventType, payloadKeys: Object.keys(typedPayload) }, "Unhandled webhook event type");
     }
 
     return { success: true };
@@ -59,16 +63,38 @@ export async function webhookRoutes(fastify: FastifyInstance) {
 
 async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, payload: any) {
   try {
+    // Log the full payload for debugging
+    fastify.log.info({ payload: JSON.stringify(payload).substring(0, 500) }, "Processing incoming message payload");
+
+    // Uazapi can send message data in different structures
     const message = payload.data || payload.message || payload;
 
-    // Extract message details
-    const waId = message.from?.replace("@s.whatsapp.net", "") || message.remoteJid?.replace("@s.whatsapp.net", "");
-    const content = message.body || message.text || message.message?.conversation || "";
-    const messageId = message.key?.id || message.id;
-    const pushName = message.pushName || message.notifyName;
+    // Extract message details - handle multiple possible field names
+    let waId = message.from || message.remoteJid || message.key?.remoteJid || "";
+    waId = waId.replace("@s.whatsapp.net", "").replace("@c.us", "");
+
+    // Extract content - Uazapi uses 'body' for text messages
+    const content =
+      message.body ||
+      message.text ||
+      message.message?.conversation ||
+      message.message?.extendedTextMessage?.text ||
+      message.caption ||
+      "";
+
+    const messageId = message.key?.id || message.id || message.messageId;
+    const pushName = message.pushName || message.notifyName || message.senderName;
+
+    // Skip if this is an outgoing message (fromMe)
+    if (message.fromMe || message.key?.fromMe) {
+      fastify.log.info("Skipping outgoing message");
+      return;
+    }
+
+    fastify.log.info({ waId, content: content?.substring(0, 50), messageId, pushName }, "Extracted message details");
 
     if (!waId || !content) {
-      fastify.log.warn({ payload }, "Invalid message payload");
+      fastify.log.warn({ waId, content, payloadKeys: Object.keys(message) }, "Invalid message payload - missing waId or content");
       return;
     }
 

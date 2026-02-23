@@ -44,7 +44,7 @@ function buildSystemPrompt(persona: PersonaConfig, businessName?: string): strin
   // Build personality descriptions based on slider values
   const formalityDesc =
     persona.formalityLevel > 70
-      ? "formal e profissional"
+      ? "FORMAL e PROFISSIONAL - use linguagem corporativa, trate por 'senhor/senhora', seja polido e educado"
       : persona.formalityLevel > 40
         ? "equilibrado entre formal e casual"
         : "casual e amigavel, pode usar girias";
@@ -58,10 +58,10 @@ function buildSystemPrompt(persona: PersonaConfig, businessName?: string): strin
 
   const energyDesc =
     persona.energyLevel > 70
-      ? "energetico e entusiasmado, usa exclamacoes"
+      ? "energetico e entusiasmado, use exclamacoes"
       : persona.energyLevel > 40
-        ? "equilibrado"
-        : "calmo e tranquilo";
+        ? "equilibrado e neutro"
+        : "CALMO e TRANQUILO - seja sereno, sem exclamacoes excessivas, tom suave e ponderado";
 
   const empathyDesc =
     persona.empathyLevel > 70
@@ -70,27 +70,34 @@ function buildSystemPrompt(persona: PersonaConfig, businessName?: string): strin
         ? "atencioso"
         : "direto ao ponto";
 
+  // Build emoji rule based on formality
+  const emojiRule =
+    persona.formalityLevel > 70
+      ? "PROIBIDO usar emojis - mantenha comunicacao estritamente profissional"
+      : persona.formalityLevel > 40
+        ? "Use emojis com moderacao (maximo 1 por mensagem)"
+        : "Pode usar emojis para ser mais amigavel";
+
   // Base prompt with personality always applied
   let prompt = `Voce e ${persona.name}, um assistente virtual inteligente${businessName ? ` da empresa ${businessName}` : ""}.
 
-Seu papel principal e:
-- Conversar naturalmente com os clientes via WhatsApp
+REGRAS OBRIGATORIAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
+1. Tom: ${formalityDesc}
+2. Abordagem: ${persuasivenessDesc}
+3. Energia: ${energyDesc}
+4. Empatia: ${empathyDesc}
+5. Emojis: ${emojiRule}
+
+Seu papel:
+- Conversar com os clientes via WhatsApp
 - Responder perguntas e ajudar no que for preciso
-- Ser prestativo, engajado e proativo
 - NUNCA dizer que vai transferir para um atendente humano - voce E o atendente
 
-IMPORTANTE - Seu estilo de comunicacao DEVE ser:
-- Tom: ${formalityDesc}
-- Abordagem: ${persuasivenessDesc}
-- Energia: ${energyDesc}
-- Empatia: ${empathyDesc}
-
-Regras importantes:
+Regras adicionais:
 - Responda sempre em portugues brasileiro
-- Seja conciso mas completo nas respostas (maximo 2-3 frases)
+- Seja conciso (maximo 2-3 frases)
 - Nao use formatacao markdown (sem *, #, etc)
-- Responda de forma conversacional e natural
-- Se o cliente perguntar algo que voce nao sabe, pergunte mais detalhes ou sugira como pode ajudar de outra forma`;
+- Se o cliente perguntar algo que voce nao sabe, pergunte mais detalhes`;
 
   // Add custom system prompt if provided
   if (persona.systemPrompt) {

@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { ScrollView, Pressable, Alert } from "react-native";
 import { useLocalSearchParams, router, Stack } from "expo-router";
-import { YStack, XStack, Text, Card, Button, Spinner, Input, TextArea } from "tamagui";
+import { YStack, XStack, Text, Card, Button, Spinner, Input, TextArea, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { api } from "@/services/api";
+
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
 
 interface Tag {
   id: string;
@@ -118,7 +121,7 @@ export default function ContactDetailScreen() {
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <Spinner size="large" color="$blue10" />
+        <Spinner size="large" color={WATSON_TEAL} />
         <Text marginTop="$4" color="$colorSubtle">
           Carregando contato...
         </Text>
@@ -152,16 +155,16 @@ export default function ContactDetailScreen() {
         }}
       />
 
-      <ScrollView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+      <ScrollView style={{ flex: 1 }}>
         <YStack padding="$4" gap="$4">
           {/* Profile Card */}
-          <Card padding="$4" bordered>
+          <Card padding="$4" bordered backgroundColor="$backgroundStrong">
             <YStack alignItems="center" gap="$3">
               <YStack
                 width={80}
                 height={80}
                 borderRadius={40}
-                backgroundColor="$blue10"
+                backgroundColor={WATSON_TEAL}
                 alignItems="center"
                 justifyContent="center"
               >
@@ -171,7 +174,7 @@ export default function ContactDetailScreen() {
               </YStack>
 
               <YStack alignItems="center">
-                <Text fontSize="$6" fontWeight="bold">
+                <Text fontSize="$6" fontWeight="bold" color="$color">
                   {contactName}
                 </Text>
                 <Text color="$colorSubtle">{contact.phone}</Text>
@@ -181,7 +184,7 @@ export default function ContactDetailScreen() {
                   </Text>
                 )}
                 {contact.company && (
-                  <Text color="$blue10" fontSize="$2" marginTop="$1">
+                  <Text color={WATSON_TEAL} fontSize="$2" marginTop="$1">
                     {contact.company}
                   </Text>
                 )}
@@ -219,7 +222,7 @@ export default function ContactDetailScreen() {
           </Card>
 
           {/* Stats Card */}
-          <Card padding="$4" bordered>
+          <Card padding="$4" bordered backgroundColor="$backgroundStrong">
             <XStack justifyContent="space-around">
               <YStack alignItems="center">
                 <Text
@@ -247,7 +250,7 @@ export default function ContactDetailScreen() {
               />
 
               <YStack alignItems="center">
-                <Text fontSize="$7" fontWeight="bold" color="$blue10">
+                <Text fontSize="$7" fontWeight="bold" color={WATSON_TEAL}>
                   {contact.conversationCount}
                 </Text>
                 <Text fontSize="$2" color="$colorSubtle">
@@ -276,7 +279,7 @@ export default function ContactDetailScreen() {
 
           {/* Funnel Stage */}
           {contact.funnel && contact.funnelStage && (
-            <Card padding="$4" bordered>
+            <Card padding="$4" bordered backgroundColor="$backgroundStrong">
               <YStack gap="$2">
                 <Text fontWeight="600" color="$colorSubtle" fontSize="$2">
                   FUNIL DE VENDAS
@@ -286,9 +289,9 @@ export default function ContactDetailScreen() {
                     width={12}
                     height={12}
                     borderRadius={6}
-                    backgroundColor={contact.funnelStage.color || "$blue10"}
+                    backgroundColor={contact.funnelStage.color || WATSON_TEAL}
                   />
-                  <Text fontWeight="600">{contact.funnelStage.name}</Text>
+                  <Text fontWeight="600" color="$color">{contact.funnelStage.name}</Text>
                   <Text color="$colorSubtle">em {contact.funnel.name}</Text>
                 </XStack>
               </YStack>
@@ -296,7 +299,7 @@ export default function ContactDetailScreen() {
           )}
 
           {/* Notes */}
-          <Card padding="$4" bordered>
+          <Card padding="$4" bordered backgroundColor="$backgroundStrong">
             <YStack gap="$3">
               <XStack justifyContent="space-between" alignItems="center">
                 <Text fontWeight="600" color="$colorSubtle" fontSize="$2">
@@ -329,8 +332,8 @@ export default function ContactDetailScreen() {
                     >
                       Cancelar
                     </Button>
-                    <Button size="$3" backgroundColor="$blue10" onPress={saveNotes}>
-                      Salvar
+                    <Button size="$3" backgroundColor={WATSON_TEAL} onPress={saveNotes}>
+                      <Text color="white" fontWeight="600">Salvar</Text>
                     </Button>
                   </XStack>
                 </YStack>
@@ -343,7 +346,7 @@ export default function ContactDetailScreen() {
           </Card>
 
           {/* Conversations History */}
-          <Card padding="$4" bordered>
+          <Card padding="$4" bordered backgroundColor="$backgroundStrong">
             <YStack gap="$3">
               <Text fontWeight="600" color="$colorSubtle" fontSize="$2">
                 HISTORICO DE CONVERSAS
@@ -370,7 +373,7 @@ export default function ContactDetailScreen() {
                         <XStack alignItems="center" gap="$2">
                           <StatusBadge status={conv.status} />
                           {conv.intent && (
-                            <Text fontSize="$2" color="$blue10">
+                            <Text fontSize="$2" color={WATSON_TEAL}>
                               {conv.intent}
                             </Text>
                           )}
@@ -393,7 +396,7 @@ export default function ContactDetailScreen() {
           </Card>
 
           {/* Contact Info */}
-          <Card padding="$4" bordered>
+          <Card padding="$4" bordered backgroundColor="$backgroundStrong">
             <YStack gap="$3">
               <Text fontWeight="600" color="$colorSubtle" fontSize="$2">
                 INFORMACOES
@@ -464,7 +467,7 @@ function InfoRow({
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; color: string }> = {
-    OPEN: { label: "Aberta", color: "$blue10" },
+    OPEN: { label: "Aberta", color: WATSON_TEAL },
     WAITING_AGENT: { label: "Aguardando", color: "$yellow10" },
     WAITING_CLIENT: { label: "Aguardando Cliente", color: "$gray10" },
     IN_PROGRESS: { label: "Em Andamento", color: "$green10" },

@@ -6,6 +6,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { api } from "@/services/api";
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 type ConnectionMethod = "qrcode" | "code" | null;
 type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
@@ -215,7 +218,7 @@ export default function WhatsAppConnectionScreen() {
                 </XStack>
                 <Text color="$green10" fontSize="$4">Conectado e funcionando</Text>
                 <Text color="$gray8" fontSize="$2" marginTop="$2">
-                  O Watson AI esta pronto para responder mensagens do WhatsApp automaticamente.
+                  O Watson IA esta pronto para responder mensagens do WhatsApp automaticamente.
                 </Text>
               </YStack>
             </Card>
@@ -277,7 +280,7 @@ export default function WhatsAppConnectionScreen() {
             </Card>
 
             <XStack gap="$2" alignItems="center" marginTop="$2">
-              <Spinner size="small" color="$blue10" />
+              <Spinner size="small" color={WATSON_TEAL} />
               <Text color="$gray8">Aguardando conexao...</Text>
             </XStack>
 
@@ -311,7 +314,7 @@ export default function WhatsAppConnectionScreen() {
             </Text>
 
             <Pressable onPress={() => copyToClipboard(connectionState.pairingCode || "")}>
-              <Card backgroundColor="$blue10" padding="$6" borderRadius="$4">
+              <Card backgroundColor={WATSON_TEAL} padding="$6" borderRadius="$4">
                 <Text fontSize={32} fontWeight="bold" color="white" letterSpacing={8} textAlign="center">
                   {connectionState.pairingCode}
                 </Text>
@@ -321,12 +324,12 @@ export default function WhatsAppConnectionScreen() {
             <Button
               onPress={() => copyToClipboard(connectionState.pairingCode || "")}
               size="$4"
-              backgroundColor={copied ? "$green10" : "$blue5"}
+              backgroundColor={copied ? "$green10" : "$teal5"}
               marginTop="$2"
             >
               <XStack gap="$2" alignItems="center">
-                <Ionicons name={copied ? "checkmark" : "copy-outline"} size={18} color={copied ? "white" : "#2563eb"} />
-                <Text color={copied ? "white" : "$blue10"} fontWeight="600">
+                <Ionicons name={copied ? "checkmark" : "copy-outline"} size={18} color={copied ? "white" : WATSON_TEAL} />
+                <Text color={copied ? "white" : WATSON_TEAL} fontWeight="600">
                   {copied ? "Copiado!" : "Copiar Codigo"}
                 </Text>
               </XStack>
@@ -352,7 +355,7 @@ export default function WhatsAppConnectionScreen() {
             </Card>
 
             <XStack gap="$2" alignItems="center" marginTop="$2">
-              <Spinner size="small" color="$blue10" />
+              <Spinner size="small" color={WATSON_TEAL} />
               <Text color="$gray8">Aguardando conexao...</Text>
             </XStack>
 
@@ -388,11 +391,11 @@ export default function WhatsAppConnectionScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         >
           <YStack gap="$4">
-            <Card backgroundColor="$blue5" padding="$4" borderRadius="$4">
+            <Card backgroundColor="$teal5" padding="$4" borderRadius="$4">
               <XStack gap="$3" alignItems="flex-start">
-                <Ionicons name="bulb-outline" size={24} color="#2563eb" />
+                <Ionicons name="bulb-outline" size={24} color={WATSON_TEAL} />
                 <YStack flex={1}>
-                  <Text color="$blue10" fontWeight="600" fontSize="$4">
+                  <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
                     Use QR Code quando:
                   </Text>
                   <Text color="$color" marginTop="$2" fontSize="$3">
@@ -411,7 +414,7 @@ export default function WhatsAppConnectionScreen() {
               onPress={connectWithQRCode}
               disabled={isLoading}
               size="$5"
-              backgroundColor="$blue10"
+              backgroundColor={WATSON_TEAL}
             >
               {isLoading ? (
                 <Spinner color="white" />
@@ -486,7 +489,7 @@ export default function WhatsAppConnectionScreen() {
               onPress={connectWithCode}
               disabled={isLoading || !phone}
               size="$5"
-              backgroundColor="$blue10"
+              backgroundColor={WATSON_TEAL}
             >
               {isLoading ? (
                 <Spinner color="white" />
@@ -531,18 +534,18 @@ export default function WhatsAppConnectionScreen() {
               padding="$4"
               borderRadius="$4"
               borderWidth={2}
-              borderColor="$blue10"
+              borderColor={WATSON_TEAL}
             >
               <XStack gap="$4" alignItems="center">
                 <YStack
                   width={60}
                   height={60}
                   borderRadius={12}
-                  backgroundColor="$blue5"
+                  backgroundColor="$teal5"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Ionicons name="qr-code-outline" size={32} color="#2563eb" />
+                  <Ionicons name="qr-code-outline" size={32} color={WATSON_TEAL} />
                 </YStack>
                 <YStack flex={1}>
                   <Text fontSize="$5" fontWeight="bold" color="$color">
@@ -552,18 +555,18 @@ export default function WhatsAppConnectionScreen() {
                     Escaneie com outro celular
                   </Text>
                 </YStack>
-                <Ionicons name="chevron-forward" size={20} color="#2563eb" />
+                <Ionicons name="chevron-forward" size={20} color={WATSON_TEAL} />
               </XStack>
 
               <Card
-                backgroundColor="$blue5"
+                backgroundColor="$teal5"
                 padding="$3"
                 borderRadius="$3"
                 marginTop="$3"
               >
                 <XStack alignItems="center" gap="$2">
-                  <Ionicons name="information-circle-outline" size={16} color="#2563eb" />
-                  <Text color="$blue10" fontSize="$2" flex={1}>
+                  <Ionicons name="information-circle-outline" size={16} color={WATSON_TEAL} />
+                  <Text color={WATSON_TEAL} fontSize="$2" flex={1}>
                     Recomendado quando voce vai usar OUTRO celular para escanear o QR Code
                   </Text>
                 </XStack>

@@ -5,6 +5,9 @@ import { YStack, XStack, Text, Input, Card, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 interface Conversation {
   id: string;
   contactId: string;
@@ -152,7 +155,7 @@ function ConversationCard({
             width={50}
             height={50}
             borderRadius={25}
-            backgroundColor="$blue10"
+            backgroundColor={WATSON_TEAL}
             alignItems="center"
             justifyContent="center"
           >
@@ -194,7 +197,7 @@ function ConversationCard({
               )}
               <Badge
                 label={`Score: ${conversation.leadScore}`}
-                color="$blue10"
+                color={WATSON_TEAL}
               />
             </XStack>
           </YStack>
@@ -218,7 +221,7 @@ function FilterChip({
       paddingHorizontal="$3"
       paddingVertical="$2"
       borderRadius="$4"
-      backgroundColor={active ? "$blue10" : "$backgroundStrong"}
+      backgroundColor={active ? WATSON_TEAL : "$backgroundStrong"}
       alignItems="center"
       gap="$1"
     >
@@ -231,11 +234,11 @@ function FilterChip({
       </Text>
       {count !== undefined && count > 0 && (
         <YStack
-          backgroundColor={active ? "white" : "$blue10"}
+          backgroundColor={active ? "white" : WATSON_TEAL}
           paddingHorizontal="$2"
           borderRadius="$2"
         >
-          <Text fontSize="$1" color={active ? "$blue10" : "white"}>
+          <Text fontSize="$1" color={active ? WATSON_TEAL : "white"}>
             {count}
           </Text>
         </YStack>

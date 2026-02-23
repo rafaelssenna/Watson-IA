@@ -6,6 +6,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { api } from "@/services/api";
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 interface Message {
   id: string;
   content: string;
@@ -124,7 +127,7 @@ export default function ConversationDetailScreen() {
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <Spinner size="large" color="$blue10" />
+        <Spinner size="large" color={WATSON_TEAL} />
         <Text marginTop="$4" color="$colorSubtle">
           Carregando conversa...
         </Text>
@@ -195,7 +198,7 @@ export default function ConversationDetailScreen() {
             width={40}
             height={40}
             borderRadius={20}
-            backgroundColor="$blue10"
+            backgroundColor={WATSON_TEAL}
             alignItems="center"
             justifyContent="center"
           >
@@ -259,12 +262,12 @@ export default function ConversationDetailScreen() {
 
         {/* Watson Suggestion */}
         {suggestion && (
-          <Card margin="$3" padding="$3" backgroundColor="$blue2" borderColor="$blue6" bordered>
+          <Card margin="$3" padding="$3" backgroundColor="$teal5" borderColor="$teal6" bordered>
             <XStack justifyContent="space-between" alignItems="flex-start">
               <YStack flex={1}>
                 <XStack alignItems="center" gap="$2" marginBottom="$2">
-                  <Ionicons name="sparkles" size={16} color="#2563EB" />
-                  <Text fontSize="$2" fontWeight="600" color="$blue10">
+                  <Ionicons name="sparkles" size={16} color={WATSON_TEAL} />
+                  <Text fontSize="$2" fontWeight="600" color={WATSON_TEAL}>
                     Sugestao do Watson
                   </Text>
                 </XStack>
@@ -325,7 +328,7 @@ export default function ConversationDetailScreen() {
               width={44}
               height={44}
               borderRadius={22}
-              backgroundColor={message.trim() ? "$blue10" : "$backgroundHover"}
+              backgroundColor={message.trim() ? WATSON_TEAL : "$backgroundHover"}
               alignItems="center"
               justifyContent="center"
               opacity={isSending ? 0.5 : 1}
@@ -366,7 +369,7 @@ function MessageBubble({ message }: { message: Message }) {
       case "DELIVERED":
         return <Ionicons name="checkmark-done" size={12} color="#999" />;
       case "READ":
-        return <Ionicons name="checkmark-done" size={12} color="#2563EB" />;
+        return <Ionicons name="checkmark-done" size={12} color={WATSON_TEAL} />;
       case "FAILED":
         return <Ionicons name="alert-circle" size={12} color="#EF4444" />;
       default:
@@ -378,7 +381,7 @@ function MessageBubble({ message }: { message: Message }) {
     <XStack justifyContent={isOutbound ? "flex-end" : "flex-start"}>
       <YStack
         maxWidth="80%"
-        backgroundColor={isOutbound ? "$blue10" : "$backgroundHover"}
+        backgroundColor={isOutbound ? WATSON_TEAL : "$backgroundHover"}
         padding="$3"
         borderRadius="$4"
         borderBottomRightRadius={isOutbound ? "$1" : "$4"}
@@ -386,9 +389,9 @@ function MessageBubble({ message }: { message: Message }) {
       >
         {message.isAiGenerated && (
           <XStack alignItems="center" gap="$1" marginBottom="$1">
-            <Ionicons name="sparkles" size={10} color={isOutbound ? "#93C5FD" : "#2563EB"} />
-            <Text fontSize="$1" color={isOutbound ? "#93C5FD" : "$blue10"}>
-              Watson AI
+            <Ionicons name="sparkles" size={10} color={isOutbound ? "#99f6e4" : WATSON_TEAL} />
+            <Text fontSize="$1" color={isOutbound ? "#99f6e4" : WATSON_TEAL}>
+              Watson IA
             </Text>
           </XStack>
         )}
@@ -396,7 +399,7 @@ function MessageBubble({ message }: { message: Message }) {
         <Text color={isOutbound ? "white" : "$color"}>{message.content}</Text>
 
         <XStack justifyContent="flex-end" alignItems="center" gap="$1" marginTop="$1">
-          <Text fontSize="$1" color={isOutbound ? "#93C5FD" : "$colorSubtle"}>
+          <Text fontSize="$1" color={isOutbound ? "#99f6e4" : "$colorSubtle"}>
             {formatTime(message.createdAt)}
           </Text>
           {isOutbound && statusIcon()}
@@ -408,7 +411,7 @@ function MessageBubble({ message }: { message: Message }) {
 
 function StatusBadge({ mode }: { mode: string }) {
   const config = {
-    AI_ASSISTED: { label: "IA", color: "$blue10" },
+    AI_ASSISTED: { label: "IA", color: WATSON_TEAL },
     HUMAN_ONLY: { label: "Humano", color: "$yellow10" },
     AI_ONLY: { label: "Auto", color: "$green10" },
   };

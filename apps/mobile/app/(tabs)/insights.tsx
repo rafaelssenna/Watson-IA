@@ -1,6 +1,9 @@
 import { YStack, XStack, H2, Text, Card, useTheme } from "tamagui";
 import { ScrollView } from "react-native";
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 export default function InsightsScreen() {
   const theme = useTheme();
 
@@ -12,7 +15,7 @@ export default function InsightsScreen() {
       <YStack gap="$4">
         <Text fontSize="$6" fontWeight="bold" color="$color">Relatorios</Text>
         <Text color="$gray8" marginBottom="$4">
-          Analise detalhada do desempenho do Watson AI
+          Analise detalhada do desempenho do Watson IA
         </Text>
 
         {/* Period Selector */}
@@ -51,7 +54,7 @@ export default function InsightsScreen() {
 
         {/* AI Performance */}
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <H2 fontSize="$5" marginBottom="$4" color="$color">Performance Watson AI</H2>
+          <H2 fontSize="$5" marginBottom="$4" color="$color">Performance Watson IA</H2>
           <XStack justifyContent="space-around">
             <MetricItem label="Auto-Respostas" value="78%" />
             <MetricItem label="Sugeridas" value="18%" />
@@ -102,7 +105,7 @@ function PeriodChip({ label, active = false }: { label: string; active?: boolean
       paddingHorizontal="$3"
       paddingVertical="$2"
       borderRadius="$3"
-      backgroundColor={active ? "$blue10" : "$backgroundStrong"}
+      backgroundColor={active ? WATSON_TEAL : "$backgroundStrong"}
     >
       <Text
         fontSize="$2"
@@ -151,7 +154,7 @@ function ProductItem({
         width={24}
         height={24}
         borderRadius={12}
-        backgroundColor={rank <= 3 ? "$blue10" : "$gray5"}
+        backgroundColor={rank <= 3 ? WATSON_TEAL : "$gray5"}
         alignItems="center"
         justifyContent="center"
       >
@@ -173,7 +176,7 @@ function HourBar({ hour, percentage }: { hour: string; percentage: number }) {
         <YStack
           height="100%"
           width={`${percentage}%`}
-          backgroundColor="$blue10"
+          backgroundColor={WATSON_TEAL}
           borderRadius="$2"
         />
       </YStack>

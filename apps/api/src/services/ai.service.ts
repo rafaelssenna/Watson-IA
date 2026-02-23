@@ -103,7 +103,8 @@ export async function generateResponse(
     console.log(`[ai.generateResponse] Generating response for: "${incomingMessage.substring(0, 50)}..."`);
 
     const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Use gemini-pro which is widely available
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const systemPrompt = buildSystemPrompt(persona, businessName);
 

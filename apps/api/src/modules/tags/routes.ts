@@ -2,10 +2,40 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { analyzeAndApplyTags } from "../../services/autoTag.service.js";
 
+// Default tags that are always created for new organizations
+const DEFAULT_TAGS = [
+  { name: "Cliente VIP", color: "#f59e0b", description: "Cliente importante ou que compra com frequencia", isAuto: true },
+  { name: "Interessado", color: "#10b981", description: "Demonstrou interesse em produtos ou servicos", isAuto: true },
+  { name: "Reclamacao", color: "#ef4444", description: "Cliente fez reclamacao ou esta insatisfeito", isAuto: true },
+  { name: "Suporte", color: "#3b82f6", description: "Precisa de suporte tecnico ou ajuda", isAuto: true },
+  { name: "Orcamento", color: "#8b5cf6", description: "Pediu orcamento ou preco", isAuto: true },
+  { name: "Urgente", color: "#dc2626", description: "Assunto urgente que precisa de atencao rapida", isAuto: true },
+];
+
+// Ensure default tags exist for an organization
+async function ensureDefaultTags(orgId: string): Promise<void> {
+  const existingCount = await prisma.tag.count({
+    where: { organizationId: orgId },
+  });
+
+  if (existingCount === 0) {
+    await prisma.tag.createMany({
+      data: DEFAULT_TAGS.map((tag) => ({
+        organizationId: orgId,
+        ...tag,
+      })),
+      skipDuplicates: true,
+    });
+  }
+}
+
 export async function tagRoutes(fastify: FastifyInstance) {
-  // List tags for organization
+  // List tags for organization (auto-creates defaults if none exist)
   fastify.get("/", { preHandler: [fastify.authenticate] }, async (request) => {
     const { orgId } = request.user;
+
+    // Auto-create default tags if organization has none
+    await ensureDefaultTags(orgId);
 
     const tags = await prisma.tag.findMany({
       where: { organizationId: orgId },
@@ -211,19 +241,29 @@ export async function tagRoutes(fastify: FastifyInstance) {
     };
   });
 
-  // Get popular/suggested tags (for new orgs or suggestions)
-  fastify.get("/suggestions", { preHandler: [fastify.authenticate] }, async () => {
-    // Return common tag suggestions
-    const suggestions = [
-      { name: "Cliente VIP", color: "#f59e0b", description: "Cliente importante ou que compra com frequencia", isAuto: true },
-      { name: "Interessado", color: "#10b981", description: "Demonstrou interesse em produtos ou servicos", isAuto: true },
-      { name: "Reclamacao", color: "#ef4444", description: "Cliente fez reclamacao ou esta insatisfeito", isAuto: true },
-      { name: "Suporte", color: "#3b82f6", description: "Precisa de suporte tecnico ou ajuda", isAuto: true },
-      { name: "Orcamento", color: "#8b5cf6", description: "Pediu orcamento ou preco", isAuto: true },
-      { name: "Urgente", color: "#dc2626", description: "Assunto urgente que precisa de atencao rapida", isAuto: true },
+  // Get additional tag suggestions (beyond defaults)
+  fastify.get("/suggestions", { preHandler: [fastify.authenticate] }, async (request) => {
+    const { orgId } = request.user;
+
+    // Get existing tags to filter out
+    const existingTags = await prisma.tag.findMany({
+      where: { organizationId: orgId },
+      select: { name: true },
+    });
+    const existingNames = existingTags.map((t) => t.name.toLowerCase());
+
+    // Additional suggestions beyond the defaults
+    const additionalSuggestions = [
       { name: "Novo Lead", color: "#06b6d4", description: "Novo potencial cliente", isAuto: true },
       { name: "Retorno", color: "#84cc16", description: "Cliente antigo que voltou a fazer contato", isAuto: true },
+      { name: "Comprador", color: "#22c55e", description: "Cliente que ja realizou compra", isAuto: true },
+      { name: "Indeciso", color: "#eab308", description: "Cliente que demonstra duvidas ou indecisao", isAuto: true },
     ];
+
+    // Filter out tags that already exist
+    const suggestions = additionalSuggestions.filter(
+      (s) => !existingNames.includes(s.name.toLowerCase())
+    );
 
     return {
       success: true,
@@ -231,42 +271,19 @@ export async function tagRoutes(fastify: FastifyInstance) {
     };
   });
 
-  // Create default tags for organization
+  // Create default tags for organization (kept for backwards compatibility)
   fastify.post("/setup-defaults", { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { orgId } = request.user;
 
-    // Check if org already has tags
-    const existingCount = await prisma.tag.count({
+    await ensureDefaultTags(orgId);
+
+    const count = await prisma.tag.count({
       where: { organizationId: orgId },
-    });
-
-    if (existingCount > 0) {
-      return {
-        success: true,
-        data: { message: "Organizacao ja tem tags configuradas", created: 0 },
-      };
-    }
-
-    // Create default tags
-    const defaultTags = [
-      { name: "Cliente VIP", color: "#f59e0b", description: "Cliente importante ou que compra com frequencia", isAuto: true },
-      { name: "Interessado", color: "#10b981", description: "Demonstrou interesse em produtos ou servicos", isAuto: true },
-      { name: "Reclamacao", color: "#ef4444", description: "Cliente fez reclamacao ou esta insatisfeito", isAuto: true },
-      { name: "Suporte", color: "#3b82f6", description: "Precisa de suporte tecnico ou ajuda", isAuto: true },
-      { name: "Orcamento", color: "#8b5cf6", description: "Pediu orcamento ou preco", isAuto: true },
-      { name: "Urgente", color: "#dc2626", description: "Assunto urgente que precisa de atencao rapida", isAuto: true },
-    ];
-
-    const created = await prisma.tag.createMany({
-      data: defaultTags.map((tag) => ({
-        organizationId: orgId,
-        ...tag,
-      })),
     });
 
     return reply.code(201).send({
       success: true,
-      data: { message: "Tags padrao criadas", created: created.count },
+      data: { message: "Tags padrao configuradas", created: count },
     });
   });
 }

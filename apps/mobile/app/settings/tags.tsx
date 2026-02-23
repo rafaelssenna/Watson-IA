@@ -180,23 +180,6 @@ export default function TagsScreen() {
     }
   };
 
-  const handleSetupDefaults = async () => {
-    setSaving(true);
-    try {
-      const response = await api.post<{ success: boolean; data: { created: number } }>("/tags/setup-defaults", {});
-      if (response.data.success && response.data.data.created > 0) {
-        await fetchTags();
-        Alert.alert("Sucesso", `${response.data.data.created} tags criadas`);
-      } else {
-        Alert.alert("Aviso", "Tags ja estavam configuradas");
-      }
-    } catch (error: any) {
-      Alert.alert("Erro", error?.message || "Nao foi possivel configurar");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
@@ -344,17 +327,10 @@ export default function TagsScreen() {
             {tags.length === 0 ? (
               <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
                 <YStack alignItems="center" gap="$3">
-                  <Ionicons name="pricetags-outline" size={48} color={theme.gray6.val} />
+                  <ActivityIndicator size="large" color={WATSON_TEAL} />
                   <Text fontSize="$3" color="$gray8" textAlign="center">
-                    Nenhuma tag configurada
+                    Carregando tags...
                   </Text>
-                  <Button
-                    backgroundColor={WATSON_TEAL}
-                    onPress={handleSetupDefaults}
-                    disabled={saving}
-                  >
-                    {saving ? <ActivityIndicator size="small" color="white" /> : "Criar Tags Padrao"}
-                  </Button>
                 </YStack>
               </Card>
             ) : (

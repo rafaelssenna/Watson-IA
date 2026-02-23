@@ -31,52 +31,69 @@ interface TriggerTypeInfo {
   icon: string;
 }
 
-const TRIGGER_TYPES: TriggerTypeInfo[] = [
+interface TriggerTypeExtended extends TriggerTypeInfo {
+  example: string;
+  tip: string;
+}
+
+const TRIGGER_TYPES: TriggerTypeExtended[] = [
   {
     type: "KEYWORD",
     name: "Palavra-chave",
     description: "Dispara quando cliente menciona palavras especificas",
     icon: "text-outline",
+    example: "Cliente: \"Quanto custa o produto?\" → Detecta \"custa\", \"preco\"",
+    tip: "Use para enviar catalogos quando cliente perguntar sobre precos",
   },
   {
     type: "INTENT",
     name: "Intencao",
-    description: "Dispara quando detecta intencao do cliente",
+    description: "A IA detecta automaticamente o que o cliente quer",
     icon: "bulb-outline",
+    example: "Cliente: \"Quero comprar\" → Detecta intencao de COMPRA",
+    tip: "Ideal para direcionar clientes interessados para vendedores",
   },
   {
     type: "NEW_CONTACT",
     name: "Novo contato",
-    description: "Dispara na primeira mensagem de um novo contato",
+    description: "Dispara apenas na PRIMEIRA mensagem de um contato novo",
     icon: "person-add-outline",
+    example: "Novo cliente envia qualquer mensagem → Trigger dispara",
+    tip: "Perfeito para enviar boas-vindas e apresentar sua empresa",
   },
   {
     type: "OUT_OF_HOURS",
     name: "Fora do horario",
-    description: "Dispara quando mensagem chega fora do expediente",
+    description: "Dispara quando cliente envia mensagem fora do expediente",
     icon: "moon-outline",
+    example: "Cliente envia mensagem as 22h → Trigger dispara",
+    tip: "Avise que respondera no proximo dia util",
   },
   {
     type: "URGENCY",
     name: "Urgencia",
-    description: "Dispara quando detecta urgencia na mensagem",
+    description: "Detecta palavras como \"urgente\", \"preciso agora\", \"emergencia\"",
     icon: "alert-circle-outline",
+    example: "Cliente: \"Preciso disso urgente!\" → Trigger dispara",
+    tip: "Transfira para atendente humano imediatamente",
   },
   {
     type: "SENTIMENT",
     name: "Sentimento negativo",
-    description: "Dispara quando detecta cliente insatisfeito",
+    description: "Detecta cliente irritado ou insatisfeito",
     icon: "sad-outline",
+    example: "Cliente: \"Estou muito frustrado com voces\" → Trigger dispara",
+    tip: "Transfira para humano antes que a situacao piore",
   },
 ];
 
 const INTENT_OPTIONS = [
-  { value: "PURCHASE", label: "Intencao de compra" },
-  { value: "COMPLAINT", label: "Reclamacao" },
-  { value: "SUPPORT", label: "Suporte" },
-  { value: "SHIPPING", label: "Entrega/Frete" },
-  { value: "CANCEL", label: "Cancelamento" },
-  { value: "HUMAN", label: "Falar com humano" },
+  { value: "PURCHASE", label: "Compra", desc: "\"quero comprar\", \"quanto custa\"" },
+  { value: "COMPLAINT", label: "Reclamacao", desc: "\"problema\", \"defeito\", \"reembolso\"" },
+  { value: "SUPPORT", label: "Suporte", desc: "\"ajuda\", \"duvida\", \"como funciona\"" },
+  { value: "SHIPPING", label: "Entrega", desc: "\"frete\", \"prazo\", \"rastreio\"" },
+  { value: "CANCEL", label: "Cancelamento", desc: "\"cancelar\", \"desistir\"" },
+  { value: "HUMAN", label: "Atendente", desc: "\"falar com humano\", \"atendente\"" },
 ];
 
 export default function TriggersScreen() {
@@ -337,14 +354,61 @@ function TriggerList({
 }) {
   if (triggers.length === 0) {
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$8">
-        <Ionicons name="flash-outline" size={64} color={theme.gray6.val} />
-        <Text color="$gray8" fontSize="$5" fontWeight="600" marginTop="$4">
-          Nenhum trigger configurado
-        </Text>
-        <Text color="$gray7" fontSize="$3" marginTop="$2" textAlign="center">
-          Crie triggers para automatizar acoes quando certas condicoes forem detectadas
-        </Text>
+      <YStack gap="$4">
+        {/* Explanation Card */}
+        <Card padding="$4" backgroundColor="$teal5" borderRadius="$4">
+          <XStack gap="$3" alignItems="flex-start">
+            <Ionicons name="flash" size={24} color={WATSON_TEAL} />
+            <YStack flex={1}>
+              <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
+                O que sao Triggers?
+              </Text>
+              <Text color="$color" marginTop="$2" fontSize="$3">
+                Triggers sao acoes automaticas que disparam quando o Watson detecta algo especifico na mensagem do cliente.
+              </Text>
+            </YStack>
+          </XStack>
+        </Card>
+
+        {/* Examples Card */}
+        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+            Exemplos de uso
+          </Text>
+          <YStack gap="$3">
+            <ExampleItem
+              icon="person-add-outline"
+              title="Boas-vindas"
+              desc="Novo contato → Envia mensagem de boas-vindas"
+            />
+            <ExampleItem
+              icon="bulb-outline"
+              title="Intencao de compra"
+              desc="Cliente quer comprar → Notifica vendedor"
+            />
+            <ExampleItem
+              icon="sad-outline"
+              title="Cliente irritado"
+              desc="Sentimento negativo → Transfere para humano"
+            />
+            <ExampleItem
+              icon="moon-outline"
+              title="Fora do horario"
+              desc="Mensagem as 22h → Avisa que respondera amanha"
+            />
+          </YStack>
+        </Card>
+
+        {/* Empty State */}
+        <YStack alignItems="center" paddingVertical="$6">
+          <Ionicons name="add-circle-outline" size={48} color={theme.gray6.val} />
+          <Text color="$gray8" fontSize="$4" fontWeight="600" marginTop="$3">
+            Crie seu primeiro trigger
+          </Text>
+          <Text color="$gray7" fontSize="$2" marginTop="$1" textAlign="center">
+            Toque no + no canto superior direito
+          </Text>
+        </YStack>
       </YStack>
     );
   }
@@ -357,10 +421,10 @@ function TriggerList({
           <Ionicons name="flash" size={24} color={WATSON_TEAL} />
           <YStack flex={1}>
             <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
-              O que sao Triggers?
+              Triggers ativos
             </Text>
             <Text color="$color" marginTop="$2" fontSize="$3">
-              Triggers sao gatilhos que disparam acoes automaticas quando detectam palavras-chave, intencoes ou condicoes especificas nas mensagens dos clientes.
+              Seus triggers sao verificados em cada mensagem recebida. Quando uma condicao e detectada, a acao configurada e executada automaticamente.
             </Text>
           </YStack>
         </XStack>
@@ -465,6 +529,27 @@ function ActionBadge({ icon, label }: { icon: IoniconsName; label: string }) {
   );
 }
 
+function ExampleItem({ icon, title, desc }: { icon: IoniconsName; title: string; desc: string }) {
+  return (
+    <XStack alignItems="center" gap="$3">
+      <YStack
+        width={36}
+        height={36}
+        borderRadius={18}
+        backgroundColor="$teal5"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Ionicons name={icon} size={18} color={WATSON_TEAL} />
+      </YStack>
+      <YStack flex={1}>
+        <Text fontWeight="600" color="$color" fontSize="$3">{title}</Text>
+        <Text fontSize="$2" color="$gray8">{desc}</Text>
+      </YStack>
+    </XStack>
+  );
+}
+
 function TriggerForm({
   theme,
   name,
@@ -543,43 +628,66 @@ function TriggerForm({
 
       {/* Trigger Type Selection */}
       <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-        <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+        <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
           Tipo de Trigger
         </Text>
+        <Text fontSize="$2" color="$gray8" marginBottom="$3">
+          Escolha quando o trigger deve disparar
+        </Text>
         <YStack gap="$2">
-          {TRIGGER_TYPES.map((type) => (
-            <Pressable key={type.type} onPress={() => setSelectedType(type.type)}>
-              <XStack
-                padding="$3"
-                backgroundColor={selectedType === type.type ? "$teal5" : "$background"}
-                borderRadius="$3"
-                alignItems="center"
-                gap="$3"
-                borderWidth={selectedType === type.type ? 2 : 1}
-                borderColor={selectedType === type.type ? WATSON_TEAL : "$gray6"}
-              >
-                <Ionicons
-                  name={type.icon as IoniconsName}
-                  size={24}
-                  color={selectedType === type.type ? WATSON_TEAL : theme.gray8.val}
-                />
-                <YStack flex={1}>
-                  <Text
-                    fontWeight="600"
-                    color={selectedType === type.type ? WATSON_TEAL : "$color"}
-                  >
-                    {type.name}
-                  </Text>
-                  <Text fontSize="$2" color="$gray8">
-                    {type.description}
-                  </Text>
+          {TRIGGER_TYPES.map((type) => {
+            const isSelected = selectedType === type.type;
+            return (
+              <Pressable key={type.type} onPress={() => setSelectedType(type.type)}>
+                <YStack
+                  padding="$3"
+                  backgroundColor={isSelected ? "$teal5" : "$background"}
+                  borderRadius="$3"
+                  borderWidth={isSelected ? 2 : 1}
+                  borderColor={isSelected ? WATSON_TEAL : "$gray6"}
+                >
+                  <XStack alignItems="center" gap="$3">
+                    <Ionicons
+                      name={type.icon as IoniconsName}
+                      size={24}
+                      color={isSelected ? WATSON_TEAL : theme.gray8.val}
+                    />
+                    <YStack flex={1}>
+                      <Text fontWeight="600" color={isSelected ? WATSON_TEAL : "$color"}>
+                        {type.name}
+                      </Text>
+                      <Text fontSize="$2" color="$gray8">
+                        {type.description}
+                      </Text>
+                    </YStack>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={24} color={WATSON_TEAL} />
+                    )}
+                  </XStack>
+
+                  {/* Show example and tip when selected */}
+                  {isSelected && (
+                    <YStack marginTop="$3" paddingTop="$3" borderTopWidth={1} borderTopColor="$gray6">
+                      <XStack alignItems="flex-start" gap="$2" marginBottom="$2">
+                        <Ionicons name="chatbubble-ellipses-outline" size={16} color={WATSON_TEAL} style={{ marginTop: 2 }} />
+                        <YStack flex={1}>
+                          <Text fontSize="$1" color={WATSON_TEAL} fontWeight="600">EXEMPLO</Text>
+                          <Text fontSize="$2" color="$color">{type.example}</Text>
+                        </YStack>
+                      </XStack>
+                      <XStack alignItems="flex-start" gap="$2">
+                        <Ionicons name="bulb-outline" size={16} color="#f59e0b" style={{ marginTop: 2 }} />
+                        <YStack flex={1}>
+                          <Text fontSize="$1" color="#f59e0b" fontWeight="600">DICA</Text>
+                          <Text fontSize="$2" color="$gray8">{type.tip}</Text>
+                        </YStack>
+                      </XStack>
+                    </YStack>
+                  )}
                 </YStack>
-                {selectedType === type.type && (
-                  <Ionicons name="checkmark-circle" size={24} color={WATSON_TEAL} />
-                )}
-              </XStack>
-            </Pressable>
-          ))}
+              </Pressable>
+            );
+          })}
         </YStack>
       </Card>
 
@@ -610,8 +718,11 @@ function TriggerForm({
 
       {selectedType === "INTENT" && (
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+          <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
             Intencoes a detectar
+          </Text>
+          <Text fontSize="$2" color="$gray8" marginBottom="$3">
+            A IA detecta automaticamente estas intencoes nas mensagens
           </Text>
           <YStack gap="$2">
             {INTENT_OPTIONS.map((intent) => {
@@ -623,13 +734,22 @@ function TriggerForm({
                     backgroundColor={isSelected ? "$teal5" : "$background"}
                     borderRadius="$3"
                     alignItems="center"
-                    justifyContent="space-between"
+                    gap="$3"
+                    borderWidth={isSelected ? 2 : 1}
+                    borderColor={isSelected ? WATSON_TEAL : "$gray6"}
                   >
-                    <Text color={isSelected ? WATSON_TEAL : "$color"}>
-                      {intent.label}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark" size={20} color={WATSON_TEAL} />
+                    <YStack flex={1}>
+                      <Text fontWeight="600" color={isSelected ? WATSON_TEAL : "$color"}>
+                        {intent.label}
+                      </Text>
+                      <Text fontSize="$1" color="$gray7" marginTop="$1">
+                        Detecta: {intent.desc}
+                      </Text>
+                    </YStack>
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={24} color={WATSON_TEAL} />
+                    ) : (
+                      <Ionicons name="ellipse-outline" size={24} color={theme.gray6.val} />
                     )}
                   </XStack>
                 </Pressable>

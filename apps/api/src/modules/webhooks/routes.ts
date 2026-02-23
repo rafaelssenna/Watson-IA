@@ -3,6 +3,7 @@ import { prisma } from "@watson/database";
 import { generateResponse, getDefaultResponse, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
 import { sendTextMessage } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
+import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 
 // Store fastify instance for use in buffer callback
 let fastifyInstance: FastifyInstance | null = null;
@@ -140,7 +141,10 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       where: { organizationId: orgId, waId },
     });
 
+    let isNewContact = false;
+
     if (!contact) {
+      isNewContact = true;
       // Get default funnel and first stage
       const defaultFunnel = await prisma.funnel.findFirst({
         where: { organizationId: orgId, isDefault: true },
@@ -234,6 +238,30 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     });
 
     fastify.log.info({ conversationId: conversation.id, messageId: newMessage.id }, "Message processed");
+
+    // Process triggers
+    const triggerResult = await processTriggers(
+      {
+        orgId,
+        conversationId: conversation.id,
+        contactId: contact.id,
+        waId: contact.waId,
+        messageContent: content,
+        isNewContact,
+        contact,
+        conversation,
+      },
+      fastify.log
+    );
+
+    // Check if we should skip AI response based on trigger
+    if (shouldSkipAIResponse(triggerResult)) {
+      fastify.log.info(
+        { conversationId: conversation.id, triggerId: triggerResult.triggerId },
+        "Skipping AI response due to trigger"
+      );
+      return;
+    }
 
     // Add to buffer for AI response if mode allows
     if (conversation.mode === "AI_AUTO" || conversation.mode === "AI_ASSISTED") {

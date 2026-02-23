@@ -74,6 +74,7 @@ export default function SettingsScreen() {
               icon="flash-outline"
               title="Triggers"
               description="Gatilhos inteligentes"
+              onPress={() => router.push("/settings/triggers")}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem

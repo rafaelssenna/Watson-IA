@@ -24,6 +24,7 @@ import { knowledgeRoutes } from "./modules/knowledge/routes.js";
 import { webhookRoutes } from "./modules/webhooks/routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/routes.js";
 import { automationRoutes } from "./modules/automations/routes.js";
+import { triggerRoutes } from "./modules/triggers/routes.js";
 import { startAutomationScheduler, stopAutomationScheduler } from "./services/automation.service.js";
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -130,6 +131,7 @@ async function buildServer() {
   await fastify.register(webhookRoutes, { prefix: "/api/v1/webhooks" });
   await fastify.register(whatsappRoutes, { prefix: "/api/v1/whatsapp" });
   await fastify.register(automationRoutes, { prefix: "/api/v1/automations" });
+  await fastify.register(triggerRoutes, { prefix: "/api/v1/triggers" });
 
   return fastify;
 }

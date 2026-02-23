@@ -536,6 +536,8 @@ model Trigger {
 enum TriggerType {
   KEYWORD
   INTENT
+  NEW_CONTACT
+  OUT_OF_HOURS
   PRODUCT_MENTION
   URGENCY
   SENTIMENT

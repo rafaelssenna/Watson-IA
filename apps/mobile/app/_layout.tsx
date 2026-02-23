@@ -80,10 +80,6 @@ function RootNavigator({ isAuthenticated }: { isAuthenticated: boolean }) {
         }}
       />
       <Stack.Screen
-        name="(modals)"
-        options={{ presentation: "modal" }}
-      />
-      <Stack.Screen
         name="settings"
         options={{
           headerShown: false,

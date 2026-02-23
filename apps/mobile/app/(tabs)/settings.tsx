@@ -60,6 +60,7 @@ export default function SettingsScreen() {
               icon="book-outline"
               title="Base de Conhecimento"
               description="PDFs, FAQs e informacoes da empresa"
+              onPress={() => router.push("/settings/knowledge-base")}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem

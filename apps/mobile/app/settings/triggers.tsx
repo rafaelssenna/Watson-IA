@@ -318,6 +318,7 @@ export default function TriggersScreen() {
             setSkipAIResponse={setSkipAIResponse}
             onCancel={resetForm}
             isEditing={!!editingTrigger}
+            accessToken={accessToken}
           />
         ) : (
           <TriggerList
@@ -586,12 +587,80 @@ function TriggerForm({
   setSkipAIResponse: (v: boolean) => void;
   onCancel: () => void;
   isEditing: boolean;
+  accessToken: string | null;
 }) {
+  const [generatingMessage, setGeneratingMessage] = useState(false);
+
   const toggleIntent = (intent: string) => {
     if (selectedIntents.includes(intent)) {
       setSelectedIntents(selectedIntents.filter((i) => i !== intent));
     } else {
       setSelectedIntents([...selectedIntents, intent]);
+    }
+  };
+
+  const generateMessageWithAI = async () => {
+    if (!selectedType) {
+      Alert.alert("Erro", "Selecione um tipo de trigger primeiro");
+      return;
+    }
+
+    setGeneratingMessage(true);
+
+    // Get trigger type info for context
+    const typeInfo = TRIGGER_TYPES.find((t) => t.type === selectedType);
+    const typeName = typeInfo?.name || selectedType;
+
+    // Build context for AI
+    let context = `Tipo de trigger: ${typeName}`;
+    if (selectedType === "KEYWORD" && keywords) {
+      context += `\nPalavras-chave: ${keywords}`;
+    }
+    if (selectedType === "INTENT" && selectedIntents.length > 0) {
+      const intentNames = selectedIntents.map((i) =>
+        INTENT_OPTIONS.find((o) => o.value === i)?.label || i
+      ).join(", ");
+      context += `\nIntencoes detectadas: ${intentNames}`;
+    }
+
+    try {
+      const response = await api.post(
+        "/personas/generate-message",
+        {
+          triggerType: selectedType,
+          context,
+          messageType: "trigger_response",
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (response.data.success && response.data.data?.message) {
+        setMessageTemplate(response.data.data.message);
+      } else {
+        // Fallback: generate a simple message based on type
+        const fallbackMessages: Record<string, string> = {
+          KEYWORD: "Ola {nome}! Vi que voce perguntou sobre isso. Como posso ajudar?",
+          INTENT: "Ola {nome}! Entendi o que voce precisa. Vou te ajudar com isso!",
+          NEW_CONTACT: "Ola {nome}! Seja bem-vindo(a)! Sou o assistente virtual. Como posso ajudar voce hoje?",
+          OUT_OF_HOURS: "Ola {nome}! Obrigado pela mensagem. Estamos fora do horario de atendimento no momento. Retornaremos assim que possivel!",
+          URGENCY: "Ola {nome}! Percebi que voce precisa de ajuda urgente. Vou priorizar seu atendimento!",
+          SENTIMENT: "Ola {nome}! Lamento saber que voce esta insatisfeito. Vou transferir voce para um atendente que podera ajudar melhor.",
+        };
+        setMessageTemplate(fallbackMessages[selectedType] || "Ola {nome}! Como posso ajudar?");
+      }
+    } catch (error) {
+      // Use fallback messages
+      const fallbackMessages: Record<string, string> = {
+        KEYWORD: "Ola {nome}! Vi que voce perguntou sobre isso. Como posso ajudar?",
+        INTENT: "Ola {nome}! Entendi o que voce precisa. Vou te ajudar com isso!",
+        NEW_CONTACT: "Ola {nome}! Seja bem-vindo(a)! Sou o assistente virtual. Como posso ajudar voce hoje?",
+        OUT_OF_HOURS: "Ola {nome}! Obrigado pela mensagem. Estamos fora do horario de atendimento no momento. Retornaremos assim que possivel!",
+        URGENCY: "Ola {nome}! Percebi que voce precisa de ajuda urgente. Vou priorizar seu atendimento!",
+        SENTIMENT: "Ola {nome}! Lamento saber que voce esta insatisfeito. Vou transferir voce para um atendente que podera ajudar melhor.",
+      };
+      setMessageTemplate(fallbackMessages[selectedType] || "Ola {nome}! Como posso ajudar?");
+    } finally {
+      setGeneratingMessage(false);
     }
   };
 
@@ -810,11 +879,13 @@ function TriggerForm({
 
         {/* Send Message */}
         <YStack marginBottom="$4" padding="$3" backgroundColor="$background" borderRadius="$3">
-          <XStack alignItems="center" gap="$2" marginBottom="$2">
-            <Ionicons name="chatbubble-outline" size={18} color={WATSON_TEAL} />
-            <Text fontSize="$3" fontWeight="600" color="$color">
-              Enviar mensagem automatica
-            </Text>
+          <XStack alignItems="center" justifyContent="space-between" marginBottom="$2">
+            <XStack alignItems="center" gap="$2">
+              <Ionicons name="chatbubble-outline" size={18} color={WATSON_TEAL} />
+              <Text fontSize="$3" fontWeight="600" color="$color">
+                Enviar mensagem automatica
+              </Text>
+            </XStack>
           </XStack>
           <Text fontSize="$2" color="$gray8" marginBottom="$2">
             Esta mensagem sera enviada imediatamente quando o trigger disparar
@@ -836,9 +907,34 @@ function TriggerForm({
               textAlignVertical: "top",
             }}
           />
-          <Text fontSize="$1" color="$gray7" marginTop="$2">
-            Dica: Use {"{nome}"} para incluir o nome do cliente
-          </Text>
+          <XStack alignItems="center" justifyContent="space-between" marginTop="$2">
+            <Text fontSize="$1" color="$gray7">
+              Dica: Use {"{nome}"} para incluir o nome do cliente
+            </Text>
+            <Pressable
+              onPress={generateMessageWithAI}
+              disabled={generatingMessage || !selectedType}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: generatingMessage ? "#6b7280" : "#8b5cf6",
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                gap: 6,
+                opacity: !selectedType ? 0.5 : 1,
+              }}
+            >
+              {generatingMessage ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="sparkles" size={16} color="white" />
+              )}
+              <Text color="white" fontSize="$2" fontWeight="600">
+                {generatingMessage ? "Gerando..." : "Gerar com IA"}
+              </Text>
+            </Pressable>
+          </XStack>
         </YStack>
 
         <Separator marginVertical="$3" backgroundColor="$gray6" />

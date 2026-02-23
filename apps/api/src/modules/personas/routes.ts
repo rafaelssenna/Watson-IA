@@ -325,4 +325,85 @@ export async function personaRoutes(fastify: FastifyInstance) {
 
     return { success: true };
   });
+
+  // ============================================
+  // AI MESSAGE GENERATION
+  // ============================================
+
+  // Generate trigger message with AI
+  fastify.post<{
+    Body: {
+      triggerType: string;
+      context?: string;
+      messageType?: string;
+    };
+  }>("/generate-message", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { triggerType, context } = request.body;
+
+    if (!triggerType) {
+      return reply.badRequest("Tipo de trigger obrigatorio");
+    }
+
+    // Get organization's default persona for tone/style
+    const persona = await prisma.persona.findFirst({
+      where: { organizationId: orgId, isDefault: true },
+    });
+
+    // Define message templates based on trigger type
+    const messageTemplates: Record<string, { friendly: string; formal: string; neutral: string }> = {
+      KEYWORD: {
+        friendly: "Oi {nome}! 😊 Vi que voce perguntou sobre isso. Vou te ajudar agora mesmo!",
+        formal: "Prezado(a) {nome}, agradecemos seu contato. Vamos atende-lo(a) sobre sua solicitacao.",
+        neutral: "Ola {nome}! Recebi sua mensagem. Como posso ajudar?",
+      },
+      INTENT: {
+        friendly: "Oi {nome}! 😊 Entendi o que voce precisa. Ja vou te ajudar!",
+        formal: "Prezado(a) {nome}, compreendemos sua necessidade e estamos prontos para atende-lo(a).",
+        neutral: "Ola {nome}! Entendi sua solicitacao. Vou te ajudar com isso.",
+      },
+      NEW_CONTACT: {
+        friendly: "Oi {nome}! 👋 Seja muito bem-vindo(a)! Sou o assistente virtual e estou aqui pra te ajudar. Como posso ajudar voce hoje?",
+        formal: "Prezado(a) {nome}, seja bem-vindo(a). Sou o assistente virtual da empresa e estou a disposicao para atende-lo(a).",
+        neutral: "Ola {nome}! Bem-vindo(a)! Sou o assistente virtual. Como posso ajudar voce hoje?",
+      },
+      OUT_OF_HOURS: {
+        friendly: "Oi {nome}! 🌙 Obrigado pela mensagem! Estamos fora do horario de atendimento agora, mas vou te responder assim que voltarmos. Ate logo!",
+        formal: "Prezado(a) {nome}, agradecemos seu contato. No momento estamos fora do horario de atendimento. Retornaremos em breve.",
+        neutral: "Ola {nome}! Obrigado pela mensagem. Estamos fora do horario de atendimento no momento. Retornaremos assim que possivel.",
+      },
+      URGENCY: {
+        friendly: "Oi {nome}! ⚡ Percebi que voce precisa de ajuda urgente. Vou priorizar seu atendimento! Ja ja alguem vai te ajudar.",
+        formal: "Prezado(a) {nome}, identificamos a urgencia da sua solicitacao. Estamos priorizando seu atendimento.",
+        neutral: "Ola {nome}! Entendi que sua solicitacao e urgente. Vou encaminhar para atendimento prioritario.",
+      },
+      SENTIMENT: {
+        friendly: "Oi {nome}! 😔 Sinto muito por voce estar passando por isso. Vou chamar um atendente humano pra te ajudar melhor, ta bom?",
+        formal: "Prezado(a) {nome}, lamentamos qualquer inconveniente. Vou transferi-lo(a) para um atendente que podera auxilia-lo(a) adequadamente.",
+        neutral: "Ola {nome}! Lamento saber que voce esta insatisfeito. Vou transferir voce para um atendente que podera ajudar melhor.",
+      },
+    };
+
+    // Determine tone based on persona
+    let tone: "friendly" | "formal" | "neutral" = "neutral";
+    if (persona) {
+      if (persona.formalityLevel <= 30) {
+        tone = "friendly";
+      } else if (persona.formalityLevel >= 70) {
+        tone = "formal";
+      }
+    }
+
+    const templates = messageTemplates[triggerType];
+    const message = templates ? templates[tone] : "Ola {nome}! Como posso ajudar?";
+
+    return {
+      success: true,
+      data: {
+        message,
+        tone,
+        triggerType,
+      },
+    };
+  });
 }

@@ -801,24 +801,33 @@ function TriggerForm({
 
       {/* Actions */}
       <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-        <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
-          Acoes
-        </Text>
+        <XStack alignItems="center" gap="$2" marginBottom="$3">
+          <Ionicons name="flash-outline" size={20} color={WATSON_TEAL} />
+          <Text fontSize="$3" fontWeight="600" color="$color">
+            O que fazer quando disparar?
+          </Text>
+        </XStack>
 
         {/* Send Message */}
-        <YStack marginBottom="$4">
+        <YStack marginBottom="$4" padding="$3" backgroundColor="$background" borderRadius="$3">
+          <XStack alignItems="center" gap="$2" marginBottom="$2">
+            <Ionicons name="chatbubble-outline" size={18} color={WATSON_TEAL} />
+            <Text fontSize="$3" fontWeight="600" color="$color">
+              Enviar mensagem automatica
+            </Text>
+          </XStack>
           <Text fontSize="$2" color="$gray8" marginBottom="$2">
-            Mensagem automatica (opcional)
+            Esta mensagem sera enviada imediatamente quando o trigger disparar
           </Text>
           <TextInput
             value={messageTemplate}
             onChangeText={setMessageTemplate}
-            placeholder="Ola! Obrigado pelo contato..."
+            placeholder="Ex: Ola {nome}! Obrigado pelo contato..."
             placeholderTextColor={theme.gray8.val}
             multiline
             numberOfLines={3}
             style={{
-              backgroundColor: theme.background.val,
+              backgroundColor: theme.backgroundStrong.val,
               borderRadius: 8,
               padding: 12,
               fontSize: 16,
@@ -827,38 +836,112 @@ function TriggerForm({
               textAlignVertical: "top",
             }}
           />
-          <Text fontSize="$1" color="$gray7" marginTop="$1">
-            Use {"{nome}"} para incluir o nome do contato
+          <Text fontSize="$1" color="$gray7" marginTop="$2">
+            Dica: Use {"{nome}"} para incluir o nome do cliente
           </Text>
         </YStack>
 
+        <Separator marginVertical="$3" backgroundColor="$gray6" />
+
+        <Text fontSize="$2" fontWeight="600" color="$gray8" marginBottom="$3">
+          COMPORTAMENTO DA IA APOS O TRIGGER
+        </Text>
+
         {/* Transfer to Human */}
-        <XStack alignItems="center" justifyContent="space-between" marginBottom="$3">
-          <YStack flex={1}>
-            <Text color="$color" fontWeight="500">Transferir para humano</Text>
-            <Text fontSize="$2" color="$gray8">Desativa a IA e aguarda atendente</Text>
+        <YStack
+          marginBottom="$3"
+          padding="$3"
+          backgroundColor={transferToHuman ? "$orange3" : "$background"}
+          borderRadius="$3"
+          borderWidth={transferToHuman ? 2 : 1}
+          borderColor={transferToHuman ? "#f97316" : "$gray6"}
+        >
+          <XStack alignItems="center" justifyContent="space-between">
+            <XStack alignItems="center" gap="$2" flex={1}>
+              <Ionicons name="person-outline" size={20} color={transferToHuman ? "#f97316" : theme.gray8.val} />
+              <YStack flex={1}>
+                <Text color={transferToHuman ? "#f97316" : "$color"} fontWeight="600">
+                  Transferir para humano
+                </Text>
+              </YStack>
+            </XStack>
+            <Switch
+              value={transferToHuman}
+              onValueChange={(v) => {
+                setTransferToHuman(v);
+                if (v) setSkipAIResponse(false);
+              }}
+              trackColor={{ false: theme.gray6.val, true: "#f97316" }}
+              thumbColor="white"
+            />
+          </XStack>
+          <YStack marginTop="$2" paddingLeft="$7">
+            <Text fontSize="$2" color="$gray8">
+              A IA PARA de responder PERMANENTEMENTE
+            </Text>
+            <Text fontSize="$1" color="$gray7" marginTop="$1">
+              → Conversa vai para fila de atendimento humano
+            </Text>
+            <Text fontSize="$1" color="$gray7">
+              → Ideal para: cliente irritado, pedido de atendente
+            </Text>
           </YStack>
-          <Switch
-            value={transferToHuman}
-            onValueChange={setTransferToHuman}
-            trackColor={{ false: theme.gray6.val, true: WATSON_TEAL }}
-            thumbColor="white"
-          />
-        </XStack>
+        </YStack>
 
         {/* Skip AI Response */}
-        <XStack alignItems="center" justifyContent="space-between">
-          <YStack flex={1}>
-            <Text color="$color" fontWeight="500">Nao responder com IA</Text>
-            <Text fontSize="$2" color="$gray8">Apenas envia a mensagem do trigger</Text>
+        <YStack
+          padding="$3"
+          backgroundColor={skipAIResponse ? "$blue3" : "$background"}
+          borderRadius="$3"
+          borderWidth={skipAIResponse ? 2 : 1}
+          borderColor={skipAIResponse ? "#3b82f6" : "$gray6"}
+        >
+          <XStack alignItems="center" justifyContent="space-between">
+            <XStack alignItems="center" gap="$2" flex={1}>
+              <Ionicons name="pause-outline" size={20} color={skipAIResponse ? "#3b82f6" : theme.gray8.val} />
+              <YStack flex={1}>
+                <Text color={skipAIResponse ? "#3b82f6" : "$color"} fontWeight="600">
+                  Nao responder com IA (so desta vez)
+                </Text>
+              </YStack>
+            </XStack>
+            <Switch
+              value={skipAIResponse}
+              onValueChange={(v) => {
+                setSkipAIResponse(v);
+                if (v) setTransferToHuman(false);
+              }}
+              trackColor={{ false: theme.gray6.val, true: "#3b82f6" }}
+              thumbColor="white"
+            />
+          </XStack>
+          <YStack marginTop="$2" paddingLeft="$7">
+            <Text fontSize="$2" color="$gray8">
+              A IA NAO responde SO nesta mensagem
+            </Text>
+            <Text fontSize="$1" color="$gray7" marginTop="$1">
+              → Proxima mensagem, IA volta a responder normal
+            </Text>
+            <Text fontSize="$1" color="$gray7">
+              → Ideal para: avisos automaticos, mensagens fora do horario
+            </Text>
           </YStack>
-          <Switch
-            value={skipAIResponse}
-            onValueChange={setSkipAIResponse}
-            trackColor={{ false: theme.gray6.val, true: WATSON_TEAL }}
-            thumbColor="white"
-          />
-        </XStack>
+        </YStack>
+
+        {/* None selected info */}
+        {!transferToHuman && !skipAIResponse && (
+          <YStack marginTop="$3" padding="$3" backgroundColor="$green3" borderRadius="$3">
+            <XStack alignItems="center" gap="$2">
+              <Ionicons name="checkmark-circle-outline" size={18} color="#22c55e" />
+              <Text fontSize="$2" color="#22c55e" fontWeight="500">
+                IA continua respondendo normalmente
+              </Text>
+            </XStack>
+            <Text fontSize="$1" color="$gray7" marginTop="$1" paddingLeft="$6">
+              O trigger envia a mensagem e a IA continua a conversa
+            </Text>
+          </YStack>
+        )}
       </Card>
     </YStack>
   );

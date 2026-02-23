@@ -207,17 +207,20 @@ model Tag {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name           String
   color          String       @default("#6366f1")
+  description    String?      // Description for AI to understand when to apply
+  isAuto         Boolean      @default(false) // AI can auto-apply this tag
   contacts       ContactTag[]
 
   @@unique([organizationId, name])
 }
 
 model ContactTag {
-  contactId String
-  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  tagId     String
-  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tagId       String
+  tag         Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  appliedByAi Boolean  @default(false) // Whether AI auto-applied this tag
+  createdAt   DateTime @default(now())
 
   @@id([contactId, tagId])
 }

@@ -109,8 +109,9 @@ export default function SettingsScreen() {
           <Card backgroundColor="$backgroundStrong" borderRadius="$4" overflow="hidden">
             <SettingsItem
               icon="pricetags-outline"
-              title="Tags"
-              description="Gerenciar tags de contatos"
+              title="Tags Automaticas"
+              description="IA aplica tags automaticamente"
+              onPress={() => router.push("/settings/tags")}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem

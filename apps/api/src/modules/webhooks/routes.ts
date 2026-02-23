@@ -78,32 +78,32 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       hasText: !!message.text,
     }, "Message structure debug");
 
-    // Extract message details - handle multiple possible field names from Uazapi
-    // Uazapi typically sends: { data: { from: "5531...", body: "message text", ... } }
-    // The 'from' field might contain @s.whatsapp.net, @c.us, or @lid suffix
-    // For @lid (linked device), we need to use a different field or extract differently
-    let waId = message.from || message.remoteJid || message.key?.remoteJid || message.sender || message.phone || "";
+    // Extract message details - Uazapi webhook sends:
+    // { event: "messages", data: { chatid, sender, senderName, text, fromMe, ... } }
+    // chatid = "5531971206977@s.whatsapp.net" or group ID
+    // sender = same as chatid for individual chats
+    let waId = message.chatid || message.sender || message.from || message.remoteJid || message.key?.remoteJid || "";
 
     // Clean up the waId - remove WhatsApp suffixes
     waId = waId.split("@")[0]; // Get only the number part before any @ suffix
     waId = waId.split(":")[0]; // Handle lid format like "5531971206977:62@lid" - get first part
 
-    // Extract content - Uazapi uses 'body' for text messages
+    // Extract content - Uazapi uses 'text' for text messages
     const content =
-      message.body ||
       message.text ||
+      message.body ||
       message.content ||
       message.message?.conversation ||
       message.message?.extendedTextMessage?.text ||
       message.caption ||
       "";
 
-    const messageId = message.key?.id || message.id || message.messageId || message.msgId;
-    const pushName = message.pushName || message.notifyName || message.senderName || message.name;
+    const messageId = message.messageid || message.id || message.key?.id || message.messageId || message.msgId;
+    const pushName = message.senderName || message.pushName || message.notifyName || message.name;
 
     // Skip if this is an outgoing message (fromMe)
     if (message.fromMe === true || message.key?.fromMe === true) {
-      fastify.log.info("Skipping outgoing message");
+      fastify.log.info("Skipping outgoing message (fromMe=true)");
       return;
     }
 

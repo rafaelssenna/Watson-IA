@@ -7,6 +7,9 @@ import { Ionicons } from "@expo/vector-icons";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 export default function SettingsScreen() {
   const { user, logout } = useAuthStore();
   const theme = useTheme();
@@ -29,7 +32,7 @@ export default function SettingsScreen() {
               width={60}
               height={60}
               borderRadius={30}
-              backgroundColor="$blue10"
+              backgroundColor={WATSON_TEAL}
               alignItems="center"
               justifyContent="center"
             >
@@ -40,7 +43,7 @@ export default function SettingsScreen() {
             <YStack flex={1}>
               <Text fontSize="$5" fontWeight="bold" color="$color">{user?.name}</Text>
               <Text color="$gray8" fontSize="$3">{user?.email}</Text>
-              <Text fontSize="$2" color="$blue10" marginTop="$1">
+              <Text fontSize="$2" color={WATSON_TEAL} marginTop="$1">
                 {user?.organizationName}
               </Text>
             </YStack>
@@ -161,7 +164,7 @@ export default function SettingsScreen() {
 
         {/* Version */}
         <Text textAlign="center" color="$gray8" fontSize="$2" marginTop="$4">
-          Watson AI v1.0.0
+          Watson IA v1.0.0
         </Text>
       </YStack>
     </ScrollView>

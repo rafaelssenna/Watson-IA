@@ -4,6 +4,9 @@ import { Link, router } from "expo-router";
 import { YStack, XStack, H1, Text, Input, Button, Spinner, Checkbox, Label, useTheme } from "tamagui";
 import { useAuthStore } from "@/stores/authStore";
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
     name: "",
@@ -198,7 +201,7 @@ export default function RegisterScreen() {
                 borderColor="$gray6"
               >
                 <Checkbox.Indicator>
-                  <Text color="$blue10">✓</Text>
+                  <Text color={WATSON_TEAL}>✓</Text>
                 </Checkbox.Indicator>
               </Checkbox>
               <Label htmlFor="terms" fontSize="$2" color="$gray8">
@@ -217,17 +220,18 @@ export default function RegisterScreen() {
               onPress={handleRegister}
               disabled={isLoading}
               size="$5"
-              backgroundColor="$blue10"
-              pressStyle={{ backgroundColor: "$blue9" }}
+              backgroundColor={WATSON_TEAL}
+              pressStyle={{ opacity: 0.9 }}
               marginTop="$2"
+              borderRadius="$4"
             >
-              {isLoading ? <Spinner color="white" /> : <Text color="white" fontWeight="600">Criar Conta Gratuita</Text>}
+              {isLoading ? <Spinner color="white" /> : <Text color="white" fontWeight="600" fontSize="$4">Criar Conta Gratuita</Text>}
             </Button>
 
             <XStack justifyContent="center" marginTop="$4">
               <Text color="$gray8">Ja tem conta? </Text>
               <Link href="/(auth)/login" asChild>
-                <Text color="$blue10" fontWeight="600">Entrar</Text>
+                <Text color={WATSON_TEAL} fontWeight="600">Entrar</Text>
               </Link>
             </XStack>
           </YStack>

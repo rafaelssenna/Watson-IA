@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform } from "react-native";
+import { KeyboardAvoidingView, Platform, Image } from "react-native";
 import { Link, router } from "expo-router";
 import { YStack, XStack, H1, Text, Input, Button, Spinner, useTheme } from "tamagui";
 import { useAuthStore } from "@/stores/authStore";
+import { Ionicons } from "@expo/vector-icons";
+
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+const WATSON_SLATE = "#334155";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -39,20 +44,55 @@ export default function LoginScreen() {
         padding="$6"
         justifyContent="center"
       >
-        {/* Logo */}
+        {/* Logo Watson IA */}
         <YStack alignItems="center" marginBottom="$8">
-          <YStack
-            width={100}
-            height={100}
-            backgroundColor="$blue10"
-            borderRadius={20}
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Text fontSize={40}>🤖</Text>
-          </YStack>
-          <H1 marginTop="$4" color="$color">Watson AI</H1>
-          <Text color="$gray8">Seu assistente de vendas inteligente</Text>
+          {/* Logo Icon - stylized W with brand colors */}
+          <XStack alignItems="center" justifyContent="center" marginBottom="$3">
+            <YStack
+              width={80}
+              height={80}
+              alignItems="center"
+              justifyContent="center"
+              style={{
+                transform: [{ rotate: "45deg" }],
+              }}
+            >
+              {/* Outer diamond - slate */}
+              <YStack
+                position="absolute"
+                width={60}
+                height={60}
+                borderWidth={4}
+                borderColor={WATSON_SLATE}
+                borderRadius={12}
+              />
+              {/* Inner diamond - teal */}
+              <YStack
+                position="absolute"
+                width={40}
+                height={40}
+                borderWidth={4}
+                borderColor={WATSON_TEAL}
+                borderRadius={8}
+                style={{
+                  transform: [{ translateX: 8 }, { translateY: 8 }],
+                }}
+              />
+            </YStack>
+          </XStack>
+
+          {/* Brand Name */}
+          <XStack alignItems="center" gap="$2">
+            <Text fontSize={28} fontWeight="300" color={WATSON_SLATE} letterSpacing={2}>
+              WATSON
+            </Text>
+            <Text fontSize={28} fontWeight="600" color={WATSON_TEAL} letterSpacing={2}>
+              IA
+            </Text>
+          </XStack>
+          <Text color="$gray8" marginTop="$2" fontSize="$3">
+            Assistente de vendas inteligente
+          </Text>
         </YStack>
 
         {/* Form */}
@@ -104,15 +144,16 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={isLoading}
             size="$5"
-            backgroundColor="$blue10"
-            pressStyle={{ backgroundColor: "$blue9" }}
+            backgroundColor={WATSON_TEAL}
+            pressStyle={{ opacity: 0.9 }}
             marginTop="$2"
+            borderRadius="$4"
           >
-            {isLoading ? <Spinner color="white" /> : <Text color="white" fontWeight="600">Entrar</Text>}
+            {isLoading ? <Spinner color="white" /> : <Text color="white" fontWeight="600" fontSize="$4">Entrar</Text>}
           </Button>
 
           <Link href="/(auth)/forgot-password" asChild>
-            <Text color="$blue10" textAlign="center" marginTop="$2">
+            <Text color={WATSON_TEAL} textAlign="center" marginTop="$3" fontSize="$3">
               Esqueceu a senha?
             </Text>
           </Link>
@@ -122,7 +163,7 @@ export default function LoginScreen() {
         <XStack justifyContent="center" marginTop="$8">
           <Text color="$gray8">Nao tem conta? </Text>
           <Link href="/(auth)/register" asChild>
-            <Text color="$blue10" fontWeight="600">
+            <Text color={WATSON_TEAL} fontWeight="600">
               Criar conta
             </Text>
           </Link>

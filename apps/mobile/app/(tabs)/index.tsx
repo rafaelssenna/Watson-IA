@@ -4,6 +4,9 @@ import { YStack, XStack, H2, Text, Card, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 
+// Watson IA brand colors
+const WATSON_TEAL = "#0d9488";
+
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 interface DashboardData {
@@ -71,7 +74,7 @@ export default function DashboardScreen() {
             title="Conversas Ativas"
             value={data?.activeConversations || 0}
             icon="chatbubbles-outline"
-            color="$blue10"
+            color="$teal10"
           />
           <StatCard
             title="Intencao de Compra"
@@ -181,9 +184,10 @@ function StatCard({
 }) {
   const theme = useTheme();
 
-  // Map tamagui colors to hex
+  // Map tamagui colors to hex (Watson IA brand)
   const colorMap: Record<string, string> = {
-    "$blue10": "#2563eb",
+    "$teal10": WATSON_TEAL,
+    "$blue10": WATSON_TEAL,
     "$green10": "#22c55e",
     "$red10": "#ef4444",
     "$yellow10": "#eab308",

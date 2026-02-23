@@ -8,13 +8,16 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const isDark = colorScheme === "dark";
 
-  // Watson theme colors
+  // Watson IA brand colors
+  const WATSON_TEAL = "#0d9488";
+  const WATSON_SLATE = "#334155";
+
   const colors = {
-    background: isDark ? "#09090b" : "#ffffff",
-    border: isDark ? "#27272a" : "#e4e4e7",
-    text: isDark ? "#fafafa" : "#18181b",
-    textMuted: isDark ? "#71717a" : "#a1a1aa",
-    primary: "#2563eb",
+    background: isDark ? "#020617" : "#ffffff",
+    border: isDark ? "#1e293b" : "#e2e8f0",
+    text: isDark ? "#f8fafc" : "#0f172a",
+    textMuted: isDark ? "#64748b" : "#94a3b8",
+    primary: WATSON_TEAL,
   };
 
   // Calculate safe bottom padding
@@ -65,7 +68,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Dashboard",
-          headerTitle: "Watson AI",
+          headerTitle: "Watson IA",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),

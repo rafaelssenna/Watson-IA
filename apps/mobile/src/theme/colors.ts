@@ -1,37 +1,38 @@
 /**
- * Watson AI - Sistema de Cores
- * Paleta de cores para temas claro e escuro
+ * Watson IA - Sistema de Cores
+ * Paleta de cores baseada na identidade visual Watson IA
+ * Teal/Cyan + Slate/Charcoal
  */
 
-// Cores primarias Watson
+// Cores primarias Watson IA
 export const watsonColors = {
-  // Azul Watson (Principal)
+  // Teal Watson (Principal) - baseado na logo
   primary: {
-    50: "#eff6ff",
-    100: "#dbeafe",
-    200: "#bfdbfe",
-    300: "#93c5fd",
-    400: "#60a5fa",
-    500: "#3b82f6",
-    600: "#2563eb",
-    700: "#1d4ed8",
-    800: "#1e40af",
-    900: "#1e3a8a",
+    50: "#f0fdfa",
+    100: "#ccfbf1",
+    200: "#99f6e4",
+    300: "#5eead4",
+    400: "#2dd4bf",
+    500: "#14b8a6",
+    600: "#0d9488",
+    700: "#0f766e",
+    800: "#115e59",
+    900: "#134e4a",
   },
 
-  // Cinza Neutro
+  // Slate (Cinza-azulado da logo)
   gray: {
-    50: "#fafafa",
-    100: "#f4f4f5",
-    200: "#e4e4e7",
-    300: "#d4d4d8",
-    400: "#a1a1aa",
-    500: "#71717a",
-    600: "#52525b",
-    700: "#3f3f46",
-    800: "#27272a",
-    900: "#18181b",
-    950: "#09090b",
+    50: "#f8fafc",
+    100: "#f1f5f9",
+    200: "#e2e8f0",
+    300: "#cbd5e1",
+    400: "#94a3b8",
+    500: "#64748b",
+    600: "#475569",
+    700: "#334155",
+    800: "#1e293b",
+    900: "#0f172a",
+    950: "#020617",
   },
 
   // Sucesso
@@ -70,19 +71,33 @@ export const watsonColors = {
     700: "#b45309",
   },
 
-  // Info
+  // Info (Cyan)
   info: {
-    50: "#f0f9ff",
-    100: "#e0f2fe",
-    200: "#bae6fd",
-    300: "#7dd3fc",
-    400: "#38bdf8",
-    500: "#0ea5e9",
-    600: "#0284c7",
-    700: "#0369a1",
+    50: "#ecfeff",
+    100: "#cffafe",
+    200: "#a5f3fc",
+    300: "#67e8f9",
+    400: "#22d3ee",
+    500: "#06b6d4",
+    600: "#0891b2",
+    700: "#0e7490",
   },
 
-  // Roxo (Watson AI)
+  // Accent (Charcoal/Slate escuro da logo)
+  accent: {
+    50: "#f8fafc",
+    100: "#f1f5f9",
+    200: "#e2e8f0",
+    300: "#cbd5e1",
+    400: "#94a3b8",
+    500: "#64748b",
+    600: "#475569",
+    700: "#334155",
+    800: "#1e293b",
+    900: "#0f172a",
+  },
+
+  // Roxo (para highlights especiais)
   purple: {
     50: "#faf5ff",
     100: "#f3e8ff",
@@ -133,7 +148,8 @@ export const lightTheme = {
 
   // Watson especificos
   watsonPurple: watsonColors.purple[600],
-  watsonBlue: watsonColors.primary[600],
+  watsonTeal: watsonColors.primary[600],
+  watsonSlate: watsonColors.gray[700],
 
   // Urgencia (Lead Score)
   urgencyCold: watsonColors.info[500],
@@ -194,7 +210,8 @@ export const darkTheme = {
 
   // Watson especificos
   watsonPurple: watsonColors.purple[500],
-  watsonBlue: watsonColors.primary[500],
+  watsonTeal: watsonColors.primary[500],
+  watsonSlate: watsonColors.gray[600],
 
   // Urgencia (Lead Score)
   urgencyCold: watsonColors.info[400],

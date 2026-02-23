@@ -31,13 +31,21 @@ const config = createTamagui({
       borderColorFocus: lightTheme.primary,
       borderColorPress: lightTheme.borderColorStrong,
 
-      // Primary (Watson Blue)
+      // Primary (Watson Teal)
       blue10: lightTheme.primary,
       blue9: watsonColors.primary[500],
       blue8: watsonColors.primary[400],
       blue7: watsonColors.primary[300],
       blue6: watsonColors.primary[200],
       blue5: watsonColors.primary[100],
+
+      // Teal (Watson IA Brand)
+      teal10: watsonColors.primary[600],
+      teal9: watsonColors.primary[500],
+      teal8: watsonColors.primary[400],
+      teal7: watsonColors.primary[300],
+      teal6: watsonColors.primary[200],
+      teal5: watsonColors.primary[100],
 
       // Success
       green10: lightTheme.success,
@@ -106,13 +114,21 @@ const config = createTamagui({
       borderColorFocus: darkTheme.primary,
       borderColorPress: darkTheme.borderColorStrong,
 
-      // Primary (Watson Blue)
+      // Primary (Watson Teal)
       blue10: darkTheme.primary,
       blue9: watsonColors.primary[400],
       blue8: watsonColors.primary[300],
       blue7: watsonColors.primary[200],
       blue6: watsonColors.primary[100],
       blue5: darkTheme.primarySubtle,
+
+      // Teal (Watson IA Brand)
+      teal10: watsonColors.primary[500],
+      teal9: watsonColors.primary[400],
+      teal8: watsonColors.primary[300],
+      teal7: watsonColors.primary[200],
+      teal6: watsonColors.primary[100],
+      teal5: darkTheme.primarySubtle,
 
       // Success
       green10: darkTheme.success,

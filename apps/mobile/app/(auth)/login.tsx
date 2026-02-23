@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Image } from "react-native";
 import { Link, router } from "expo-router";
-import { YStack, XStack, H1, Text, Input, Button, Spinner, useTheme } from "tamagui";
+import { YStack, XStack, Text, Input, Button, Spinner, useTheme } from "tamagui";
 import { useAuthStore } from "@/stores/authStore";
-import { Ionicons } from "@expo/vector-icons";
 
 // Watson IA brand colors
 const WATSON_TEAL = "#0d9488";
-const WATSON_SLATE = "#334155";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -46,50 +44,11 @@ export default function LoginScreen() {
       >
         {/* Logo Watson IA */}
         <YStack alignItems="center" marginBottom="$8">
-          {/* Logo Icon - stylized W with brand colors */}
-          <XStack alignItems="center" justifyContent="center" marginBottom="$3">
-            <YStack
-              width={80}
-              height={80}
-              alignItems="center"
-              justifyContent="center"
-              style={{
-                transform: [{ rotate: "45deg" }],
-              }}
-            >
-              {/* Outer diamond - slate */}
-              <YStack
-                position="absolute"
-                width={60}
-                height={60}
-                borderWidth={4}
-                borderColor={WATSON_SLATE}
-                borderRadius={12}
-              />
-              {/* Inner diamond - teal */}
-              <YStack
-                position="absolute"
-                width={40}
-                height={40}
-                borderWidth={4}
-                borderColor={WATSON_TEAL}
-                borderRadius={8}
-                style={{
-                  transform: [{ translateX: 8 }, { translateY: 8 }],
-                }}
-              />
-            </YStack>
-          </XStack>
-
-          {/* Brand Name */}
-          <XStack alignItems="center" gap="$2">
-            <Text fontSize={28} fontWeight="300" color={WATSON_SLATE} letterSpacing={2}>
-              WATSON
-            </Text>
-            <Text fontSize={28} fontWeight="600" color={WATSON_TEAL} letterSpacing={2}>
-              IA
-            </Text>
-          </XStack>
+          <Image
+            source={require("@/../../assets/watson-logo.png")}
+            style={{ width: 180, height: 180, marginBottom: 8 }}
+            resizeMode="contain"
+          />
           <Text color="$gray8" marginTop="$2" fontSize="$3">
             Assistente de vendas inteligente
           </Text>

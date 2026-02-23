@@ -1,6 +1,31 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createPersonaSchema, updatePersonaSchema } from "@watson/shared";
+import pdf from "pdf-parse";
+
+// Extract text from different file types
+async function extractTextFromFile(buffer: Buffer, mimeType: string): Promise<string> {
+  if (mimeType === "application/pdf") {
+    try {
+      const data = await pdf(buffer);
+      return data.text;
+    } catch (error) {
+      console.error("Error extracting PDF text:", error);
+      return "";
+    }
+  }
+
+  if (mimeType === "text/plain" || mimeType === "text/csv") {
+    return buffer.toString("utf-8");
+  }
+
+  // For other types, try to read as text
+  try {
+    return buffer.toString("utf-8");
+  } catch {
+    return "";
+  }
+}
 
 export async function personaRoutes(fastify: FastifyInstance) {
   // List personas
@@ -163,5 +188,139 @@ export async function personaRoutes(fastify: FastifyInstance) {
         },
       },
     };
+  });
+
+  // ============================================
+  // KNOWLEDGE FILES
+  // ============================================
+
+  // List knowledge files for persona
+  fastify.get<{ Params: { id: string } }>("/:id/files", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id } = request.params;
+
+    const persona = await prisma.persona.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!persona) {
+      return reply.notFound("Persona nao encontrada");
+    }
+
+    const files = await prisma.personaKnowledgeFile.findMany({
+      where: { personaId: id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: files,
+    };
+  });
+
+  // Upload knowledge file
+  fastify.post<{ Params: { id: string } }>("/:id/files", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id } = request.params;
+
+    const persona = await prisma.persona.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!persona) {
+      return reply.notFound("Persona nao encontrada");
+    }
+
+    const data = await request.file();
+
+    if (!data) {
+      return reply.badRequest("Arquivo obrigatorio");
+    }
+
+    const allowedMimeTypes = [
+      "application/pdf",
+      "text/plain",
+      "text/csv",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedMimeTypes.includes(data.mimetype)) {
+      return reply.badRequest("Tipo de arquivo nao suportado. Use PDF, TXT, CSV ou DOC/DOCX.");
+    }
+
+    // Read file buffer
+    const chunks: Buffer[] = [];
+    for await (const chunk of data.file) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    // Check file size (10MB max)
+    if (buffer.length > 10 * 1024 * 1024) {
+      return reply.badRequest("Arquivo muito grande. Maximo 10MB.");
+    }
+
+    // Extract text from file
+    const extractedText = await extractTextFromFile(buffer, data.mimetype);
+
+    if (!extractedText.trim()) {
+      return reply.badRequest("Nao foi possivel extrair texto do arquivo");
+    }
+
+    // Save to database
+    const file = await prisma.personaKnowledgeFile.create({
+      data: {
+        personaId: id,
+        fileName: data.filename,
+        mimeType: data.mimetype,
+        extractedText,
+      },
+    });
+
+    fastify.log.info(`Knowledge file uploaded for persona ${id}: ${data.filename} (${extractedText.length} chars)`);
+
+    return reply.code(201).send({
+      success: true,
+      data: {
+        id: file.id,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        textLength: extractedText.length,
+        createdAt: file.createdAt,
+      },
+    });
+  });
+
+  // Delete knowledge file
+  fastify.delete<{ Params: { id: string; fileId: string } }>("/:id/files/:fileId", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id, fileId } = request.params;
+
+    const persona = await prisma.persona.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!persona) {
+      return reply.notFound("Persona nao encontrada");
+    }
+
+    const file = await prisma.personaKnowledgeFile.findFirst({
+      where: { id: fileId, personaId: id },
+    });
+
+    if (!file) {
+      return reply.notFound("Arquivo nao encontrado");
+    }
+
+    await prisma.personaKnowledgeFile.delete({ where: { id: fileId } });
+
+    return { success: true };
   });
 }

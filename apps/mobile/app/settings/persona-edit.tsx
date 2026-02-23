@@ -1,68 +1,79 @@
 import { useEffect, useState, useRef } from "react";
 import { Pressable, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from "react-native";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import { YStack, XStack, Text, Card, ScrollView, useTheme, Switch } from "tamagui";
+import { router, Stack } from "expo-router";
+import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import { usePersonaStore, type CreatePersonaData } from "@/stores/personaStore";
+import * as DocumentPicker from "expo-document-picker";
+import { usePersonaStore, type CreatePersonaData, type PersonaKnowledgeFile } from "@/stores/personaStore";
 
 export default function PersonaEditScreen() {
   const theme = useTheme();
-  const { id } = useLocalSearchParams<{ id?: string }>();
-  const isEditing = !!id;
 
-  const { selectedPersona, isLoading, fetchPersona, createPersona, updatePersona, setSelectedPersona } = usePersonaStore();
+  const {
+    selectedPersona,
+    knowledgeFiles,
+    isLoading,
+    isUploading,
+    fetchDefaultPersona,
+    createPersona,
+    updatePersona,
+    fetchKnowledgeFiles,
+    uploadKnowledgeFile,
+    deleteKnowledgeFile,
+  } = usePersonaStore();
 
+  // Form state
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [greetingMessage, setGreetingMessage] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [formalityLevel, setFormalityLevel] = useState(50);
   const [persuasiveness, setPersuasiveness] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
   const [empathyLevel, setEmpathyLevel] = useState(70);
+  const [responseLength, setResponseLength] = useState<"CURTA" | "MEDIA" | "LONGA">("MEDIA");
+  const [prohibitedTopics, setProhibitedTopics] = useState("");
+  const [businessHoursStart, setBusinessHoursStart] = useState("09:00");
+  const [businessHoursEnd, setBusinessHoursEnd] = useState("18:00");
   const [customInstructions, setCustomInstructions] = useState("");
-  const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
   const loadedPersonaId = useRef<string | null>(null);
 
+  // Load default persona on mount
   useEffect(() => {
-    // Reset when navigating to a different persona or creating new
-    if (id !== loadedPersonaId.current) {
-      setFormInitialized(false);
-      loadedPersonaId.current = id || null;
-    }
+    loadPersona();
+  }, []);
 
-    if (isEditing && id) {
-      fetchPersona(id);
-    } else {
-      // Clear and reset for new persona
-      setSelectedPersona(null);
-      setName("");
-      setSystemPrompt("");
-      setFormalityLevel(50);
-      setPersuasiveness(50);
-      setEnergyLevel(50);
-      setEmpathyLevel(70);
-      setCustomInstructions("");
-      setIsDefault(false);
-      setFormInitialized(true);
+  const loadPersona = async () => {
+    const persona = await fetchDefaultPersona();
+    if (persona) {
+      loadedPersonaId.current = persona.id;
+      // Load knowledge files
+      fetchKnowledgeFiles(persona.id);
     }
-  }, [id]);
+  };
 
+  // Populate form when persona is loaded
   useEffect(() => {
-    // Only populate form once when persona is first loaded
-    if (isEditing && selectedPersona && selectedPersona.id === id && !formInitialized) {
+    if (selectedPersona && !formInitialized) {
       setName(selectedPersona.name);
+      setBusinessName(selectedPersona.businessName || "");
+      setGreetingMessage(selectedPersona.greetingMessage || "");
       setSystemPrompt(selectedPersona.systemPrompt || "");
       setFormalityLevel(selectedPersona.formalityLevel ?? 50);
       setPersuasiveness(selectedPersona.persuasiveness ?? 50);
       setEnergyLevel(selectedPersona.energyLevel ?? 50);
       setEmpathyLevel(selectedPersona.empathyLevel ?? 70);
+      setResponseLength(selectedPersona.responseLength || "MEDIA");
+      setProhibitedTopics(selectedPersona.prohibitedTopics || "");
+      setBusinessHoursStart(selectedPersona.businessHoursStart || "09:00");
+      setBusinessHoursEnd(selectedPersona.businessHoursEnd || "18:00");
       setCustomInstructions(selectedPersona.customInstructions || "");
-      setIsDefault(selectedPersona.isDefault);
       setFormInitialized(true);
     }
-  }, [selectedPersona, formInitialized, id]);
+  }, [selectedPersona, formInitialized]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -74,43 +85,91 @@ export default function PersonaEditScreen() {
 
     const data: CreatePersonaData = {
       name: name.trim(),
+      businessName: businessName.trim() || undefined,
+      greetingMessage: greetingMessage.trim() || undefined,
       systemPrompt: systemPrompt.trim() || undefined,
       formalityLevel,
       persuasiveness,
       energyLevel,
       empathyLevel,
+      responseLength,
+      prohibitedTopics: prohibitedTopics.trim() || undefined,
+      businessHoursStart: businessHoursStart || undefined,
+      businessHoursEnd: businessHoursEnd || undefined,
       customInstructions: customInstructions.trim() || undefined,
-      isDefault,
+      isDefault: true,
     };
 
     try {
-      if (isEditing && id) {
-        await updatePersona(id, data);
-        Alert.alert("Sucesso", "Persona atualizada com sucesso", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+      if (selectedPersona?.id) {
+        await updatePersona(selectedPersona.id, data);
+        Alert.alert("Sucesso", "Configuracoes salvas com sucesso");
       } else {
-        await createPersona(data);
-        Alert.alert("Sucesso", "Persona criada com sucesso", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+        const newPersona = await createPersona(data);
+        loadedPersonaId.current = newPersona.id;
+        Alert.alert("Sucesso", "Persona criada com sucesso");
       }
     } catch (error: any) {
-      Alert.alert("Erro", error.message || "Erro ao salvar persona");
+      Alert.alert("Erro", error.message || "Erro ao salvar configuracoes");
     }
 
     setSaving(false);
   };
 
+  const handlePickFile = async () => {
+    if (!selectedPersona?.id) {
+      Alert.alert("Erro", "Salve a persona primeiro antes de adicionar arquivos");
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "text/plain",
+          "text/csv",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const file = result.assets[0];
+        await uploadKnowledgeFile(selectedPersona.id, {
+          uri: file.uri,
+          name: file.name,
+          mimeType: file.mimeType || "application/octet-stream",
+        });
+        Alert.alert("Sucesso", "Arquivo enviado com sucesso");
+      }
+    } catch (error: any) {
+      Alert.alert("Erro", error.message || "Erro ao enviar arquivo");
+    }
+  };
+
+  const handleDeleteFile = (file: PersonaKnowledgeFile) => {
+    if (!selectedPersona?.id) return;
+
+    Alert.alert("Confirmar", `Remover arquivo "${file.fileName}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Remover",
+        style: "destructive",
+        onPress: () => deleteKnowledgeFile(selectedPersona.id, file.id),
+      },
+    ]);
+  };
+
   const getLevelDescription = (level: number, type: string): string => {
     const descriptions: Record<string, Record<string, string>> = {
       formality: {
-        low: "Casual e amigavel, usa girias e emojis",
+        low: "Casual e amigavel, usa emojis",
         medium: "Equilibrado, profissional mas acessivel",
-        high: "Formal e profissional, linguagem corporativa",
+        high: "Formal, linguagem corporativa",
       },
       persuasiveness: {
-        low: "Informativo, sem pressao de vendas",
+        low: "Informativo, sem pressao",
         medium: "Gentilmente sugestivo",
         high: "Persuasivo, focado em conversao",
       },
@@ -120,7 +179,7 @@ export default function PersonaEditScreen() {
         high: "Energetico e entusiasmado",
       },
       empathy: {
-        low: "Direto ao ponto, objetivo",
+        low: "Direto ao ponto",
         medium: "Atencioso e educado",
         high: "Muito empatico e acolhedor",
       },
@@ -130,7 +189,7 @@ export default function PersonaEditScreen() {
     return descriptions[type]?.[category] || "";
   };
 
-  if (isEditing && isLoading && !selectedPersona) {
+  if (isLoading && !selectedPersona) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
         <ActivityIndicator size="large" color={theme.blue10.val} />
@@ -143,7 +202,7 @@ export default function PersonaEditScreen() {
     <>
       <Stack.Screen
         options={{
-          title: isEditing ? "Editar Persona" : "Nova Persona",
+          title: "Configurar IA",
           headerRight: () => (
             <Pressable onPress={handleSave} disabled={saving}>
               {saving ? (
@@ -167,48 +226,71 @@ export default function PersonaEditScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$4">
-            {/* Name */}
+            {/* Business Info */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-                Nome da Persona
+              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+                Informacoes do Negocio
               </Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="Ex: Assistente de Vendas"
-                placeholderTextColor={theme.gray8.val}
-                style={{
-                  backgroundColor: theme.background.val,
-                  borderRadius: 8,
-                  padding: 12,
-                  fontSize: 16,
-                  color: theme.color.val,
-                }}
-              />
+
+              <YStack gap="$3">
+                <YStack>
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Nome da Empresa</Text>
+                  <TextInput
+                    value={businessName}
+                    onChangeText={setBusinessName}
+                    placeholder="Ex: Loja do Joao"
+                    placeholderTextColor={theme.gray8.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                    }}
+                  />
+                </YStack>
+
+                <YStack>
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Nome da Persona</Text>
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Ex: Assistente Virtual"
+                    placeholderTextColor={theme.gray8.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                    }}
+                  />
+                </YStack>
+              </YStack>
             </Card>
 
-            {/* System Prompt */}
+            {/* Greeting Message */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
               <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-                System Prompt (Opcional)
+                Mensagem de Saudacao
               </Text>
               <Text fontSize="$2" color="$gray8" marginBottom="$3">
-                Instrucoes detalhadas para a IA. Se preenchido, substitui as configuracoes abaixo.
+                Primeira mensagem para novos contatos
               </Text>
               <TextInput
-                value={systemPrompt}
-                onChangeText={setSystemPrompt}
-                placeholder="Voce e um assistente..."
+                value={greetingMessage}
+                onChangeText={setGreetingMessage}
+                placeholder="Ola! Bem-vindo a nossa loja..."
                 placeholderTextColor={theme.gray8.val}
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
                 style={{
                   backgroundColor: theme.background.val,
                   borderRadius: 8,
                   padding: 12,
                   fontSize: 16,
                   color: theme.color.val,
-                  minHeight: 100,
+                  minHeight: 80,
                   textAlignVertical: "top",
                 }}
               />
@@ -305,18 +387,126 @@ export default function PersonaEditScreen() {
               </YStack>
             </Card>
 
-            {/* Custom Instructions */}
+            {/* Response Length */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+                Tamanho das Respostas
+              </Text>
+              <XStack gap="$2">
+                {(["CURTA", "MEDIA", "LONGA"] as const).map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={() => setResponseLength(option)}
+                    style={{ flex: 1 }}
+                  >
+                    <YStack
+                      padding="$3"
+                      borderRadius="$3"
+                      alignItems="center"
+                      backgroundColor={responseLength === option ? "$blue10" : "$background"}
+                    >
+                      <Text
+                        color={responseLength === option ? "white" : "$color"}
+                        fontWeight="600"
+                        fontSize="$3"
+                      >
+                        {option === "CURTA" ? "Curta" : option === "MEDIA" ? "Media" : "Longa"}
+                      </Text>
+                      <Text
+                        fontSize="$1"
+                        color={responseLength === option ? "white" : "$gray8"}
+                        marginTop="$1"
+                      >
+                        {option === "CURTA" ? "1 frase" : option === "MEDIA" ? "2-3 frases" : "4-5 frases"}
+                      </Text>
+                    </YStack>
+                  </Pressable>
+                ))}
+              </XStack>
+            </Card>
+
+            {/* Prohibited Topics */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
               <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-                Instrucoes Adicionais (Opcional)
+                Temas Proibidos
               </Text>
               <Text fontSize="$2" color="$gray8" marginBottom="$3">
-                Regras especificas do seu negocio, como horarios, produtos, etc.
+                Assuntos que a IA nunca deve mencionar
               </Text>
               <TextInput
-                value={customInstructions}
-                onChangeText={setCustomInstructions}
-                placeholder="Ex: Nosso horario de atendimento e das 9h as 18h..."
+                value={prohibitedTopics}
+                onChangeText={setProhibitedTopics}
+                placeholder="Ex: precos de concorrentes, politica, religiao..."
+                placeholderTextColor={theme.gray8.val}
+                multiline
+                numberOfLines={3}
+                style={{
+                  backgroundColor: theme.background.val,
+                  borderRadius: 8,
+                  padding: 12,
+                  fontSize: 16,
+                  color: theme.color.val,
+                  minHeight: 80,
+                  textAlignVertical: "top",
+                }}
+              />
+            </Card>
+
+            {/* Business Hours */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+                Horario de Atendimento
+              </Text>
+              <XStack gap="$3">
+                <YStack flex={1}>
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Inicio</Text>
+                  <TextInput
+                    value={businessHoursStart}
+                    onChangeText={setBusinessHoursStart}
+                    placeholder="09:00"
+                    placeholderTextColor={theme.gray8.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                      textAlign: "center",
+                    }}
+                  />
+                </YStack>
+                <YStack flex={1}>
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Fim</Text>
+                  <TextInput
+                    value={businessHoursEnd}
+                    onChangeText={setBusinessHoursEnd}
+                    placeholder="18:00"
+                    placeholderTextColor={theme.gray8.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                      textAlign: "center",
+                    }}
+                  />
+                </YStack>
+              </XStack>
+            </Card>
+
+            {/* System Prompt */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
+                Prompt do Sistema (Avancado)
+              </Text>
+              <Text fontSize="$2" color="$gray8" marginBottom="$3">
+                Instrucoes detalhadas para a IA
+              </Text>
+              <TextInput
+                value={systemPrompt}
+                onChangeText={setSystemPrompt}
+                placeholder="Voce e um assistente especializado em..."
                 placeholderTextColor={theme.gray8.val}
                 multiline
                 numberOfLines={4}
@@ -332,25 +522,109 @@ export default function PersonaEditScreen() {
               />
             </Card>
 
-            {/* Default Toggle */}
+            {/* Custom Instructions */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <XStack justifyContent="space-between" alignItems="center">
-                <YStack flex={1}>
+              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
+                Instrucoes Adicionais
+              </Text>
+              <Text fontSize="$2" color="$gray8" marginBottom="$3">
+                Regras especificas do seu negocio
+              </Text>
+              <TextInput
+                value={customInstructions}
+                onChangeText={setCustomInstructions}
+                placeholder="Ex: Nosso prazo de entrega e de 3-5 dias uteis..."
+                placeholderTextColor={theme.gray8.val}
+                multiline
+                numberOfLines={4}
+                style={{
+                  backgroundColor: theme.background.val,
+                  borderRadius: 8,
+                  padding: 12,
+                  fontSize: 16,
+                  color: theme.color.val,
+                  minHeight: 100,
+                  textAlignVertical: "top",
+                }}
+              />
+            </Card>
+
+            {/* Knowledge Files */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack justifyContent="space-between" alignItems="center" marginBottom="$3">
+                <YStack>
                   <Text fontSize="$3" fontWeight="600" color="$color">
-                    Persona Padrao
+                    Arquivos de Conhecimento
                   </Text>
                   <Text fontSize="$2" color="$gray8" marginTop="$1">
-                    Usar esta persona para novas conversas
+                    PDFs, docs com informacoes do negocio
                   </Text>
                 </YStack>
-                <Switch
-                  checked={isDefault}
-                  onCheckedChange={setIsDefault}
-                  backgroundColor={isDefault ? "$blue10" : "$gray6"}
-                >
-                  <Switch.Thumb animation="quick" backgroundColor="white" />
-                </Switch>
+                <Pressable onPress={handlePickFile} disabled={isUploading}>
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color={theme.blue10.val} />
+                  ) : (
+                    <XStack
+                      backgroundColor="$blue10"
+                      paddingHorizontal="$3"
+                      paddingVertical="$2"
+                      borderRadius="$3"
+                      gap="$1"
+                      alignItems="center"
+                    >
+                      <Ionicons name="add" size={18} color="white" />
+                      <Text color="white" fontWeight="600" fontSize="$3">Adicionar</Text>
+                    </XStack>
+                  )}
+                </Pressable>
               </XStack>
+
+              {knowledgeFiles.length === 0 ? (
+                <YStack
+                  padding="$4"
+                  backgroundColor="$background"
+                  borderRadius="$3"
+                  alignItems="center"
+                >
+                  <Ionicons name="document-outline" size={32} color={theme.gray7.val} />
+                  <Text color="$gray8" marginTop="$2" textAlign="center">
+                    Nenhum arquivo adicionado
+                  </Text>
+                  <Text color="$gray7" fontSize="$2" marginTop="$1" textAlign="center">
+                    Adicione PDFs ou documentos para a IA usar como referencia
+                  </Text>
+                </YStack>
+              ) : (
+                <YStack gap="$2">
+                  {knowledgeFiles.map((file) => (
+                    <XStack
+                      key={file.id}
+                      padding="$3"
+                      backgroundColor="$background"
+                      borderRadius="$3"
+                      alignItems="center"
+                      gap="$3"
+                    >
+                      <Ionicons
+                        name={file.mimeType === "application/pdf" ? "document-text" : "document"}
+                        size={24}
+                        color={theme.blue10.val}
+                      />
+                      <YStack flex={1}>
+                        <Text color="$color" fontSize="$3" numberOfLines={1}>
+                          {file.fileName}
+                        </Text>
+                        <Text color="$gray8" fontSize="$2">
+                          {new Date(file.createdAt).toLocaleDateString("pt-BR")}
+                        </Text>
+                      </YStack>
+                      <Pressable onPress={() => handleDeleteFile(file)}>
+                        <Ionicons name="trash-outline" size={20} color={theme.red10.val} />
+                      </Pressable>
+                    </XStack>
+                  ))}
+                </YStack>
+              )}
             </Card>
           </YStack>
         </ScrollView>

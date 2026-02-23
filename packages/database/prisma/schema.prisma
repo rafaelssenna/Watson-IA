@@ -448,28 +448,55 @@ model FAQ {
 // ============================================
 
 model Persona {
-  id                 String       @id @default(cuid())
+  id                 String         @id @default(cuid())
   organizationId     String
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization       Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name               String
   description        String?
-  isDefault          Boolean      @default(false)
-  isActive           Boolean      @default(true)
+  isDefault          Boolean        @default(false)
+  isActive           Boolean        @default(true)
   type               PersonaType
-  formalityLevel     Int          @default(50)
-  persuasiveness     Int          @default(50)
-  energyLevel        Int          @default(50)
-  empathyLevel       Int          @default(50)
-  systemPrompt       String?      @db.Text
-  customInstructions String?      @db.Text
+  formalityLevel     Int            @default(50)
+  persuasiveness     Int            @default(50)
+  energyLevel        Int            @default(50)
+  empathyLevel       Int            @default(50)
+  systemPrompt       String?        @db.Text
+  customInstructions String?        @db.Text
   responseExamples   Json?
   scheduleConfig     Json?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  // New fields
+  businessName       String?
+  greetingMessage    String?        @db.Text
+  prohibitedTopics   String?        @db.Text
+  responseLength     ResponseLength @default(MEDIA)
+  businessHoursStart String?
+  businessHoursEnd   String?
+  workDays           String[]       @default(["seg", "ter", "qua", "qui", "sex"])
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
-  conversations Conversation[]
+  conversations  Conversation[]
+  knowledgeFiles PersonaKnowledgeFile[]
 
   @@index([organizationId])
+}
+
+enum ResponseLength {
+  CURTA
+  MEDIA
+  LONGA
+}
+
+model PersonaKnowledgeFile {
+  id            String   @id @default(cuid())
+  personaId     String
+  persona       Persona  @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  fileName      String
+  mimeType      String
+  extractedText String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([personaId])
 }
 
 enum PersonaType {

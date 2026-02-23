@@ -296,6 +296,7 @@ async function generateAndSendAIResponse(
     if (!activePersona) {
       activePersona = await prisma.persona.findFirst({
         where: { organizationId: orgId, isDefault: true },
+        include: { knowledgeFiles: true },
       });
       // Update conversation with default persona for future messages
       if (activePersona) {
@@ -304,17 +305,36 @@ async function generateAndSendAIResponse(
           data: { activePersonaId: activePersona.id },
         });
       }
+    } else {
+      // Load knowledge files for the active persona
+      activePersona = await prisma.persona.findUnique({
+        where: { id: activePersona.id },
+        include: { knowledgeFiles: true },
+      });
+    }
+
+    // Combine knowledge files content
+    let knowledgeContent = "";
+    if (activePersona?.knowledgeFiles?.length) {
+      knowledgeContent = activePersona.knowledgeFiles
+        .map((f: any) => f.extractedText)
+        .filter(Boolean)
+        .join("\n\n---\n\n");
     }
 
     const persona: PersonaConfig = activePersona
       ? {
           name: activePersona.name,
-          systemPrompt: activePersona.systemPrompt,
+          systemPrompt: activePersona.systemPrompt || undefined,
           formalityLevel: activePersona.formalityLevel,
           persuasiveness: activePersona.persuasiveness,
           energyLevel: activePersona.energyLevel,
           empathyLevel: activePersona.empathyLevel,
-          customInstructions: activePersona.customInstructions,
+          customInstructions: activePersona.customInstructions || undefined,
+          businessName: activePersona.businessName || org?.name,
+          prohibitedTopics: activePersona.prohibitedTopics || undefined,
+          responseLength: activePersona.responseLength as "CURTA" | "MEDIA" | "LONGA" | undefined,
+          knowledgeContent: knowledgeContent || undefined,
         }
       : {
           name: "Assistente Watson",
@@ -322,10 +342,11 @@ async function generateAndSendAIResponse(
           persuasiveness: 50,
           energyLevel: 50,
           empathyLevel: 70,
+          businessName: org?.name,
         };
 
     fastify.log.info(
-      `Using persona: ${persona.name} | formality=${persona.formalityLevel} | persuasiveness=${persona.persuasiveness} | energy=${persona.energyLevel} | empathy=${persona.empathyLevel} | hasPrompt=${!!persona.systemPrompt}`
+      `Using persona: ${persona.name} | formality=${persona.formalityLevel} | energy=${persona.energyLevel} | responseLength=${persona.responseLength} | hasKnowledge=${!!persona.knowledgeContent}`
     );
 
     // Generate AI response
@@ -335,8 +356,7 @@ async function generateAndSendAIResponse(
       const aiResult = await generateResponse(
         incomingMessage,
         conversationHistory,
-        persona,
-        org?.name
+        persona
       );
 
       if (aiResult.success && aiResult.response) {

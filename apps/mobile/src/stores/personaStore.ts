@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { api } from "@/services/api";
 
+export interface PersonaKnowledgeFile {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  createdAt: string;
+}
+
 export interface Persona {
   id: string;
   name: string;
@@ -13,6 +20,14 @@ export interface Persona {
   customInstructions: string | null;
   isDefault: boolean;
   isActive: boolean;
+  // New fields
+  businessName: string | null;
+  greetingMessage: string | null;
+  prohibitedTopics: string | null;
+  responseLength: "CURTA" | "MEDIA" | "LONGA";
+  businessHoursStart: string | null;
+  businessHoursEnd: string | null;
+  workDays: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +42,14 @@ export interface CreatePersonaData {
   empathyLevel?: number;
   customInstructions?: string;
   isDefault?: boolean;
+  // New fields
+  businessName?: string;
+  greetingMessage?: string;
+  prohibitedTopics?: string;
+  responseLength?: "CURTA" | "MEDIA" | "LONGA";
+  businessHoursStart?: string;
+  businessHoursEnd?: string;
+  workDays?: string[];
 }
 
 export interface UpdatePersonaData extends Partial<CreatePersonaData> {}
@@ -34,25 +57,34 @@ export interface UpdatePersonaData extends Partial<CreatePersonaData> {}
 interface PersonaState {
   personas: Persona[];
   selectedPersona: Persona | null;
+  knowledgeFiles: PersonaKnowledgeFile[];
   isLoading: boolean;
+  isUploading: boolean;
   error: string | null;
 }
 
 interface PersonaActions {
   fetchPersonas: () => Promise<void>;
   fetchPersona: (id: string) => Promise<Persona | null>;
+  fetchDefaultPersona: () => Promise<Persona | null>;
   createPersona: (data: CreatePersonaData) => Promise<Persona>;
   updatePersona: (id: string, data: UpdatePersonaData) => Promise<Persona>;
   deletePersona: (id: string) => Promise<void>;
   setSelectedPersona: (persona: Persona | null) => void;
   clearError: () => void;
+  // File management
+  fetchKnowledgeFiles: (personaId: string) => Promise<void>;
+  uploadKnowledgeFile: (personaId: string, file: { uri: string; name: string; mimeType: string }) => Promise<void>;
+  deleteKnowledgeFile: (personaId: string, fileId: string) => Promise<void>;
 }
 
 export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) => ({
   // State
   personas: [],
   selectedPersona: null,
+  knowledgeFiles: [],
   isLoading: false,
+  isUploading: false,
   error: null,
 
   // Actions
@@ -174,5 +206,81 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
 
   clearError: () => {
     set({ error: null });
+  },
+
+  fetchDefaultPersona: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.get<{ success: boolean; data: Persona[] }>("/personas");
+      if (response.data.success && response.data.data.length > 0) {
+        // Find default persona or use first one
+        const defaultPersona = response.data.data.find((p) => p.isDefault) || response.data.data[0];
+        set({ personas: response.data.data, selectedPersona: defaultPersona, isLoading: false });
+        return defaultPersona;
+      }
+      set({ isLoading: false });
+      return null;
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error.response?.data?.error?.message || "Erro ao carregar persona",
+      });
+      return null;
+    }
+  },
+
+  fetchKnowledgeFiles: async (personaId: string) => {
+    try {
+      const response = await api.get<{ success: boolean; data: PersonaKnowledgeFile[] }>(`/personas/${personaId}/files`);
+      if (response.data.success) {
+        set({ knowledgeFiles: response.data.data });
+      }
+    } catch (error: any) {
+      console.error("Error fetching knowledge files:", error);
+    }
+  },
+
+  uploadKnowledgeFile: async (personaId: string, file: { uri: string; name: string; mimeType: string }) => {
+    set({ isUploading: true, error: null });
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType,
+      } as any);
+
+      const response = await api.post(`/personas/${personaId}/files`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        // Refetch files
+        await get().fetchKnowledgeFiles(personaId);
+      }
+      set({ isUploading: false });
+    } catch (error: any) {
+      set({
+        isUploading: false,
+        error: error.response?.data?.error?.message || "Erro ao fazer upload",
+      });
+      throw error;
+    }
+  },
+
+  deleteKnowledgeFile: async (personaId: string, fileId: string) => {
+    try {
+      await api.delete(`/personas/${personaId}/files/${fileId}`);
+      set((state) => ({
+        knowledgeFiles: state.knowledgeFiles.filter((f) => f.id !== fileId),
+      }));
+    } catch (error: any) {
+      set({
+        error: error.response?.data?.error?.message || "Erro ao deletar arquivo",
+      });
+      throw error;
+    }
   },
 }));

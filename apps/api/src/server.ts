@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import websocket from "@fastify/websocket";
@@ -59,6 +60,11 @@ async function buildServer() {
 
   await fastify.register(sensible);
   await fastify.register(websocket);
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB max file size
+    },
+  });
 
   // Register authenticate decorator
   await fastify.register(authenticatePlugin);

@@ -30,6 +30,11 @@ export interface PersonaConfig {
   energyLevel: number; // 0-100
   empathyLevel: number; // 0-100
   customInstructions?: string;
+  // New fields
+  businessName?: string;
+  prohibitedTopics?: string;
+  responseLength?: "CURTA" | "MEDIA" | "LONGA";
+  knowledgeContent?: string; // Combined text from knowledge files
 }
 
 export interface AIResponseResult {
@@ -40,7 +45,9 @@ export interface AIResponseResult {
 }
 
 // Build system prompt from persona configuration
-function buildSystemPrompt(persona: PersonaConfig, businessName?: string): string {
+function buildSystemPrompt(persona: PersonaConfig): string {
+  const businessName = persona.businessName;
+
   // Build personality descriptions based on slider values
   const formalityDesc =
     persona.formalityLevel > 70
@@ -78,6 +85,14 @@ function buildSystemPrompt(persona: PersonaConfig, businessName?: string): strin
         ? "Use emojis com moderacao (maximo 1 por mensagem)"
         : "Pode usar emojis para ser mais amigavel";
 
+  // Build response length rule
+  const responseLengthDesc =
+    persona.responseLength === "CURTA"
+      ? "Responda de forma MUITO breve (1 frase apenas)"
+      : persona.responseLength === "LONGA"
+        ? "Responda de forma detalhada (ate 4-5 frases)"
+        : "Responda de forma concisa (2-3 frases)";
+
   // Base prompt with personality always applied
   let prompt = `Voce e ${persona.name}, um assistente virtual inteligente${businessName ? ` da empresa ${businessName}` : ""}.
 
@@ -87,6 +102,7 @@ REGRAS OBRIGATORIAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
 3. Energia: ${energyDesc}
 4. Empatia: ${empathyDesc}
 5. Emojis: ${emojiRule}
+6. Tamanho: ${responseLengthDesc}
 
 Seu papel:
 - Conversar com os clientes via WhatsApp
@@ -95,9 +111,18 @@ Seu papel:
 
 Regras adicionais:
 - Responda sempre em portugues brasileiro
-- Seja conciso (maximo 2-3 frases)
 - Nao use formatacao markdown (sem *, #, etc)
 - Se o cliente perguntar algo que voce nao sabe, pergunte mais detalhes`;
+
+  // Add prohibited topics if provided
+  if (persona.prohibitedTopics?.trim()) {
+    prompt += `\n\nTEMAS PROIBIDOS (NUNCA mencione ou discuta):\n${persona.prohibitedTopics}`;
+  }
+
+  // Add knowledge content if provided
+  if (persona.knowledgeContent?.trim()) {
+    prompt += `\n\nINFORMACOES DO NEGOCIO (use estas informacoes para responder):\n${persona.knowledgeContent}`;
+  }
 
   // Add custom system prompt if provided
   if (persona.systemPrompt) {
@@ -116,8 +141,7 @@ Regras adicionais:
 export async function generateResponse(
   incomingMessage: string,
   conversationHistory: ConversationMessage[],
-  persona: PersonaConfig,
-  businessName?: string
+  persona: PersonaConfig
 ): Promise<AIResponseResult> {
   try {
     console.log(`[ai.generateResponse] Generating response for: "${incomingMessage.substring(0, 50)}..."`);
@@ -126,7 +150,7 @@ export async function generateResponse(
     // Use gemini-pro which is widely available
     const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const systemPrompt = buildSystemPrompt(persona, businessName);
+    const systemPrompt = buildSystemPrompt(persona);
 
     // Build conversation for Gemini
     // Gemini uses a different format - we'll use the chat API

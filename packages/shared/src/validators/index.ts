@@ -54,6 +54,8 @@ export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type UpdateConversationInput = z.infer<typeof updateConversationSchema>;
 
 // Persona Validators
+export const responseLengthEnum = z.enum(["CURTA", "MEDIA", "LONGA"]);
+
 export const createPersonaSchema = z.object({
   name: z.string().min(2, "Nome obrigatorio"),
   type: z.enum(["OWNER", "SECRETARY", "TECHNICAL", "COMMERCIAL", "AGGRESSIVE_SALES", "CUSTOM"]).default("CUSTOM"),
@@ -65,12 +67,21 @@ export const createPersonaSchema = z.object({
   empathyLevel: z.number().min(0).max(100).default(50),
   customInstructions: z.string().optional(),
   isDefault: z.boolean().default(false),
+  // New fields
+  businessName: z.string().optional(),
+  greetingMessage: z.string().optional(),
+  prohibitedTopics: z.string().optional(),
+  responseLength: responseLengthEnum.default("MEDIA"),
+  businessHoursStart: z.string().optional(),
+  businessHoursEnd: z.string().optional(),
+  workDays: z.array(z.string()).default(["seg", "ter", "qua", "qui", "sex"]),
 });
 
 export const updatePersonaSchema = createPersonaSchema.partial();
 
 export type CreatePersonaInput = z.infer<typeof createPersonaSchema>;
 export type UpdatePersonaInput = z.infer<typeof updatePersonaSchema>;
+export type ResponseLength = z.infer<typeof responseLengthEnum>;
 
 // Trigger Validators
 export const createTriggerSchema = z.object({

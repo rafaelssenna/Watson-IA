@@ -4,23 +4,17 @@ import { router, Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import * as DocumentPicker from "expo-document-picker";
-import { usePersonaStore, type CreatePersonaData, type PersonaKnowledgeFile } from "@/stores/personaStore";
+import { usePersonaStore, type CreatePersonaData } from "@/stores/personaStore";
 
 export default function PersonaEditScreen() {
   const theme = useTheme();
 
   const {
     selectedPersona,
-    knowledgeFiles,
     isLoading,
-    isUploading,
     fetchDefaultPersona,
     createPersona,
     updatePersona,
-    fetchKnowledgeFiles,
-    uploadKnowledgeFile,
-    deleteKnowledgeFile,
   } = usePersonaStore();
 
   // Form state
@@ -36,6 +30,7 @@ export default function PersonaEditScreen() {
   const [prohibitedTopics, setProhibitedTopics] = useState("");
   const [businessHoursStart, setBusinessHoursStart] = useState("09:00");
   const [businessHoursEnd, setBusinessHoursEnd] = useState("18:00");
+  const [workDays, setWorkDays] = useState<string[]>(["seg", "ter", "qua", "qui", "sex"]);
   const [customInstructions, setCustomInstructions] = useState("");
   const [saving, setSaving] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
@@ -50,8 +45,6 @@ export default function PersonaEditScreen() {
     const persona = await fetchDefaultPersona();
     if (persona) {
       loadedPersonaId.current = persona.id;
-      // Load knowledge files
-      fetchKnowledgeFiles(persona.id);
     }
   };
 
@@ -70,6 +63,7 @@ export default function PersonaEditScreen() {
       setProhibitedTopics(selectedPersona.prohibitedTopics || "");
       setBusinessHoursStart(selectedPersona.businessHoursStart || "09:00");
       setBusinessHoursEnd(selectedPersona.businessHoursEnd || "18:00");
+      setWorkDays(selectedPersona.workDays || ["seg", "ter", "qua", "qui", "sex"]);
       setCustomInstructions(selectedPersona.customInstructions || "");
       setFormInitialized(true);
     }
@@ -96,6 +90,7 @@ export default function PersonaEditScreen() {
       prohibitedTopics: prohibitedTopics.trim() || undefined,
       businessHoursStart: businessHoursStart || undefined,
       businessHoursEnd: businessHoursEnd || undefined,
+      workDays: workDays.length > 0 ? workDays : undefined,
       customInstructions: customInstructions.trim() || undefined,
       isDefault: true,
     };
@@ -114,51 +109,6 @@ export default function PersonaEditScreen() {
     }
 
     setSaving(false);
-  };
-
-  const handlePickFile = async () => {
-    if (!selectedPersona?.id) {
-      Alert.alert("Erro", "Salve a persona primeiro antes de adicionar arquivos");
-      return;
-    }
-
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/pdf",
-          "text/plain",
-          "text/csv",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ],
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const file = result.assets[0];
-        await uploadKnowledgeFile(selectedPersona.id, {
-          uri: file.uri,
-          name: file.name,
-          mimeType: file.mimeType || "application/octet-stream",
-        });
-        Alert.alert("Sucesso", "Arquivo enviado com sucesso");
-      }
-    } catch (error: any) {
-      Alert.alert("Erro", error.message || "Erro ao enviar arquivo");
-    }
-  };
-
-  const handleDeleteFile = (file: PersonaKnowledgeFile) => {
-    if (!selectedPersona?.id) return;
-
-    Alert.alert("Confirmar", `Remover arquivo "${file.fileName}"?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Remover",
-        style: "destructive",
-        onPress: () => deleteKnowledgeFile(selectedPersona.id, file.id),
-      },
-    ]);
   };
 
   const getLevelDescription = (level: number, type: string): string => {
@@ -454,45 +404,119 @@ export default function PersonaEditScreen() {
 
             {/* Business Hours */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
-                Horario de Atendimento
-              </Text>
+              <XStack alignItems="center" gap="$2" marginBottom="$3">
+                <Ionicons name="time-outline" size={20} color={theme.blue10.val} />
+                <Text fontSize="$3" fontWeight="600" color="$color">
+                  Horario de Atendimento
+                </Text>
+              </XStack>
+
+              {/* Work Days */}
+              <YStack marginBottom="$4">
+                <Text fontSize="$2" color="$gray8" marginBottom="$2">Dias de funcionamento</Text>
+                <XStack flexWrap="wrap" gap="$2">
+                  {[
+                    { key: "seg", label: "Seg" },
+                    { key: "ter", label: "Ter" },
+                    { key: "qua", label: "Qua" },
+                    { key: "qui", label: "Qui" },
+                    { key: "sex", label: "Sex" },
+                    { key: "sab", label: "Sab" },
+                    { key: "dom", label: "Dom" },
+                  ].map((day) => {
+                    const isSelected = workDays.includes(day.key);
+                    return (
+                      <Pressable
+                        key={day.key}
+                        onPress={() => {
+                          if (isSelected) {
+                            setWorkDays(workDays.filter((d) => d !== day.key));
+                          } else {
+                            setWorkDays([...workDays, day.key]);
+                          }
+                        }}
+                      >
+                        <YStack
+                          paddingHorizontal="$3"
+                          paddingVertical="$2"
+                          borderRadius="$3"
+                          backgroundColor={isSelected ? "$blue10" : "$background"}
+                          borderWidth={1}
+                          borderColor={isSelected ? "$blue10" : "$gray6"}
+                        >
+                          <Text
+                            fontSize="$2"
+                            fontWeight="600"
+                            color={isSelected ? "white" : "$gray8"}
+                          >
+                            {day.label}
+                          </Text>
+                        </YStack>
+                      </Pressable>
+                    );
+                  })}
+                </XStack>
+              </YStack>
+
+              {/* Time Inputs */}
               <XStack gap="$3">
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Inicio</Text>
-                  <TextInput
-                    value={businessHoursStart}
-                    onChangeText={setBusinessHoursStart}
-                    placeholder="09:00"
-                    placeholderTextColor={theme.gray8.val}
-                    style={{
-                      backgroundColor: theme.background.val,
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 16,
-                      color: theme.color.val,
-                      textAlign: "center",
-                    }}
-                  />
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Abre as</Text>
+                  <XStack
+                    backgroundColor="$background"
+                    borderRadius="$3"
+                    paddingHorizontal="$3"
+                    alignItems="center"
+                    gap="$2"
+                  >
+                    <Ionicons name="sunny-outline" size={18} color={theme.yellow10.val} />
+                    <TextInput
+                      value={businessHoursStart}
+                      onChangeText={setBusinessHoursStart}
+                      placeholder="09:00"
+                      placeholderTextColor={theme.gray8.val}
+                      keyboardType="numbers-and-punctuation"
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        color: theme.color.val,
+                        textAlign: "center",
+                      }}
+                    />
+                  </XStack>
                 </YStack>
                 <YStack flex={1}>
-                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Fim</Text>
-                  <TextInput
-                    value={businessHoursEnd}
-                    onChangeText={setBusinessHoursEnd}
-                    placeholder="18:00"
-                    placeholderTextColor={theme.gray8.val}
-                    style={{
-                      backgroundColor: theme.background.val,
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 16,
-                      color: theme.color.val,
-                      textAlign: "center",
-                    }}
-                  />
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Fecha as</Text>
+                  <XStack
+                    backgroundColor="$background"
+                    borderRadius="$3"
+                    paddingHorizontal="$3"
+                    alignItems="center"
+                    gap="$2"
+                  >
+                    <Ionicons name="moon-outline" size={18} color={theme.purple10.val} />
+                    <TextInput
+                      value={businessHoursEnd}
+                      onChangeText={setBusinessHoursEnd}
+                      placeholder="18:00"
+                      placeholderTextColor={theme.gray8.val}
+                      keyboardType="numbers-and-punctuation"
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        color: theme.color.val,
+                        textAlign: "center",
+                      }}
+                    />
+                  </XStack>
                 </YStack>
               </XStack>
+
+              <Text fontSize="$1" color="$gray7" marginTop="$3">
+                Fora deste horario, a IA informara o horario de funcionamento
+              </Text>
             </Card>
 
             {/* System Prompt */}
@@ -549,83 +573,6 @@ export default function PersonaEditScreen() {
               />
             </Card>
 
-            {/* Knowledge Files */}
-            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <XStack justifyContent="space-between" alignItems="center" marginBottom="$3">
-                <YStack>
-                  <Text fontSize="$3" fontWeight="600" color="$color">
-                    Arquivos de Conhecimento
-                  </Text>
-                  <Text fontSize="$2" color="$gray8" marginTop="$1">
-                    PDFs, docs com informacoes do negocio
-                  </Text>
-                </YStack>
-                <Pressable onPress={handlePickFile} disabled={isUploading}>
-                  {isUploading ? (
-                    <ActivityIndicator size="small" color={theme.blue10.val} />
-                  ) : (
-                    <XStack
-                      backgroundColor="$blue10"
-                      paddingHorizontal="$3"
-                      paddingVertical="$2"
-                      borderRadius="$3"
-                      gap="$1"
-                      alignItems="center"
-                    >
-                      <Ionicons name="add" size={18} color="white" />
-                      <Text color="white" fontWeight="600" fontSize="$3">Adicionar</Text>
-                    </XStack>
-                  )}
-                </Pressable>
-              </XStack>
-
-              {knowledgeFiles.length === 0 ? (
-                <YStack
-                  padding="$4"
-                  backgroundColor="$background"
-                  borderRadius="$3"
-                  alignItems="center"
-                >
-                  <Ionicons name="document-outline" size={32} color={theme.gray7.val} />
-                  <Text color="$gray8" marginTop="$2" textAlign="center">
-                    Nenhum arquivo adicionado
-                  </Text>
-                  <Text color="$gray7" fontSize="$2" marginTop="$1" textAlign="center">
-                    Adicione PDFs ou documentos para a IA usar como referencia
-                  </Text>
-                </YStack>
-              ) : (
-                <YStack gap="$2">
-                  {knowledgeFiles.map((file) => (
-                    <XStack
-                      key={file.id}
-                      padding="$3"
-                      backgroundColor="$background"
-                      borderRadius="$3"
-                      alignItems="center"
-                      gap="$3"
-                    >
-                      <Ionicons
-                        name={file.mimeType === "application/pdf" ? "document-text" : "document"}
-                        size={24}
-                        color={theme.blue10.val}
-                      />
-                      <YStack flex={1}>
-                        <Text color="$color" fontSize="$3" numberOfLines={1}>
-                          {file.fileName}
-                        </Text>
-                        <Text color="$gray8" fontSize="$2">
-                          {new Date(file.createdAt).toLocaleDateString("pt-BR")}
-                        </Text>
-                      </YStack>
-                      <Pressable onPress={() => handleDeleteFile(file)}>
-                        <Ionicons name="trash-outline" size={20} color={theme.red10.val} />
-                      </Pressable>
-                    </XStack>
-                  ))}
-                </YStack>
-              )}
-            </Card>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -80,8 +80,13 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
 
     // Extract message details - handle multiple possible field names from Uazapi
     // Uazapi typically sends: { data: { from: "5531...", body: "message text", ... } }
-    let waId = message.from || message.remoteJid || message.key?.remoteJid || message.sender || "";
-    waId = waId.replace("@s.whatsapp.net", "").replace("@c.us", "").replace("@lid", "");
+    // The 'from' field might contain @s.whatsapp.net, @c.us, or @lid suffix
+    // For @lid (linked device), we need to use a different field or extract differently
+    let waId = message.from || message.remoteJid || message.key?.remoteJid || message.sender || message.phone || "";
+
+    // Clean up the waId - remove WhatsApp suffixes
+    waId = waId.split("@")[0]; // Get only the number part before any @ suffix
+    waId = waId.split(":")[0]; // Handle lid format like "5531971206977:62@lid" - get first part
 
     // Extract content - Uazapi uses 'body' for text messages
     const content =

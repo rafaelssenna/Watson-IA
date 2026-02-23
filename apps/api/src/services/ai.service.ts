@@ -118,7 +118,11 @@ export async function generateResponse(
         maxOutputTokens: 500, // Keep responses concise for WhatsApp
         temperature: 0.7,
       },
-      systemInstruction: systemPrompt,
+      // systemInstruction must be a Content object with parts array
+      systemInstruction: {
+        role: "user",
+        parts: [{ text: systemPrompt }],
+      },
     });
 
     // Send the new message

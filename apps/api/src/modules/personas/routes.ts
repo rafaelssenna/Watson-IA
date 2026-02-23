@@ -1,12 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createPersonaSchema, updatePersonaSchema } from "@watson/shared";
-import pdf from "pdf-parse";
 
 // Extract text from different file types
 async function extractTextFromFile(buffer: Buffer, mimeType: string): Promise<string> {
   if (mimeType === "application/pdf") {
     try {
+      // Dynamic import for pdf-parse (CommonJS module)
+      const pdfParse = await import("pdf-parse");
+      const pdf = pdfParse.default || pdfParse;
       const data = await pdf(buffer);
       return data.text;
     } catch (error) {

@@ -2,8 +2,24 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { generateResponse, getDefaultResponse, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
 import { sendTextMessage } from "../../services/uazapi.service.js";
+import { messageBuffer } from "../../services/messageBuffer.service.js";
+
+// Store fastify instance for use in buffer callback
+let fastifyInstance: FastifyInstance | null = null;
 
 export async function webhookRoutes(fastify: FastifyInstance) {
+  // Store fastify instance for buffer callback
+  fastifyInstance = fastify;
+
+  // Configure message buffer
+  messageBuffer.setBufferDelay(3000); // 3 seconds delay
+  messageBuffer.setProcessCallback(async (orgId, conversation, waId, combinedMessage) => {
+    if (fastifyInstance) {
+      await generateAndSendAIResponse(fastifyInstance, orgId, conversation, waId, combinedMessage);
+    }
+  });
+
+  fastify.log.info("Message buffer configured with 3s delay");
   // UAZAPI Webhook - Receive WhatsApp messages
   fastify.post<{ Body: any }>("/uazapi/:connectionId", async (request, reply) => {
     const { connectionId } = request.params as { connectionId: string };
@@ -219,9 +235,28 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
 
     fastify.log.info({ conversationId: conversation.id, messageId: newMessage.id }, "Message processed");
 
-    // Generate and send AI response if mode allows
+    // Add to buffer for AI response if mode allows
     if (conversation.mode === "AI_AUTO" || conversation.mode === "AI_ASSISTED") {
-      await generateAndSendAIResponse(fastify, orgId, conversation, contact.waId, content);
+      const isNewBuffer = messageBuffer.addMessage(
+        conversation.id,
+        {
+          content,
+          messageId: newMessage.id,
+          timestamp: new Date(),
+        },
+        {
+          orgId,
+          conversation,
+          waId: contact.waId,
+          contact,
+        }
+      );
+
+      const pendingCount = messageBuffer.getPendingCount(conversation.id);
+      fastify.log.info(
+        { conversationId: conversation.id, pendingCount, isNewBuffer },
+        `Message added to buffer, waiting for more messages...`
+      );
     }
   } catch (error) {
     fastify.log.error({ error, payload }, "Error processing incoming message");
@@ -236,7 +271,12 @@ async function generateAndSendAIResponse(
   incomingMessage: string
 ) {
   try {
-    fastify.log.info({ conversationId: conversation.id }, "Generating AI response");
+    // Count how many messages were combined (by counting newlines + 1)
+    const messageCount = (incomingMessage.match(/\n/g) || []).length + 1;
+    fastify.log.info(
+      { conversationId: conversation.id, messageCount, combinedLength: incomingMessage.length },
+      `Processing ${messageCount} buffered message(s)`
+    );
 
     // Get WhatsApp connection for this org
     const connection = await prisma.whatsAppConnection.findFirst({

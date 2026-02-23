@@ -45,7 +45,7 @@ export default function LoginScreen() {
         {/* Logo Watson IA */}
         <YStack alignItems="center" marginBottom="$8">
           <Image
-            source={require("@/../../assets/watson-logo.png")}
+            source={require("../../assets/watson-logo.png")}
             style={{ width: 180, height: 180, marginBottom: 8 }}
             resizeMode="contain"
           />

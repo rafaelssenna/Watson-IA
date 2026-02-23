@@ -665,7 +665,7 @@ function TriggerForm({
                     )}
                   </XStack>
 
-                  {/* Show example and tip when selected */}
+                  {/* Show example, tip, and conditions when selected */}
                   {isSelected && (
                     <YStack marginTop="$3" paddingTop="$3" borderTopWidth={1} borderTopColor="$gray6">
                       <XStack alignItems="flex-start" gap="$2" marginBottom="$2">
@@ -682,6 +682,114 @@ function TriggerForm({
                           <Text fontSize="$2" color="$gray8">{type.tip}</Text>
                         </YStack>
                       </XStack>
+
+                      {/* Inline conditions for KEYWORD */}
+                      {type.type === "KEYWORD" && (
+                        <YStack marginTop="$3" paddingTop="$3" borderTopWidth={1} borderTopColor="$gray6">
+                          <XStack alignItems="center" gap="$2" marginBottom="$2">
+                            <Ionicons name="list-outline" size={16} color={WATSON_TEAL} />
+                            <Text fontSize="$2" fontWeight="600" color={WATSON_TEAL}>
+                              CONFIGURE AS PALAVRAS
+                            </Text>
+                          </XStack>
+                          <Text fontSize="$2" color="$gray8" marginBottom="$2">
+                            Digite as palavras separadas por virgula:
+                          </Text>
+                          <TextInput
+                            value={keywords}
+                            onChangeText={setKeywords}
+                            placeholder="preco, valor, quanto custa, comprar"
+                            placeholderTextColor={theme.gray8.val}
+                            style={{
+                              backgroundColor: theme.background.val,
+                              borderRadius: 8,
+                              padding: 12,
+                              fontSize: 16,
+                              color: theme.color.val,
+                            }}
+                          />
+                          <Text fontSize="$1" color="$gray7" marginTop="$2">
+                            O trigger dispara se o cliente mencionar QUALQUER uma dessas palavras
+                          </Text>
+                        </YStack>
+                      )}
+
+                      {/* Inline conditions for INTENT */}
+                      {type.type === "INTENT" && (
+                        <YStack marginTop="$3" paddingTop="$3" borderTopWidth={1} borderTopColor="$gray6">
+                          <XStack alignItems="center" gap="$2" marginBottom="$2">
+                            <Ionicons name="checkbox-outline" size={16} color={WATSON_TEAL} />
+                            <Text fontSize="$2" fontWeight="600" color={WATSON_TEAL}>
+                              SELECIONE AS INTENCOES
+                            </Text>
+                          </XStack>
+                          <Text fontSize="$2" color="$gray8" marginBottom="$3">
+                            Marque quais intencoes devem disparar este trigger:
+                          </Text>
+                          <YStack gap="$2">
+                            {INTENT_OPTIONS.map((intent) => {
+                              const intentSelected = selectedIntents.includes(intent.value);
+                              return (
+                                <Pressable key={intent.value} onPress={() => toggleIntent(intent.value)}>
+                                  <XStack
+                                    padding="$3"
+                                    backgroundColor={intentSelected ? "$green5" : "$background"}
+                                    borderRadius="$3"
+                                    alignItems="center"
+                                    gap="$3"
+                                    borderWidth={intentSelected ? 2 : 1}
+                                    borderColor={intentSelected ? "#22c55e" : "$gray6"}
+                                  >
+                                    <YStack flex={1}>
+                                      <Text fontWeight="600" color={intentSelected ? "#22c55e" : "$color"}>
+                                        {intent.label}
+                                      </Text>
+                                      <Text fontSize="$1" color="$gray7" marginTop="$1">
+                                        Detecta: {intent.desc}
+                                      </Text>
+                                    </YStack>
+                                    {intentSelected ? (
+                                      <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
+                                    ) : (
+                                      <Ionicons name="ellipse-outline" size={24} color={theme.gray6.val} />
+                                    )}
+                                  </XStack>
+                                </Pressable>
+                              );
+                            })}
+                          </YStack>
+                        </YStack>
+                      )}
+
+                      {/* Info for types that don't need configuration */}
+                      {(type.type === "NEW_CONTACT" || type.type === "URGENCY" || type.type === "SENTIMENT") && (
+                        <YStack marginTop="$3" paddingTop="$3" borderTopWidth={1} borderTopColor="$gray6">
+                          <XStack alignItems="center" gap="$2">
+                            <Ionicons name="checkmark-done-outline" size={16} color="#22c55e" />
+                            <Text fontSize="$2" color="#22c55e" fontWeight="500">
+                              Nenhuma configuracao necessaria!
+                            </Text>
+                          </XStack>
+                          <Text fontSize="$2" color="$gray8" marginTop="$1">
+                            Este trigger detecta automaticamente. Basta configurar as acoes abaixo.
+                          </Text>
+                        </YStack>
+                      )}
+
+                      {/* Info for OUT_OF_HOURS */}
+                      {type.type === "OUT_OF_HOURS" && (
+                        <YStack marginTop="$3" paddingTop="$3" borderTopWidth={1} borderTopColor="$gray6">
+                          <XStack alignItems="center" gap="$2">
+                            <Ionicons name="time-outline" size={16} color={WATSON_TEAL} />
+                            <Text fontSize="$2" color={WATSON_TEAL} fontWeight="500">
+                              Horario configurado na Persona
+                            </Text>
+                          </XStack>
+                          <Text fontSize="$2" color="$gray8" marginTop="$1">
+                            O horario de funcionamento e configurado em Configuracoes → Persona da IA. Mensagens fora desse horario disparam este trigger.
+                          </Text>
+                        </YStack>
+                      )}
                     </YStack>
                   )}
                 </YStack>
@@ -690,74 +798,6 @@ function TriggerForm({
           })}
         </YStack>
       </Card>
-
-      {/* Conditions based on type */}
-      {selectedType === "KEYWORD" && (
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-            Palavras-chave
-          </Text>
-          <Text fontSize="$2" color="$gray8" marginBottom="$3">
-            Separe as palavras por virgula
-          </Text>
-          <TextInput
-            value={keywords}
-            onChangeText={setKeywords}
-            placeholder="preco, valor, quanto custa, comprar"
-            placeholderTextColor={theme.gray8.val}
-            style={{
-              backgroundColor: theme.background.val,
-              borderRadius: 8,
-              padding: 12,
-              fontSize: 16,
-              color: theme.color.val,
-            }}
-          />
-        </Card>
-      )}
-
-      {selectedType === "INTENT" && (
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-            Intencoes a detectar
-          </Text>
-          <Text fontSize="$2" color="$gray8" marginBottom="$3">
-            A IA detecta automaticamente estas intencoes nas mensagens
-          </Text>
-          <YStack gap="$2">
-            {INTENT_OPTIONS.map((intent) => {
-              const isSelected = selectedIntents.includes(intent.value);
-              return (
-                <Pressable key={intent.value} onPress={() => toggleIntent(intent.value)}>
-                  <XStack
-                    padding="$3"
-                    backgroundColor={isSelected ? "$teal5" : "$background"}
-                    borderRadius="$3"
-                    alignItems="center"
-                    gap="$3"
-                    borderWidth={isSelected ? 2 : 1}
-                    borderColor={isSelected ? WATSON_TEAL : "$gray6"}
-                  >
-                    <YStack flex={1}>
-                      <Text fontWeight="600" color={isSelected ? WATSON_TEAL : "$color"}>
-                        {intent.label}
-                      </Text>
-                      <Text fontSize="$1" color="$gray7" marginTop="$1">
-                        Detecta: {intent.desc}
-                      </Text>
-                    </YStack>
-                    {isSelected ? (
-                      <Ionicons name="checkmark-circle" size={24} color={WATSON_TEAL} />
-                    ) : (
-                      <Ionicons name="ellipse-outline" size={24} color={theme.gray6.val} />
-                    )}
-                  </XStack>
-                </Pressable>
-              );
-            })}
-          </YStack>
-        </Card>
-      )}
 
       {/* Actions */}
       <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">

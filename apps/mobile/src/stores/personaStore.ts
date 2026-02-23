@@ -250,11 +250,8 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
         type: file.mimeType,
       } as any);
 
-      const response = await api.post(`/personas/${personaId}/files`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      // Don't manually set Content-Type - let fetch set it automatically with the correct boundary
+      const response = await api.post(`/personas/${personaId}/files`, formData);
 
       if (response.data.success) {
         // Refetch files

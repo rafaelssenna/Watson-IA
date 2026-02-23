@@ -15,14 +15,19 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestOptions = {}
+    options: RequestOptions = {},
+    isFormData = false
   ): Promise<{ data: T; status: number }> {
     const { skipAuth, ...fetchOptions } = options;
 
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
       ...options.headers,
     };
+
+    // Only set Content-Type for non-FormData requests
+    if (!isFormData) {
+      (headers as Record<string, string>)["Content-Type"] = "application/json";
+    }
 
     // Add auth token if available and not skipped
     if (!skipAuth) {
@@ -66,11 +71,16 @@ class ApiClient {
   }
 
   async post<T>(endpoint: string, body?: any, options?: RequestOptions) {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const isFormData = body instanceof FormData;
+    return this.request<T>(
+      endpoint,
+      {
+        ...options,
+        method: "POST",
+        body: isFormData ? body : body ? JSON.stringify(body) : undefined,
+      },
+      isFormData
+    );
   }
 
   async patch<T>(endpoint: string, body?: any, options?: RequestOptions) {

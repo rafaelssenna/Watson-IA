@@ -64,29 +64,40 @@ export async function webhookRoutes(fastify: FastifyInstance) {
 async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, payload: any) {
   try {
     // Log the full payload for debugging
-    fastify.log.info({ payload: JSON.stringify(payload).substring(0, 500) }, "Processing incoming message payload");
+    fastify.log.info({ fullPayload: JSON.stringify(payload) }, "Processing incoming message payload - FULL");
 
     // Uazapi can send message data in different structures
     const message = payload.data || payload.message || payload;
 
-    // Extract message details - handle multiple possible field names
-    let waId = message.from || message.remoteJid || message.key?.remoteJid || "";
-    waId = waId.replace("@s.whatsapp.net", "").replace("@c.us", "");
+    fastify.log.info({
+      messageKeys: Object.keys(message),
+      dataKeys: payload.data ? Object.keys(payload.data) : null,
+      hasFrom: !!message.from,
+      hasRemoteJid: !!message.remoteJid,
+      hasBody: !!message.body,
+      hasText: !!message.text,
+    }, "Message structure debug");
+
+    // Extract message details - handle multiple possible field names from Uazapi
+    // Uazapi typically sends: { data: { from: "5531...", body: "message text", ... } }
+    let waId = message.from || message.remoteJid || message.key?.remoteJid || message.sender || "";
+    waId = waId.replace("@s.whatsapp.net", "").replace("@c.us", "").replace("@lid", "");
 
     // Extract content - Uazapi uses 'body' for text messages
     const content =
       message.body ||
       message.text ||
+      message.content ||
       message.message?.conversation ||
       message.message?.extendedTextMessage?.text ||
       message.caption ||
       "";
 
-    const messageId = message.key?.id || message.id || message.messageId;
-    const pushName = message.pushName || message.notifyName || message.senderName;
+    const messageId = message.key?.id || message.id || message.messageId || message.msgId;
+    const pushName = message.pushName || message.notifyName || message.senderName || message.name;
 
     // Skip if this is an outgoing message (fromMe)
-    if (message.fromMe || message.key?.fromMe) {
+    if (message.fromMe === true || message.key?.fromMe === true) {
       fastify.log.info("Skipping outgoing message");
       return;
     }
@@ -94,7 +105,12 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     fastify.log.info({ waId, content: content?.substring(0, 50), messageId, pushName }, "Extracted message details");
 
     if (!waId || !content) {
-      fastify.log.warn({ waId, content, payloadKeys: Object.keys(message) }, "Invalid message payload - missing waId or content");
+      fastify.log.warn({
+        waId,
+        content,
+        messageKeys: Object.keys(message),
+        fullMessage: JSON.stringify(message).substring(0, 500)
+      }, "Invalid message payload - missing waId or content");
       return;
     }
 

@@ -41,18 +41,13 @@ export interface AIResponseResult {
 
 // Build system prompt from persona configuration
 function buildSystemPrompt(persona: PersonaConfig, businessName?: string): string {
-  // If persona has a custom system prompt, use it
-  if (persona.systemPrompt) {
-    return persona.systemPrompt;
-  }
-
-  // Build prompt based on persona attributes
+  // Build personality descriptions based on slider values
   const formalityDesc =
     persona.formalityLevel > 70
       ? "formal e profissional"
       : persona.formalityLevel > 40
         ? "equilibrado entre formal e casual"
-        : "casual e amigavel";
+        : "casual e amigavel, pode usar girias";
 
   const persuasivenessDesc =
     persona.persuasiveness > 70
@@ -63,7 +58,7 @@ function buildSystemPrompt(persona: PersonaConfig, businessName?: string): strin
 
   const energyDesc =
     persona.energyLevel > 70
-      ? "energetico e entusiasmado"
+      ? "energetico e entusiasmado, usa exclamacoes"
       : persona.energyLevel > 40
         ? "equilibrado"
         : "calmo e tranquilo";
@@ -75,7 +70,8 @@ function buildSystemPrompt(persona: PersonaConfig, businessName?: string): strin
         ? "atencioso"
         : "direto ao ponto";
 
-  return `Voce e ${persona.name}, um assistente virtual inteligente${businessName ? ` da empresa ${businessName}` : ""}.
+  // Base prompt with personality always applied
+  let prompt = `Voce e ${persona.name}, um assistente virtual inteligente${businessName ? ` da empresa ${businessName}` : ""}.
 
 Seu papel principal e:
 - Conversar naturalmente com os clientes via WhatsApp
@@ -83,7 +79,7 @@ Seu papel principal e:
 - Ser prestativo, engajado e proativo
 - NUNCA dizer que vai transferir para um atendente humano - voce E o atendente
 
-Seu estilo de comunicacao e:
+IMPORTANTE - Seu estilo de comunicacao DEVE ser:
 - Tom: ${formalityDesc}
 - Abordagem: ${persuasivenessDesc}
 - Energia: ${energyDesc}
@@ -94,8 +90,19 @@ Regras importantes:
 - Seja conciso mas completo nas respostas (maximo 2-3 frases)
 - Nao use formatacao markdown (sem *, #, etc)
 - Responda de forma conversacional e natural
-- Se o cliente perguntar algo que voce nao sabe, pergunte mais detalhes ou sugira como pode ajudar de outra forma
-${persona.customInstructions ? `\nInstrucoes adicionais:\n${persona.customInstructions}` : ""}`;
+- Se o cliente perguntar algo que voce nao sabe, pergunte mais detalhes ou sugira como pode ajudar de outra forma`;
+
+  // Add custom system prompt if provided
+  if (persona.systemPrompt) {
+    prompt += `\n\nContexto e instrucoes especificas:\n${persona.systemPrompt}`;
+  }
+
+  // Add custom instructions if provided
+  if (persona.customInstructions) {
+    prompt += `\n\nInstrucoes adicionais:\n${persona.customInstructions}`;
+  }
+
+  return prompt;
 }
 
 // Generate AI response

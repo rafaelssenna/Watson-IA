@@ -291,15 +291,30 @@ async function generateAndSendAIResponse(
     });
 
     // Build persona config
-    const persona: PersonaConfig = conversation.activePersona
+    // If conversation doesn't have a persona, try to get the default one
+    let activePersona = conversation.activePersona;
+    if (!activePersona) {
+      activePersona = await prisma.persona.findFirst({
+        where: { organizationId: orgId, isDefault: true },
+      });
+      // Update conversation with default persona for future messages
+      if (activePersona) {
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { activePersonaId: activePersona.id },
+        });
+      }
+    }
+
+    const persona: PersonaConfig = activePersona
       ? {
-          name: conversation.activePersona.name,
-          systemPrompt: conversation.activePersona.systemPrompt,
-          formalityLevel: conversation.activePersona.formalityLevel,
-          persuasiveness: conversation.activePersona.persuasiveness,
-          energyLevel: conversation.activePersona.energyLevel,
-          empathyLevel: conversation.activePersona.empathyLevel,
-          customInstructions: conversation.activePersona.customInstructions,
+          name: activePersona.name,
+          systemPrompt: activePersona.systemPrompt,
+          formalityLevel: activePersona.formalityLevel,
+          persuasiveness: activePersona.persuasiveness,
+          energyLevel: activePersona.energyLevel,
+          empathyLevel: activePersona.empathyLevel,
+          customInstructions: activePersona.customInstructions,
         }
       : {
           name: "Assistente Watson",
@@ -308,6 +323,13 @@ async function generateAndSendAIResponse(
           energyLevel: 50,
           empathyLevel: 70,
         };
+
+    fastify.log.info({
+      personaName: persona.name,
+      hasSystemPrompt: !!persona.systemPrompt,
+      formalityLevel: persona.formalityLevel,
+      customInstructions: persona.customInstructions?.substring(0, 50),
+    }, "Using persona for AI response");
 
     // Generate AI response
     let responseText: string;

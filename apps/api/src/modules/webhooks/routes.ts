@@ -1,5 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
+import { generateResponse, getDefaultResponse, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
+import { sendTextMessage } from "../../services/uazapi.service.js";
 
 export async function webhookRoutes(fastify: FastifyInstance) {
   // UAZAPI Webhook - Receive WhatsApp messages
@@ -107,15 +109,27 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
         contactId: contact.id,
         status: { notIn: ["CLOSED", "RESOLVED"] },
       },
+      include: {
+        activePersona: true,
+      },
     });
 
     if (!conversation) {
+      // Get default persona for the organization
+      const defaultPersona = await prisma.persona.findFirst({
+        where: { organizationId: orgId, isDefault: true },
+      });
+
       conversation = await prisma.conversation.create({
         data: {
           organizationId: orgId,
           contactId: contact.id,
           status: "OPEN",
-          mode: "AI_ASSISTED",
+          mode: "AI_AUTO",
+          activePersonaId: defaultPersona?.id,
+        },
+        include: {
+          activePersona: true,
         },
       });
     }
@@ -139,7 +153,7 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       data: {
         lastMessageAt: new Date(),
         messageCount: { increment: 1 },
-        status: "WAITING_AGENT",
+        status: "IN_PROGRESS",
       },
     });
 
@@ -156,15 +170,143 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       message: newMessage,
     });
 
-    // TODO: Queue AI classification job
-    // await classificationQueue.add('classify', {
-    //   conversationId: conversation.id,
-    //   messageId: newMessage.id
-    // });
-
     fastify.log.info({ conversationId: conversation.id, messageId: newMessage.id }, "Message processed");
+
+    // Generate and send AI response if mode allows
+    if (conversation.mode === "AI_AUTO" || conversation.mode === "AI_ASSISTED") {
+      await generateAndSendAIResponse(fastify, orgId, conversation, contact.waId, content);
+    }
   } catch (error) {
     fastify.log.error({ error, payload }, "Error processing incoming message");
+  }
+}
+
+async function generateAndSendAIResponse(
+  fastify: FastifyInstance,
+  orgId: string,
+  conversation: any,
+  waId: string,
+  incomingMessage: string
+) {
+  try {
+    fastify.log.info({ conversationId: conversation.id }, "Generating AI response");
+
+    // Get WhatsApp connection for this org
+    const connection = await prisma.whatsAppConnection.findFirst({
+      where: { organizationId: orgId, status: "CONNECTED" },
+    });
+
+    if (!connection?.uazapiToken) {
+      fastify.log.warn({ orgId }, "No connected WhatsApp to send AI response");
+      return;
+    }
+
+    // Get conversation history (last 10 messages for context)
+    const messages = await prisma.message.findMany({
+      where: { conversationId: conversation.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+
+    // Format conversation history for AI
+    const conversationHistory: ConversationMessage[] = messages
+      .reverse()
+      .slice(0, -1) // Exclude the current message
+      .map((msg) => ({
+        role: msg.direction === "INBOUND" ? "user" : "assistant",
+        content: msg.content || "",
+      }));
+
+    // Get organization name
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true },
+    });
+
+    // Build persona config
+    const persona: PersonaConfig = conversation.activePersona
+      ? {
+          name: conversation.activePersona.name,
+          systemPrompt: conversation.activePersona.systemPrompt,
+          formalityLevel: conversation.activePersona.formalityLevel,
+          persuasiveness: conversation.activePersona.persuasiveness,
+          energyLevel: conversation.activePersona.energyLevel,
+          empathyLevel: conversation.activePersona.empathyLevel,
+          customInstructions: conversation.activePersona.customInstructions,
+        }
+      : {
+          name: "Assistente Watson",
+          formalityLevel: 50,
+          persuasiveness: 50,
+          energyLevel: 50,
+          empathyLevel: 70,
+        };
+
+    // Generate AI response
+    let responseText: string;
+
+    try {
+      const aiResult = await generateResponse(
+        incomingMessage,
+        conversationHistory,
+        persona,
+        org?.name
+      );
+
+      if (aiResult.success && aiResult.response) {
+        responseText = aiResult.response;
+      } else {
+        fastify.log.warn({ error: aiResult.error }, "AI generation failed, using default");
+        responseText = getDefaultResponse();
+      }
+    } catch (aiError) {
+      fastify.log.error({ error: aiError }, "AI service error, using default response");
+      responseText = getDefaultResponse();
+    }
+
+    // Send response via Uazapi
+    const sendResult = await sendTextMessage(connection.uazapiToken, waId, responseText);
+
+    if (!sendResult.success) {
+      fastify.log.error({ error: sendResult.error }, "Failed to send AI response");
+      return;
+    }
+
+    // Save outbound message
+    const outboundMessage = await prisma.message.create({
+      data: {
+        organizationId: orgId,
+        conversationId: conversation.id,
+        waMessageId: sendResult.messageId,
+        direction: "OUTBOUND",
+        type: "TEXT",
+        content: responseText,
+        status: "SENT",
+        isAiGenerated: true,
+        aiConfidence: 0.85,
+      },
+    });
+
+    // Update conversation
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        lastMessageAt: new Date(),
+        messageCount: { increment: 1 },
+        lastAiAction: "AUTO_REPLIED",
+      },
+    });
+
+    // Emit real-time event for outbound message
+    const io = fastify.io;
+    io.to(`org:${orgId}`).emit("message:new", {
+      conversationId: conversation.id,
+      message: outboundMessage,
+    });
+
+    fastify.log.info({ conversationId: conversation.id, messageId: outboundMessage.id }, "AI response sent");
+  } catch (error) {
+    fastify.log.error({ error, conversationId: conversation.id }, "Error generating/sending AI response");
   }
 }
 

@@ -11,7 +11,7 @@ export default function PersonaEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!id;
 
-  const { selectedPersona, isLoading, fetchPersona, createPersona, updatePersona } = usePersonaStore();
+  const { selectedPersona, isLoading, fetchPersona, createPersona, updatePersona, setSelectedPersona } = usePersonaStore();
 
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -26,6 +26,18 @@ export default function PersonaEditScreen() {
   useEffect(() => {
     if (isEditing && id) {
       fetchPersona(id);
+    } else {
+      // Clear selected persona when creating new
+      setSelectedPersona(null);
+      // Reset form to defaults
+      setName("");
+      setSystemPrompt("");
+      setFormalityLevel(50);
+      setPersuasiveness(50);
+      setEnergyLevel(50);
+      setEmpathyLevel(70);
+      setCustomInstructions("");
+      setIsDefault(false);
     }
   }, [id]);
 

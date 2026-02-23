@@ -95,10 +95,16 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
       const response = await api.post<{ success: boolean; data: Persona }>("/personas", data);
       if (response.data.success) {
         const newPersona = response.data.data;
-        set((state) => ({
-          personas: [...state.personas, newPersona],
-          isLoading: false,
-        }));
+        // Refetch all personas to get updated isDefault states
+        const listResponse = await api.get<{ success: boolean; data: Persona[] }>("/personas");
+        if (listResponse.data.success) {
+          set({ personas: listResponse.data.data, isLoading: false });
+        } else {
+          set((state) => ({
+            personas: [...state.personas, newPersona],
+            isLoading: false,
+          }));
+        }
         return newPersona;
       }
       throw new Error("Erro ao criar persona");
@@ -117,11 +123,21 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
       const response = await api.patch<{ success: boolean; data: Persona }>(`/personas/${id}`, data);
       if (response.data.success) {
         const updatedPersona = response.data.data;
-        set((state) => ({
-          personas: state.personas.map((p) => (p.id === id ? updatedPersona : p)),
-          selectedPersona: state.selectedPersona?.id === id ? updatedPersona : state.selectedPersona,
-          isLoading: false,
-        }));
+        // Refetch all personas to get updated isDefault states
+        const listResponse = await api.get<{ success: boolean; data: Persona[] }>("/personas");
+        if (listResponse.data.success) {
+          set({
+            personas: listResponse.data.data,
+            selectedPersona: updatedPersona,
+            isLoading: false,
+          });
+        } else {
+          set((state) => ({
+            personas: state.personas.map((p) => (p.id === id ? updatedPersona : p)),
+            selectedPersona: updatedPersona,
+            isLoading: false,
+          }));
+        }
         return updatedPersona;
       }
       throw new Error("Erro ao atualizar persona");

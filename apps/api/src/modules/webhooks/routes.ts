@@ -256,13 +256,19 @@ async function generateAndSendAIResponse(
     });
 
     // Format conversation history for AI
-    const conversationHistory: ConversationMessage[] = messages
+    let conversationHistory: ConversationMessage[] = messages
       .reverse()
       .slice(0, -1) // Exclude the current message
       .map((msg) => ({
         role: msg.direction === "INBOUND" ? "user" : "assistant",
         content: msg.content || "",
       }));
+
+    // Gemini requires history to start with a 'user' message
+    // Remove any leading assistant messages
+    while (conversationHistory.length > 0 && conversationHistory[0].role === "assistant") {
+      conversationHistory.shift();
+    }
 
     // Get organization name
     const org = await prisma.organization.findUnique({

@@ -469,10 +469,11 @@ model Persona {
   greetingMessage    String?        @db.Text
   prohibitedTopics   String?        @db.Text
   responseLength     ResponseLength @default(MEDIA)
-  businessHoursStart String?
-  businessHoursEnd   String?
-  workDays           String[]       @default(["seg", "ter", "qua", "qui", "sex"])
-  createdAt          DateTime       @default(now())
+  businessHoursStart  String?
+  businessHoursEnd    String?
+  workDays            String[]       @default(["seg", "ter", "qua", "qui", "sex"])
+  messageBufferDelay  Int            @default(10) // Delay in seconds to buffer messages before AI responds
+  createdAt           DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
   conversations  Conversation[]

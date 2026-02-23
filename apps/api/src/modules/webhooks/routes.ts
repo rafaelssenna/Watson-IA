@@ -12,14 +12,14 @@ export async function webhookRoutes(fastify: FastifyInstance) {
   fastifyInstance = fastify;
 
   // Configure message buffer
-  messageBuffer.setBufferDelay(3000); // 3 seconds delay
+  messageBuffer.setBufferDelay(10000); // 10 seconds delay
   messageBuffer.setProcessCallback(async (orgId, conversation, waId, combinedMessage) => {
     if (fastifyInstance) {
       await generateAndSendAIResponse(fastifyInstance, orgId, conversation, waId, combinedMessage);
     }
   });
 
-  fastify.log.info("Message buffer configured with 3s delay");
+  fastify.log.info("Message buffer configured with 10s delay");
   // UAZAPI Webhook - Receive WhatsApp messages
   fastify.post<{ Body: any }>("/uazapi/:connectionId", async (request, reply) => {
     const { connectionId } = request.params as { connectionId: string };
@@ -237,6 +237,10 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
 
     // Add to buffer for AI response if mode allows
     if (conversation.mode === "AI_AUTO" || conversation.mode === "AI_ASSISTED") {
+      // Get buffer delay from persona (default 10 seconds)
+      const bufferDelaySeconds = conversation.activePersona?.messageBufferDelay ?? 10;
+      const bufferDelayMs = bufferDelaySeconds * 1000;
+
       const isNewBuffer = messageBuffer.addMessage(
         conversation.id,
         {
@@ -249,13 +253,14 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
           conversation,
           waId: contact.waId,
           contact,
-        }
+        },
+        bufferDelayMs
       );
 
       const pendingCount = messageBuffer.getPendingCount(conversation.id);
       fastify.log.info(
-        { conversationId: conversation.id, pendingCount, isNewBuffer },
-        `Message added to buffer, waiting for more messages...`
+        { conversationId: conversation.id, pendingCount, isNewBuffer, bufferDelay: bufferDelaySeconds },
+        `Message added to buffer, waiting ${bufferDelaySeconds}s for more messages...`
       );
     }
   } catch (error) {

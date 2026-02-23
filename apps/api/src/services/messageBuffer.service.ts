@@ -60,11 +60,13 @@ class MessageBufferService {
   /**
    * Add a message to the buffer for a conversation
    * Returns true if this is a new buffer (first message)
+   * @param customDelayMs - Optional custom delay in milliseconds (overrides default)
    */
   addMessage(
     conversationId: string,
     message: BufferedMessage,
-    conversationData: ConversationBuffer["conversationData"]
+    conversationData: ConversationBuffer["conversationData"],
+    customDelayMs?: number
   ): boolean {
     const isNewBuffer = !this.buffers.has(conversationId);
 
@@ -87,10 +89,13 @@ class MessageBufferService {
       clearTimeout(buffer.timeout);
     }
 
+    // Use custom delay if provided, otherwise use default
+    const delayMs = customDelayMs ?? this.bufferDelayMs;
+
     // Set new timeout
     buffer.timeout = setTimeout(() => {
       this.flushBuffer(conversationId);
-    }, this.bufferDelayMs);
+    }, delayMs);
 
     return isNewBuffer;
   }

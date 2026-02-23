@@ -324,12 +324,9 @@ async function generateAndSendAIResponse(
           empathyLevel: 70,
         };
 
-    fastify.log.info({
-      personaName: persona.name,
-      hasSystemPrompt: !!persona.systemPrompt,
-      formalityLevel: persona.formalityLevel,
-      customInstructions: persona.customInstructions?.substring(0, 50),
-    }, "Using persona for AI response");
+    fastify.log.info(
+      `Using persona: ${persona.name} | formality=${persona.formalityLevel} | persuasiveness=${persona.persuasiveness} | energy=${persona.energyLevel} | empathy=${persona.empathyLevel} | hasPrompt=${!!persona.systemPrompt}`
+    );
 
     // Generate AI response
     let responseText: string;

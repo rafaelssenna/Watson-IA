@@ -63,6 +63,7 @@ export default function SettingsScreen() {
               icon="person-circle-outline"
               title="Persona"
               description="Configure a personalidade do Watson"
+              onPress={() => router.push("/settings/persona")}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem

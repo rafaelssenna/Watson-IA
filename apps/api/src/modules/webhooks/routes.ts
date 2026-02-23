@@ -264,6 +264,20 @@ async function generateAndSendAIResponse(
         content: msg.content || "",
       }));
 
+    // Filter out bad/fallback responses from history so Gemini doesn't mimic them
+    const fallbackPhrases = [
+      "em breve um atendente",
+      "recebi sua mensagem",
+      "aguarde um momento",
+    ];
+    conversationHistory = conversationHistory.filter((msg) => {
+      if (msg.role === "assistant") {
+        const lowerContent = msg.content.toLowerCase();
+        return !fallbackPhrases.some((phrase) => lowerContent.includes(phrase));
+      }
+      return true;
+    });
+
     // Gemini requires history to start with a 'user' message
     // Remove any leading assistant messages
     while (conversationHistory.length > 0 && conversationHistory[0].role === "assistant") {

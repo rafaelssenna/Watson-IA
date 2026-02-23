@@ -92,12 +92,16 @@ export default function TriggersScreen() {
     try {
       if (existingTrigger) {
         // Toggle existing trigger
-        await api.post(`/triggers/${existingTrigger.id}/toggle`);
-        setTriggers((prev) =>
-          prev.map((t) =>
-            t.id === existingTrigger.id ? { ...t, isActive: !t.isActive } : t
-          )
+        const response = await api.post<{ success: boolean; data: Trigger }>(
+          `/triggers/${existingTrigger.id}/toggle`
         );
+        if (response.data.success) {
+          setTriggers((prev) =>
+            prev.map((t) =>
+              t.id === existingTrigger.id ? { ...t, isActive: !t.isActive } : t
+            )
+          );
+        }
       } else {
         // Generate message with AI
         let message = "Ola! Vou transferir voce para um atendente humano. Aguarde um momento.";
@@ -131,8 +135,9 @@ export default function TriggersScreen() {
         );
         setTriggers((prev) => [...prev, response.data.data]);
       }
-    } catch (error) {
-      Alert.alert("Erro", "Nao foi possivel salvar");
+    } catch (error: any) {
+      console.error("Error toggling trigger:", error);
+      Alert.alert("Erro", error?.message || "Nao foi possivel salvar");
     } finally {
       setSaving(null);
     }

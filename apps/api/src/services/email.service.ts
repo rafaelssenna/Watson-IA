@@ -1,33 +1,17 @@
-// Email Service using Zoho SMTP
+// Email Service using Resend
+// Much simpler and more reliable than SMTP
 
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const ZOHO_EMAIL = process.env.ZOHO_EMAIL || "engenharia@helsenia.com.br";
-const ZOHO_PASSWORD = process.env.ZOHO_PASSWORD || "";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const FROM_EMAIL = process.env.FROM_EMAIL || "Watson IA <onboarding@resend.dev>";
 const APP_NAME = "Watson IA";
 
-// Zoho SMTP configuration
-// For custom domains (paid Zoho Workplace): smtp.zoho.com or smtppro.zoho.com
-// Port 587 with TLS is recommended over port 465
-const ZOHO_HOST = process.env.ZOHO_HOST || "smtp.zoho.com";
-const ZOHO_PORT = Number(process.env.ZOHO_PORT) || 587;
+console.log(`[EMAIL] Initializing Resend service`);
+console.log(`[EMAIL] API Key configured: ${RESEND_API_KEY ? "YES" : "NO"}`);
+console.log(`[EMAIL] From: ${FROM_EMAIL}`);
 
-console.log(`[EMAIL] Initializing with host: ${ZOHO_HOST}, port: ${ZOHO_PORT}`);
-console.log(`[EMAIL] Email account: ${ZOHO_EMAIL}`);
-console.log(`[EMAIL] Password configured: ${ZOHO_PASSWORD ? "YES" : "NO"}`);
-
-const transporter = nodemailer.createTransport({
-  host: ZOHO_HOST,
-  port: ZOHO_PORT,
-  secure: ZOHO_PORT === 465, // true for 465, false for 587
-  auth: {
-    user: ZOHO_EMAIL,
-    pass: ZOHO_PASSWORD,
-  },
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-});
+const resend = new Resend(RESEND_API_KEY);
 
 interface SendEmailOptions {
   to: string;
@@ -38,40 +22,39 @@ interface SendEmailOptions {
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
-    if (!ZOHO_PASSWORD) {
-      console.error("[EMAIL] ZOHO_PASSWORD not configured");
+    if (!RESEND_API_KEY) {
+      console.error("[EMAIL] RESEND_API_KEY not configured");
       return false;
     }
 
-    console.log(`[EMAIL] Attempting to send email to ${options.to} via ${ZOHO_HOST}`);
-    console.log(`[EMAIL] Using account: ${ZOHO_EMAIL}`);
+    console.log(`[EMAIL] Attempting to send email to ${options.to}`);
 
-    const result = await transporter.sendMail({
-      from: `"${APP_NAME}" <${ZOHO_EMAIL}>`,
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ""),
     });
 
-    console.log(`[EMAIL] Email sent successfully to ${options.to}`, result.messageId);
+    if (error) {
+      console.error("[EMAIL] Resend error:", error);
+      return false;
+    }
+
+    console.log(`[EMAIL] Email sent successfully to ${options.to}`, data?.id);
     return true;
   } catch (error: any) {
     console.error("[EMAIL] Error sending email:", error?.message || error);
-    console.error("[EMAIL] Full error:", JSON.stringify(error, null, 2));
     return false;
   }
 }
 
 export async function sendPasswordResetEmail(
   email: string,
-  resetToken: string,
+  resetCode: string,
   userName: string
 ): Promise<boolean> {
-  // Deep link for mobile app or web fallback
-  const resetLink = `watsonai://reset-password?token=${resetToken}`;
-  const webResetLink = `https://app.watson-ia.com/reset-password?token=${resetToken}`;
-
   const html = `
 <!DOCTYPE html>
 <html>
@@ -95,7 +78,7 @@ export async function sendPasswordResetEmail(
           <!-- Content -->
           <tr>
             <td style="padding: 40px 32px;">
-              <h2 style="color: #1f2937; margin: 0 0 16px; font-size: 24px;">Ola, ${userName}!</h2>
+              <h2 style="color: #1f2937; margin: 0 0 16px; font-size: 24px;">Ola, ${userName || "Usuario"}!</h2>
 
               <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin: 0 0 24px;">
                 Recebemos uma solicitacao para redefinir a senha da sua conta no ${APP_NAME}.
@@ -107,7 +90,7 @@ export async function sendPasswordResetEmail(
 
               <!-- Code Box -->
               <div style="background-color: #f3f4f6; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #0d9488;">${resetToken}</span>
+                <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #0d9488;">${resetCode}</span>
               </div>
 
               <p style="color: #6b7280; font-size: 14px; line-height: 22px; margin: 0 0 24px;">
@@ -141,18 +124,16 @@ export async function sendPasswordResetEmail(
 
   return sendEmail({
     to: email,
-    subject: `Recuperar senha - ${APP_NAME}`,
+    subject: `Codigo de recuperacao: ${resetCode} - ${APP_NAME}`,
     html,
   });
 }
 
 export async function verifyEmailConnection(): Promise<boolean> {
-  try {
-    await transporter.verify();
-    console.log("Email service connected successfully");
-    return true;
-  } catch (error) {
-    console.error("Email service connection failed:", error);
+  if (!RESEND_API_KEY) {
+    console.error("[EMAIL] RESEND_API_KEY not configured");
     return false;
   }
+  console.log("[EMAIL] Resend service ready");
+  return true;
 }

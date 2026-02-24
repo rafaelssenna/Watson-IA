@@ -7,19 +7,26 @@ const ZOHO_PASSWORD = process.env.ZOHO_PASSWORD || "";
 const APP_NAME = "Watson IA";
 
 // Zoho SMTP configuration
-// For custom domains (Zoho Workplace), use smtppro.zoho.com
-const ZOHO_HOST = process.env.ZOHO_HOST || "smtppro.zoho.com";
+// For custom domains (paid Zoho Workplace): smtp.zoho.com or smtppro.zoho.com
+// Port 587 with TLS is recommended over port 465
+const ZOHO_HOST = process.env.ZOHO_HOST || "smtp.zoho.com";
+const ZOHO_PORT = Number(process.env.ZOHO_PORT) || 587;
+
+console.log(`[EMAIL] Initializing with host: ${ZOHO_HOST}, port: ${ZOHO_PORT}`);
+console.log(`[EMAIL] Email account: ${ZOHO_EMAIL}`);
+console.log(`[EMAIL] Password configured: ${ZOHO_PASSWORD ? "YES" : "NO"}`);
 
 const transporter = nodemailer.createTransport({
   host: ZOHO_HOST,
-  port: 465,
-  secure: true,
+  port: ZOHO_PORT,
+  secure: ZOHO_PORT === 465, // true for 465, false for 587
   auth: {
     user: ZOHO_EMAIL,
     pass: ZOHO_PASSWORD,
   },
-  debug: true,
-  logger: true,
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 interface SendEmailOptions {

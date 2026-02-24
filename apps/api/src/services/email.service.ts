@@ -7,14 +7,19 @@ const ZOHO_PASSWORD = process.env.ZOHO_PASSWORD || "";
 const APP_NAME = "Watson IA";
 
 // Zoho SMTP configuration
+// For custom domains (Zoho Workplace), use smtppro.zoho.com
+const ZOHO_HOST = process.env.ZOHO_HOST || "smtppro.zoho.com";
+
 const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.com",
+  host: ZOHO_HOST,
   port: 465,
   secure: true,
   auth: {
     user: ZOHO_EMAIL,
     pass: ZOHO_PASSWORD,
   },
+  debug: true,
+  logger: true,
 });
 
 interface SendEmailOptions {
@@ -27,11 +32,14 @@ interface SendEmailOptions {
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
     if (!ZOHO_PASSWORD) {
-      console.error("ZOHO_PASSWORD not configured");
+      console.error("[EMAIL] ZOHO_PASSWORD not configured");
       return false;
     }
 
-    await transporter.sendMail({
+    console.log(`[EMAIL] Attempting to send email to ${options.to} via ${ZOHO_HOST}`);
+    console.log(`[EMAIL] Using account: ${ZOHO_EMAIL}`);
+
+    const result = await transporter.sendMail({
       from: `"${APP_NAME}" <${ZOHO_EMAIL}>`,
       to: options.to,
       subject: options.subject,
@@ -39,10 +47,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
       text: options.text || options.html.replace(/<[^>]*>/g, ""),
     });
 
-    console.log(`Email sent to ${options.to}`);
+    console.log(`[EMAIL] Email sent successfully to ${options.to}`, result.messageId);
     return true;
-  } catch (error) {
-    console.error("Error sending email:", error);
+  } catch (error: any) {
+    console.error("[EMAIL] Error sending email:", error?.message || error);
+    console.error("[EMAIL] Full error:", JSON.stringify(error, null, 2));
     return false;
   }
 }

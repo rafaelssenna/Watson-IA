@@ -3,6 +3,7 @@ import { prisma } from "@watson/database";
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@watson/shared";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { sendPasswordResetEmail } from "../../services/email.service.js";
 
 const SALT_ROUNDS = 12;
 const TRIAL_DAYS = 7;
@@ -302,6 +303,145 @@ export async function authRoutes(fastify: FastifyInstance) {
         subscriptionStatus: user.organization.subscriptionStatus,
         trialEndsAt: user.organization.trialEndsAt,
       },
+    };
+  });
+
+  // Forgot Password - Request reset code
+  fastify.post<{ Body: { email: string } }>("/forgot-password", async (request, reply) => {
+    const { email } = request.body;
+
+    if (!email) {
+      return reply.badRequest("Email obrigatorio");
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      return {
+        success: true,
+        message: "Se o email existir, voce recebera um codigo de recuperacao",
+      };
+    }
+
+    // Delete any existing tokens for this email
+    await prisma.passwordResetToken.deleteMany({
+      where: { email: user.email },
+    });
+
+    // Generate 6-digit code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Token expires in 1 hour
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    await prisma.passwordResetToken.create({
+      data: {
+        token: resetCode,
+        email: user.email,
+        expiresAt,
+      },
+    });
+
+    // Send email
+    const emailSent = await sendPasswordResetEmail(user.email, resetCode, user.name);
+
+    if (!emailSent) {
+      fastify.log.error({ email: user.email }, "Failed to send password reset email");
+    }
+
+    return {
+      success: true,
+      message: "Se o email existir, voce recebera um codigo de recuperacao",
+    };
+  });
+
+  // Verify Reset Code
+  fastify.post<{ Body: { email: string; code: string } }>("/verify-reset-code", async (request, reply) => {
+    const { email, code } = request.body;
+
+    if (!email || !code) {
+      return reply.badRequest("Email e codigo obrigatorios");
+    }
+
+    const resetToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        email: email.toLowerCase().trim(),
+        token: code,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!resetToken) {
+      return reply.badRequest("Codigo invalido ou expirado");
+    }
+
+    return {
+      success: true,
+      message: "Codigo valido",
+    };
+  });
+
+  // Reset Password
+  fastify.post<{ Body: { email: string; code: string; newPassword: string } }>("/reset-password", async (request, reply) => {
+    const { email, code, newPassword } = request.body;
+
+    if (!email || !code || !newPassword) {
+      return reply.badRequest("Email, codigo e nova senha obrigatorios");
+    }
+
+    if (newPassword.length < 6) {
+      return reply.badRequest("Senha deve ter no minimo 6 caracteres");
+    }
+
+    const resetToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        email: email.toLowerCase().trim(),
+        token: code,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!resetToken) {
+      return reply.badRequest("Codigo invalido ou expirado");
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user) {
+      return reply.badRequest("Usuario nao encontrado");
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Mark token as used
+    await prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { used: true },
+    });
+
+    // Invalidate all refresh tokens for this user (security measure)
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id },
+    });
+
+    return {
+      success: true,
+      message: "Senha alterada com sucesso",
     };
   });
 }

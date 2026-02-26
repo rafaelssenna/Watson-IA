@@ -234,11 +234,7 @@ export async function personaRoutes(fastify: FastifyInstance) {
         return reply.badRequest("Arquivo de audio obrigatorio");
       }
 
-      // Get name/businessName from multipart fields
-      const fixedName = (data.fields?.name as any)?.value as string | undefined;
-      const fixedBusinessName = (data.fields?.businessName as any)?.value as string | undefined;
-
-      // Read audio buffer
+      // Read audio buffer first (must consume file stream before accessing all fields)
       const chunks: Buffer[] = [];
       for await (const chunk of data.file) {
         chunks.push(chunk);
@@ -249,13 +245,17 @@ export async function personaRoutes(fastify: FastifyInstance) {
         return reply.badRequest("Arquivo de audio vazio");
       }
 
+      // Get name/businessName from multipart fields (after consuming file stream)
+      const fixedName = (data.fields?.name as any)?.value as string | undefined;
+      const fixedBusinessName = (data.fields?.businessName as any)?.value as string | undefined;
+
       // Map common audio mime types
       let mimeType = data.mimetype;
       if (mimeType === "audio/m4a" || mimeType === "audio/x-m4a") {
         mimeType = "audio/mp4";
       }
 
-      console.log(`[GENERATE-PERSONA-AUDIO] Received audio: ${data.filename}, type: ${mimeType}, size: ${buffer.length}`);
+      console.log(`[GENERATE-PERSONA-AUDIO] Received audio: ${data.filename}, type: ${mimeType}, size: ${buffer.length}, name: ${fixedName}, businessName: ${fixedBusinessName}`);
 
       const generated = await generatePersonaFromAudio(
         buffer,

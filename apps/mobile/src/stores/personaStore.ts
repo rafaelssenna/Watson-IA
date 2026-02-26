@@ -323,13 +323,14 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
     set({ isLoading: true, error: null });
     try {
       const formData = new FormData();
+      // Fields MUST come before file for Fastify multipart to parse them
+      if (name) formData.append("name", name);
+      if (businessName) formData.append("businessName", businessName);
       formData.append("file", {
         uri: audioUri,
         name: "audio.m4a",
         type: "audio/m4a",
       } as any);
-      if (name) formData.append("name", name);
-      if (businessName) formData.append("businessName", businessName);
 
       const response = await api.post<{ success: boolean; data: GeneratedPersonaConfig }>("/personas/generate-from-audio", formData);
       set({ isLoading: false });

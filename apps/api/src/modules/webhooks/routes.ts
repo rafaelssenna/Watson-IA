@@ -5,7 +5,7 @@ import { sendTextMessage } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoTagContact } from "../../services/autoTag.service.js";
-import { scheduleFollowUp, cancelFollowUpForConversation } from "../../services/remarketing.service.js";
+import { scheduleFollowUp, cancelFollowUpForConversation, isRejectionMessage } from "../../services/remarketing.service.js";
 
 // Store fastify instance for use in buffer callback
 let fastifyInstance: FastifyInstance | null = null;
@@ -234,6 +234,15 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
 
     // Cancel remarketing follow-up (client responded)
     cancelFollowUpForConversation(conversation.id, fastify.log).catch(() => {});
+
+    // Check if client is rejecting/closing - permanently disable remarketing for this conversation
+    if (content && isRejectionMessage(content)) {
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { remarketingEnabled: false, status: "CLOSED", closedAt: new Date() },
+      });
+      fastify.log.info({ conversationId: conversation.id, content: content.substring(0, 50) }, "[remarketing] Client rejected - remarketing disabled & conversation closed");
+    }
 
     // Update contact last interaction
     await prisma.contact.update({

@@ -119,6 +119,31 @@ export function setRemarketingEventCallback(callback: RemarketingEventCallback):
 }
 
 // ============================================
+// REJECTION DETECTION
+// ============================================
+
+const REJECTION_PATTERNS = [
+  /\bn[aã]o\s+(obrigad|precis|quero|desejo|tenho\s+interesse)/i,
+  /\bsem\s+interesse/i,
+  /\bn[aã]o\s+me\s+(interess|chame|mande)/i,
+  /\bpare?\s+de\s+(me\s+)?(mandar|enviar|chamar|falar|escrever)/i,
+  /\bpara\s+de\s+(me\s+)?(mandar|enviar|chamar|falar|escrever)/i,
+  /\bn[aã]o\s+quero\s+(mais|receber)/i,
+  /\bdesist[io]/i,
+  /\bnao\s+obrigado/i,
+  /\bpode\s+parar/i,
+  /\bchega\b/i,
+  /\bdeixa\s+pra\s+l[aá]/i,
+  /\bencerr(a|e|ar)\b/i,
+];
+
+export function isRejectionMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (normalized.length > 200) return false; // Long messages are likely not simple rejections
+  return REJECTION_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+// ============================================
 // ARM FOLLOW-UP (bot responded)
 // ============================================
 

@@ -184,6 +184,14 @@ export default function PersonaEditScreen() {
 
   const startRecording = async () => {
     try {
+      // Clean up any previous recording first
+      if (recording) {
+        try {
+          await recording.stopAndUnloadAsync();
+        } catch {}
+        setRecording(null);
+      }
+
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert("Permissao", "Precisamos de permissao para gravar audio");
@@ -228,6 +236,11 @@ export default function PersonaEditScreen() {
       const uri = recording.getURI();
       setRecording(null);
 
+      // Reset audio mode so next recording works properly
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+
       if (!uri) {
         Alert.alert("Erro", "Nao foi possivel salvar o audio");
         setGenerating(false);
@@ -257,6 +270,10 @@ export default function PersonaEditScreen() {
 
     try {
       await recording.stopAndUnloadAsync();
+      // Reset audio mode
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
     } catch {}
     setRecording(null);
     setIsRecording(false);

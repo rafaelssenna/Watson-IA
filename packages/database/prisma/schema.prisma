@@ -27,6 +27,7 @@ model Organization {
   timezone             String             @default("America/Sao_Paulo")
   businessHours        Json?
   remarketingEnabled   Boolean            @default(true)
+  notificationPhone    String?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 

@@ -216,22 +216,28 @@ async function notifyOwnerOnClose(
 
     const message = `${emoji} *${statusText}*\n\nCliente: *${contactName}*\nEtapa: ${stageName}\n\nAcesse o Watson para ver os detalhes.`;
 
-    // Get WhatsApp connection to send message
+    // Get org notification phone + WhatsApp connection
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { notificationPhone: true },
+    });
+
     const connection = await prisma.whatsAppConnection.findFirst({
       where: { organizationId: orgId, status: "CONNECTED" },
       select: { uazapiToken: true, phoneNumber: true },
     });
 
-    // Get owner user(s) for push + WhatsApp notification
+    // Get owner user(s) for push notification
     const owners = await prisma.user.findMany({
       where: { organizationId: orgId, role: "OWNER" },
       select: { pushToken: true, name: true },
     });
 
-    // Send WhatsApp to the connected number (owner's own WhatsApp)
-    if (connection?.uazapiToken && connection.phoneNumber) {
-      await sendTextMessage(connection.uazapiToken, connection.phoneNumber, message);
-      log.info({ orgId, contactName, stage: stageName }, "Sent WhatsApp close notification to owner");
+    // Send WhatsApp to configured number (or fallback to connected number)
+    const notifyPhone = org?.notificationPhone || connection?.phoneNumber;
+    if (connection?.uazapiToken && notifyPhone) {
+      await sendTextMessage(connection.uazapiToken, notifyPhone, message);
+      log.info({ orgId, contactName, stage: stageName, phone: notifyPhone }, "Sent WhatsApp close notification");
     }
 
     // Send Expo push notification to owner(s)

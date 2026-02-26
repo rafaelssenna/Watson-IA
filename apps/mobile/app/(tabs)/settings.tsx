@@ -145,7 +145,8 @@ export default function SettingsScreen() {
             <SettingsItem
               icon="notifications-outline"
               title="Notificacoes"
-              description="Preferencias de notificacao"
+              description="Numero para avisos do funil"
+              onPress={() => router.push("/settings/notifications")}
             />
           </Card>
         </YStack>

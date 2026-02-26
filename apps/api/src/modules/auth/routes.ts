@@ -319,9 +319,27 @@ export async function authRoutes(fastify: FastifyInstance) {
         organizationName: user.organization.name,
         subscriptionStatus: user.organization.subscriptionStatus,
         trialEndsAt: user.organization.trialEndsAt,
+        notificationPhone: user.organization.notificationPhone,
       },
     };
   });
+
+  // Get/Set notification phone for organization
+  fastify.patch<{ Body: { notificationPhone: string } }>(
+    "/notification-phone",
+    { preHandler: [fastify.authenticate] },
+    async (request) => {
+      const { orgId } = request.user;
+      const { notificationPhone } = request.body;
+
+      await prisma.organization.update({
+        where: { id: orgId },
+        data: { notificationPhone: notificationPhone || null },
+      });
+
+      return { success: true, data: { notificationPhone } };
+    }
+  );
 
   // Forgot Password - Request reset code
   fastify.post<{ Body: { email: string } }>("/forgot-password", async (request, reply) => {

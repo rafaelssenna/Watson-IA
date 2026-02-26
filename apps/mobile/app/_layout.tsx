@@ -2,64 +2,16 @@ import { useEffect } from "react";
 import { Stack, Redirect, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 import { TamaguiProvider, Theme } from "tamagui";
 import { useFonts } from "expo-font";
-import { useColorScheme, Platform } from "react-native";
+import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import config from "../tamagui.config";
 import { useAuthStore } from "@/stores/authStore";
-import { api } from "@/services/api";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
-
-async function registerForPushNotifications() {
-  try {
-    // Push notifications don't work in Expo Go (SDK 53+), only in dev builds
-    if (!Constants.expoConfig?.extra?.eas?.projectId && !Constants.easConfig?.projectId) {
-      console.log("Push notifications: skipping (Expo Go or no project ID)");
-      return;
-    }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") return;
-
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "Watson",
-        importance: Notifications.AndroidImportance.MAX,
-        sound: "default",
-      });
-    }
-
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
-
-    // Save token to API
-    await api.post("/auth/push-token", { pushToken: token.data });
-  } catch (error) {
-    // Silently fail - push notifications are not critical
-    console.log("Push notification registration skipped:", (error as Error).message);
-  }
-}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -73,13 +25,6 @@ export default function RootLayout() {
   useEffect(() => {
     initialize();
   }, []);
-
-  // Register for push notifications when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      registerForPushNotifications();
-    }
-  }, [isAuthenticated]);
 
   useEffect(() => {
     if (fontsLoaded && !authLoading) {

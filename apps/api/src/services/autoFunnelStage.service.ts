@@ -257,6 +257,55 @@ async function notifyOwnerOnClose(
 }
 
 /**
+ * Notify org owner via WhatsApp + push when AI triggers [CHAMAR_ATENDENTE].
+ */
+export async function notifyOwnerOnTransfer(
+  orgId: string,
+  contactId: string,
+  log: Logger
+) {
+  try {
+    const contact = await prisma.contact.findUnique({
+      where: { id: contactId },
+      select: { name: true, pushName: true, phone: true },
+    });
+
+    const contactName = contact?.name || contact?.pushName || contact?.phone || "Contato";
+
+    const message = `👋 *CLIENTE QUER ATENDIMENTO*\n\nCliente: *${contactName}*\n\nO Watson transferiu a conversa. Acesse o app para responder.`;
+
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { notificationPhone: true },
+    });
+
+    const connection = await prisma.whatsAppConnection.findFirst({
+      where: { organizationId: orgId, status: "CONNECTED" },
+      select: { uazapiToken: true, phoneNumber: true },
+    });
+
+    const owners = await prisma.user.findMany({
+      where: { organizationId: orgId, role: "OWNER" },
+      select: { pushToken: true },
+    });
+
+    const notifyPhone = org?.notificationPhone || connection?.phoneNumber;
+    if (connection?.uazapiToken && notifyPhone) {
+      await sendTextMessage(connection.uazapiToken, notifyPhone, message);
+      log.info({ orgId, contactName, phone: notifyPhone }, "Sent WhatsApp transfer notification");
+    }
+
+    for (const owner of owners) {
+      if (owner.pushToken) {
+        await sendExpoPush(owner.pushToken, "Cliente quer atendimento", contactName, log);
+      }
+    }
+  } catch (error) {
+    log.error({ error, orgId, contactId }, "Error sending transfer notification");
+  }
+}
+
+/**
  * Send push notification via Expo Push API.
  */
 async function sendExpoPush(pushToken: string, title: string, body: string, log: Logger) {

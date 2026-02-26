@@ -30,11 +30,16 @@ export interface PersonaConfig {
   energyLevel: number; // 0-100
   empathyLevel: number; // 0-100
   customInstructions?: string;
-  // New fields
   businessName?: string;
   prohibitedTopics?: string;
   responseLength?: "CURTA" | "MEDIA" | "LONGA";
-  knowledgeContent?: string; // Combined text from knowledge files
+  knowledgeContent?: string;
+  // Dynamic context fields
+  businessHoursStart?: string; // "09:00"
+  businessHoursEnd?: string; // "18:00"
+  workDays?: string[]; // ["seg","ter","qua","qui","sex"]
+  contactName?: string;
+  contactFunnelStage?: string;
 }
 
 export interface AIResponseResult {
@@ -44,11 +49,52 @@ export interface AIResponseResult {
   error?: string;
 }
 
+// Get current time in Brasilia (UTC-3)
+function getBrasiliaTime(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+}
+
+function getSaudacao(): string {
+  const hora = getBrasiliaTime().getHours();
+  if (hora < 12) return "Bom dia";
+  if (hora < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function isWithinBusinessHours(
+  start?: string,
+  end?: string,
+  workDays?: string[]
+): boolean {
+  const now = getBrasiliaTime();
+  const dayMap = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+  const currentDay = dayMap[now.getDay()];
+  const days = workDays?.length ? workDays : ["seg", "ter", "qua", "qui", "sex"];
+
+  if (!days.includes(currentDay)) return false;
+
+  const startStr = start || "09:00";
+  const endStr = end || "18:00";
+  const [sh, sm] = startStr.split(":").map(Number);
+  const [eh, em] = endStr.split(":").map(Number);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return currentMinutes >= sh * 60 + sm && currentMinutes < eh * 60 + em;
+}
+
 // Build system prompt from persona configuration
 function buildSystemPrompt(persona: PersonaConfig): string {
   const businessName = persona.businessName;
+  const now = getBrasiliaTime();
+  const horaAtual = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const saudacao = getSaudacao();
+  const withinHours = isWithinBusinessHours(
+    persona.businessHoursStart,
+    persona.businessHoursEnd,
+    persona.workDays
+  );
 
-  // Build personality descriptions based on slider values
+  // Personality descriptions from sliders
   const formalityDesc =
     persona.formalityLevel > 70
       ? "FORMAL e PROFISSIONAL - use linguagem corporativa, trate por 'senhor/senhora', seja polido e educado"
@@ -77,7 +123,6 @@ function buildSystemPrompt(persona: PersonaConfig): string {
         ? "atencioso"
         : "direto ao ponto";
 
-  // Build emoji rule based on formality
   const emojiRule =
     persona.formalityLevel > 70
       ? "PROIBIDO usar emojis - mantenha comunicacao estritamente profissional"
@@ -85,7 +130,6 @@ function buildSystemPrompt(persona: PersonaConfig): string {
         ? "Use emojis com moderacao (maximo 1 por mensagem)"
         : "Pode usar emojis para ser mais amigavel";
 
-  // Build response length rule
   const responseLengthDesc =
     persona.responseLength === "CURTA"
       ? "Responda de forma MUITO breve (1 frase apenas)"
@@ -93,43 +137,90 @@ function buildSystemPrompt(persona: PersonaConfig): string {
         ? "Responda de forma detalhada (ate 4-5 frases)"
         : "Responda de forma concisa (2-3 frases)";
 
-  // Base prompt with personality always applied
-  let prompt = `Voce e ${persona.name}, um assistente virtual inteligente${businessName ? ` da empresa ${businessName}` : ""}.
+  // Build work days description
+  const dayNames: Record<string, string> = {
+    seg: "Segunda", ter: "Terca", qua: "Quarta", qui: "Quinta",
+    sex: "Sexta", sab: "Sabado", dom: "Domingo",
+  };
+  const workDaysList = (persona.workDays?.length ? persona.workDays : ["seg", "ter", "qua", "qui", "sex"])
+    .map((d) => dayNames[d] || d)
+    .join(", ");
 
-REGRAS OBRIGATORIAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
+  // === 1. IDENTIDADE ===
+  let prompt = `Voce e ${persona.name}, um assistente virtual inteligente${businessName ? ` da empresa ${businessName}` : ""}.
+Voce e uma IA conversacional - pensa, adapta, entende contexto e responde como pessoa real. Nunca repita frases, nunca soe robotico.`;
+
+  // === 2. CONSCIENCIA TEMPORAL ===
+  prompt += `
+
+HORARIO E DATA:
+- Horario atual: ${horaAtual} (Brasilia)
+- A saudacao correta agora e: "${saudacao}"
+- Horario comercial: ${persona.businessHoursStart || "09:00"} as ${persona.businessHoursEnd || "18:00"}
+- Dias de trabalho: ${workDaysList}
+- Status: ${withinHours ? "DENTRO do horario comercial" : "FORA do horario comercial"}`;
+
+  // === 3. REGRAS DE COMUNICACAO ===
+  prompt += `
+
+REGRAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
 1. Tom: ${formalityDesc}
 2. Abordagem: ${persuasivenessDesc}
 3. Energia: ${energyDesc}
 4. Empatia: ${empathyDesc}
 5. Emojis: ${emojiRule}
 6. Tamanho: ${responseLengthDesc}
+7. Responda sempre em portugues brasileiro
+8. Nao use formatacao markdown (sem *, #, etc)
+9. Nao despeje informacoes. Responda APENAS o que foi perguntado
+10. Se nao souber algo, pergunte mais detalhes`;
 
-Seu papel:
-- Conversar com os clientes via WhatsApp
-- Responder perguntas e ajudar no que for preciso
-- NUNCA dizer que vai transferir para um atendente humano - voce E o atendente
+  // === 4. CONTEXTO DO CLIENTE ===
+  if (persona.contactName || persona.contactFunnelStage) {
+    prompt += `\n\nCONTEXTO DO CLIENTE:`;
+    if (persona.contactName) {
+      prompt += `\n- Nome do cliente: ${persona.contactName}`;
+    }
+    if (persona.contactFunnelStage) {
+      prompt += `\n- Etapa no funil de vendas: ${persona.contactFunnelStage}`;
+    }
+  }
 
-Regras adicionais:
-- Responda sempre em portugues brasileiro
-- Nao use formatacao markdown (sem *, #, etc)
-- Se o cliente perguntar algo que voce nao sabe, pergunte mais detalhes`;
+  // === 5. COMANDO [CHAMAR_ATENDENTE] ===
+  prompt += `
 
-  // Add prohibited topics if provided
+COMANDO ESPECIAL - CHAMAR ATENDENTE HUMANO:
+Quando o cliente demonstrar que quer COMPRAR, FECHAR NEGOCIO, agendar REUNIAO/DEMO, ou pedir para FALAR COM UMA PESSOA/ATENDENTE, voce deve:
+1. Responder normalmente confirmando que um atendente vai entrar em contato
+2. Numa linha SEPARADA, escreva EXATAMENTE: [CHAMAR_ATENDENTE]
+
+${withinHours
+    ? "Estamos DENTRO do horario comercial - diga que um atendente vai falar com ele em breve."
+    : "Estamos FORA do horario comercial - diga que um atendente vai entrar em contato no proximo horario comercial."}
+
+REGRAS DO COMANDO:
+- Mande [CHAMAR_ATENDENTE] SOZINHO numa linha separada, sem nada antes ou depois na mesma linha
+- Use APENAS quando o cliente claramente quer atendimento humano, quer comprar, ou quer reuniao
+- NAO use se o cliente esta apenas tirando duvidas que voce pode responder
+- Depois de enviar o comando, continue conversando normalmente se o cliente quiser
+- Use no MAXIMO 1 vez por conversa`;
+
+  // === 6. TEMAS PROIBIDOS ===
   if (persona.prohibitedTopics?.trim()) {
     prompt += `\n\nTEMAS PROIBIDOS (NUNCA mencione ou discuta):\n${persona.prohibitedTopics}`;
   }
 
-  // Add knowledge content if provided
+  // === 7. BASE DE CONHECIMENTO ===
   if (persona.knowledgeContent?.trim()) {
     prompt += `\n\nINFORMACOES DO NEGOCIO (use estas informacoes para responder):\n${persona.knowledgeContent}`;
   }
 
-  // Add custom system prompt if provided
+  // === 8. SYSTEM PROMPT CUSTOMIZADO ===
   if (persona.systemPrompt) {
     prompt += `\n\nContexto e instrucoes especificas:\n${persona.systemPrompt}`;
   }
 
-  // Add custom instructions if provided
+  // === 9. INSTRUCOES ADICIONAIS ===
   if (persona.customInstructions) {
     prompt += `\n\nInstrucoes adicionais:\n${persona.customInstructions}`;
   }

@@ -5,7 +5,7 @@ import { sendTextMessage } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoTagContact } from "../../services/autoTag.service.js";
-import { autoClassifyFunnelStage } from "../../services/autoFunnelStage.service.js";
+import { autoClassifyFunnelStage, notifyOwnerOnTransfer } from "../../services/autoFunnelStage.service.js";
 import { scheduleFollowUp, cancelFollowUpForConversation, isRejectionMessage } from "../../services/remarketing.service.js";
 
 // Store fastify instance for use in buffer callback
@@ -463,6 +463,18 @@ async function generateAndSendAIResponse(
         .join("\n\n---\n\n");
     }
 
+    // Get contact name and funnel stage for AI context
+    const contactData = await prisma.contact.findUnique({
+      where: { id: conversation.contactId },
+      select: {
+        name: true,
+        pushName: true,
+        funnelStage: { select: { name: true } },
+      },
+    });
+    const contactName = contactData?.name || contactData?.pushName || undefined;
+    const contactFunnelStage = contactData?.funnelStage?.name || undefined;
+
     const persona: PersonaConfig = activePersona
       ? {
           name: activePersona.name,
@@ -476,6 +488,11 @@ async function generateAndSendAIResponse(
           prohibitedTopics: activePersona.prohibitedTopics || undefined,
           responseLength: activePersona.responseLength as "CURTA" | "MEDIA" | "LONGA" | undefined,
           knowledgeContent: knowledgeContent || undefined,
+          businessHoursStart: activePersona.businessHoursStart || undefined,
+          businessHoursEnd: activePersona.businessHoursEnd || undefined,
+          workDays: activePersona.workDays?.length ? activePersona.workDays : undefined,
+          contactName,
+          contactFunnelStage,
         }
       : {
           name: "Assistente Watson",
@@ -484,6 +501,8 @@ async function generateAndSendAIResponse(
           energyLevel: 50,
           empathyLevel: 70,
           businessName: org?.name,
+          contactName,
+          contactFunnelStage,
         };
 
     fastify.log.info(
@@ -509,6 +528,35 @@ async function generateAndSendAIResponse(
     } catch (aiError) {
       fastify.log.error({ error: aiError }, "AI service error, using default response");
       responseText = getDefaultResponse();
+    }
+
+    // Parse special commands from AI response
+    const io = fastify.io;
+    let triggeredTransfer = false;
+
+    if (responseText.includes("[CHAMAR_ATENDENTE]")) {
+      triggeredTransfer = true;
+      responseText = responseText.replace(/\[CHAMAR_ATENDENTE\]/g, "").trim();
+
+      // Switch conversation to human mode
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { mode: "HUMAN_ONLY", status: "WAITING_HUMAN" },
+      });
+
+      // Cancel remarketing (human will take over)
+      cancelFollowUpForConversation(conversation.id);
+
+      // Emit real-time update
+      io.to(`org:${orgId}`).emit("conversation:update", {
+        conversationId: conversation.id,
+        updates: { mode: "HUMAN_ONLY", status: "WAITING_HUMAN" },
+      });
+
+      // Notify owner (non-blocking)
+      notifyOwnerOnTransfer(orgId, conversation.contactId, fastify.log).catch(() => {});
+
+      fastify.log.info({ conversationId: conversation.id }, "AI triggered [CHAMAR_ATENDENTE] - transferred to human");
     }
 
     // Send response via Uazapi
@@ -545,7 +593,6 @@ async function generateAndSendAIResponse(
     });
 
     // Emit real-time event for outbound message
-    const io = fastify.io;
     io.to(`org:${orgId}`).emit("message:new", {
       conversationId: conversation.id,
       message: outboundMessage,

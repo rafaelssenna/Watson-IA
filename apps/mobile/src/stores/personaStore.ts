@@ -45,6 +45,7 @@ export interface CreatePersonaData {
   // New fields
   businessName?: string;
   greetingMessage?: string;
+  greetingEnabled?: boolean;
   prohibitedTopics?: string;
   responseLength?: "CURTA" | "MEDIA" | "LONGA";
   businessHoursStart?: string;
@@ -63,6 +64,19 @@ interface PersonaState {
   error: string | null;
 }
 
+export interface GeneratedPersonaConfig {
+  name: string;
+  businessName: string;
+  systemPrompt: string;
+  greetingMessage: string;
+  formalityLevel: number;
+  persuasiveness: number;
+  energyLevel: number;
+  empathyLevel: number;
+  responseLength: "CURTA" | "MEDIA" | "LONGA";
+  prohibitedTopics: string;
+}
+
 interface PersonaActions {
   fetchPersonas: () => Promise<void>;
   fetchPersona: (id: string) => Promise<Persona | null>;
@@ -76,6 +90,8 @@ interface PersonaActions {
   fetchKnowledgeFiles: (personaId: string) => Promise<void>;
   uploadKnowledgeFile: (personaId: string, file: { uri: string; name: string; mimeType: string }) => Promise<void>;
   deleteKnowledgeFile: (personaId: string, fileId: string) => Promise<void>;
+  // AI generation
+  generateFromDescription: (description: string) => Promise<GeneratedPersonaConfig>;
 }
 
 export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) => ({
@@ -276,6 +292,24 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
     } catch (error: any) {
       set({
         error: error.response?.data?.error?.message || "Erro ao deletar arquivo",
+      });
+      throw error;
+    }
+  },
+
+  generateFromDescription: async (description: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post<{ success: boolean; data: GeneratedPersonaConfig }>("/personas/generate", { description });
+      set({ isLoading: false });
+      if (response.data.success) {
+        return response.data.data;
+      }
+      throw new Error("Erro ao gerar configuracao");
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error.response?.data?.error?.message || "Erro ao gerar configuracao com IA",
       });
       throw error;
     }

@@ -190,6 +190,73 @@ export async function generateResponse(
   }
 }
 
+// Generate persona configuration from business description
+export interface GeneratedPersonaConfig {
+  name: string;
+  businessName: string;
+  systemPrompt: string;
+  greetingMessage: string;
+  formalityLevel: number;
+  persuasiveness: number;
+  energyLevel: number;
+  empathyLevel: number;
+  responseLength: "CURTA" | "MEDIA" | "LONGA";
+  prohibitedTopics: string;
+}
+
+export async function generatePersonaFromDescription(
+  description: string
+): Promise<GeneratedPersonaConfig> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `Voce e um especialista em configurar assistentes virtuais de WhatsApp para empresas brasileiras.
+
+O usuario descreveu seu negocio assim:
+"${description}"
+
+Com base nessa descricao, gere uma configuracao COMPLETA para o assistente virtual. Retorne APENAS um JSON valido (sem markdown, sem \`\`\`) com os seguintes campos:
+
+{
+  "name": "Nome do assistente (ex: 'Assistente da Barbearia X', 'Atendente Virtual Y')",
+  "businessName": "Nome do negocio extraido da descricao",
+  "systemPrompt": "Prompt detalhado descrevendo quem e o assistente, o que o negocio faz, servicos oferecidos, diferenciais, e como deve atender os clientes. Minimo 3 paragrafos.",
+  "greetingMessage": "Mensagem de boas-vindas para novos contatos no WhatsApp. Deve ser acolhedora e mencionar o nome do negocio.",
+  "formalityLevel": 0-100 (0=muito casual, 100=muito formal),
+  "persuasiveness": 0-100 (0=apenas informativo, 100=muito persuasivo/vendedor),
+  "energyLevel": 0-100 (0=calmo/sereno, 100=muito energetico),
+  "empathyLevel": 0-100 (0=direto ao ponto, 100=muito empatico),
+  "responseLength": "CURTA" ou "MEDIA" ou "LONGA",
+  "prohibitedTopics": "Lista de temas que o assistente NAO deve abordar (ex: concorrentes, politica, precos de terceiros)"
+}
+
+REGRAS:
+- Adapte a personalidade ao tipo de negocio (barbearia = casual, escritorio advocacia = formal)
+- O systemPrompt deve ser rico e detalhado, incluindo informacoes extraidas da descricao
+- A greetingMessage deve ser natural e nao robótica
+- prohibitedTopics deve incluir temas sensiveis para o tipo de negocio
+- Retorne SOMENTE o JSON, nada mais`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+
+  // Parse JSON - remove possible markdown wrapping
+  const jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+  const parsed = JSON.parse(jsonStr) as GeneratedPersonaConfig;
+
+  // Clamp values to valid ranges
+  parsed.formalityLevel = Math.max(0, Math.min(100, parsed.formalityLevel));
+  parsed.persuasiveness = Math.max(0, Math.min(100, parsed.persuasiveness));
+  parsed.energyLevel = Math.max(0, Math.min(100, parsed.energyLevel));
+  parsed.empathyLevel = Math.max(0, Math.min(100, parsed.empathyLevel));
+
+  if (!["CURTA", "MEDIA", "LONGA"].includes(parsed.responseLength)) {
+    parsed.responseLength = "MEDIA";
+  }
+
+  return parsed;
+}
+
 // Simple response for when AI is not configured
 export function getDefaultResponse(): string {
   return "Ola! Recebi sua mensagem. Em breve um atendente ira responder.";

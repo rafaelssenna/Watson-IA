@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createPersonaSchema, updatePersonaSchema } from "@watson/shared";
+import { generatePersonaFromDescription } from "../../services/ai.service.js";
 
 // Extract text from different file types
 async function extractTextFromFile(buffer: Buffer, mimeType: string): Promise<string> {
@@ -190,6 +191,34 @@ export async function personaRoutes(fastify: FastifyInstance) {
         },
       },
     };
+  });
+
+  // Generate persona from business description (AI)
+  fastify.post<{ Body: { description: string } }>("/generate", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { description } = request.body;
+
+    if (!description?.trim()) {
+      return reply.badRequest("Descricao do negocio obrigatoria");
+    }
+
+    if (description.length < 10) {
+      return reply.badRequest("Descreva seu negocio com mais detalhes (minimo 10 caracteres)");
+    }
+
+    try {
+      const generated = await generatePersonaFromDescription(description.trim());
+
+      return {
+        success: true,
+        data: generated,
+      };
+    } catch (error: any) {
+      console.error("[GENERATE-PERSONA] Error:", error);
+      return reply.code(500).send({
+        success: false,
+        error: { message: "Erro ao gerar configuracao. Tente novamente." },
+      });
+    }
   });
 
   // ============================================

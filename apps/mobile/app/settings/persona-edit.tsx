@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Pressable, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, Switch } from "react-native";
+import { Pressable, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, Switch, Modal } from "react-native";
 import { router, Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ export default function PersonaEditScreen() {
     fetchDefaultPersona,
     createPersona,
     updatePersona,
+    generateFromDescription,
   } = usePersonaStore();
 
   // Form state
@@ -35,6 +36,11 @@ export default function PersonaEditScreen() {
   const [saving, setSaving] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
   const loadedPersonaId = useRef<string | null>(null);
+
+  // AI Generation modal
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiDescription, setAIDescription] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   // Load default persona on mount
   useEffect(() => {
@@ -111,6 +117,38 @@ export default function PersonaEditScreen() {
     setSaving(false);
   };
 
+  const handleGenerateWithAI = async () => {
+    if (!aiDescription.trim() || aiDescription.trim().length < 10) {
+      Alert.alert("Erro", "Descreva seu negocio com mais detalhes (minimo 10 caracteres)");
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const generated = await generateFromDescription(aiDescription.trim());
+
+      // Fill all form fields with AI-generated values
+      setName(generated.name);
+      setBusinessName(generated.businessName);
+      setSystemPrompt(generated.systemPrompt);
+      setGreetingMessage(generated.greetingMessage);
+      setGreetingEnabled(true);
+      setFormalityLevel(generated.formalityLevel);
+      setPersuasiveness(generated.persuasiveness);
+      setEnergyLevel(generated.energyLevel);
+      setEmpathyLevel(generated.empathyLevel);
+      setResponseLength(generated.responseLength);
+      setProhibitedTopics(generated.prohibitedTopics);
+
+      setShowAIModal(false);
+      setAIDescription("");
+      Alert.alert("Pronto!", "A IA configurou tudo automaticamente. Revise os campos e clique em Salvar.");
+    } catch (error: any) {
+      Alert.alert("Erro", error.message || "Erro ao gerar com IA. Tente novamente.");
+    }
+    setGenerating(false);
+  };
+
   const getLevelDescription = (level: number, type: string): string => {
     const descriptions: Record<string, Record<string, string>> = {
       formality: {
@@ -176,6 +214,139 @@ export default function PersonaEditScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$4">
+            {/* AI Auto-Configure Button */}
+            <Pressable onPress={() => setShowAIModal(true)}>
+              <Card
+                padding="$4"
+                borderRadius="$4"
+                backgroundColor="$blue3"
+                borderWidth={1}
+                borderColor="$blue8"
+              >
+                <XStack alignItems="center" gap="$3">
+                  <YStack
+                    width={44}
+                    height={44}
+                    borderRadius={22}
+                    backgroundColor="$blue10"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Ionicons name="sparkles" size={22} color="white" />
+                  </YStack>
+                  <YStack flex={1}>
+                    <Text fontSize="$4" fontWeight="700" color="$blue10">
+                      Conte sobre sua empresa
+                    </Text>
+                    <Text fontSize="$2" color="$blue8" marginTop="$1">
+                      A IA configura tudo automaticamente para voce
+                    </Text>
+                  </YStack>
+                  <Ionicons name="chevron-forward" size={20} color={theme.blue10.val} />
+                </XStack>
+              </Card>
+            </Pressable>
+
+            {/* AI Generation Modal */}
+            <Modal
+              visible={showAIModal}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={() => !generating && setShowAIModal(false)}
+            >
+              <YStack flex={1} backgroundColor={theme.background.val} padding="$4">
+                <XStack justifyContent="space-between" alignItems="center" marginBottom="$4">
+                  <Pressable onPress={() => !generating && setShowAIModal(false)}>
+                    <Text color="$gray8" fontSize="$4">Cancelar</Text>
+                  </Pressable>
+                  <Text fontSize="$5" fontWeight="700" color={theme.color.val}>
+                    Configurar com IA
+                  </Text>
+                  <YStack width={60} />
+                </XStack>
+
+                <YStack
+                  alignItems="center"
+                  padding="$4"
+                  marginBottom="$4"
+                >
+                  <YStack
+                    width={64}
+                    height={64}
+                    borderRadius={32}
+                    backgroundColor="$blue10"
+                    alignItems="center"
+                    justifyContent="center"
+                    marginBottom="$3"
+                  >
+                    <Ionicons name="sparkles" size={32} color="white" />
+                  </YStack>
+                  <Text fontSize="$4" fontWeight="600" color={theme.color.val} textAlign="center">
+                    Descreva seu negocio
+                  </Text>
+                  <Text fontSize="$2" color="$gray8" textAlign="center" marginTop="$2">
+                    Conte o que sua empresa faz, publico-alvo, diferenciais, tom de comunicacao...
+                  </Text>
+                </YStack>
+
+                <TextInput
+                  value={aiDescription}
+                  onChangeText={setAIDescription}
+                  placeholder="Ex: Tenho uma barbearia no centro de BH chamada BarberKing. Atendo homens de 20-40 anos, com cortes modernos, barba e sobrancelha. Somos descontraidos e usamos gírias..."
+                  placeholderTextColor={theme.gray8.val}
+                  multiline
+                  numberOfLines={8}
+                  editable={!generating}
+                  style={{
+                    backgroundColor: theme.backgroundStrong?.val || "#1a1a1a",
+                    borderRadius: 12,
+                    padding: 16,
+                    fontSize: 16,
+                    color: theme.color.val,
+                    minHeight: 180,
+                    textAlignVertical: "top",
+                    borderWidth: 1,
+                    borderColor: theme.gray6.val,
+                  }}
+                />
+
+                <Text fontSize="$1" color="$gray7" marginTop="$2" textAlign="center">
+                  Quanto mais detalhes, melhor sera a configuracao
+                </Text>
+
+                <Pressable
+                  onPress={handleGenerateWithAI}
+                  disabled={generating || !aiDescription.trim()}
+                  style={{ marginTop: 24 }}
+                >
+                  <XStack
+                    backgroundColor={generating || !aiDescription.trim() ? "$gray6" : "$blue10"}
+                    paddingVertical="$4"
+                    borderRadius="$4"
+                    alignItems="center"
+                    justifyContent="center"
+                    gap="$2"
+                  >
+                    {generating ? (
+                      <>
+                        <ActivityIndicator size="small" color="white" />
+                        <Text color="white" fontWeight="700" fontSize="$4">
+                          Gerando configuracao...
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="sparkles" size={20} color="white" />
+                        <Text color="white" fontWeight="700" fontSize="$4">
+                          Gerar com IA
+                        </Text>
+                      </>
+                    )}
+                  </XStack>
+                </Pressable>
+              </YStack>
+            </Modal>
+
             {/* Business Info */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
               <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">

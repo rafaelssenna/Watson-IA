@@ -1,12 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
-import { FlatList, RefreshControl, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import {
+  FlatList, RefreshControl, Pressable, ActivityIndicator,
+  ScrollView as RNScrollView, Dimensions, Alert,
+  ActionSheetIOS, Platform,
+} from "react-native";
 import { router, Stack } from "expo-router";
-import { YStack, XStack, Text, useTheme, ScrollView } from "tamagui";
+import { YStack, XStack, Text, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { api } from "@/services/api";
 
 const WATSON_TEAL = "#0d9488";
-const WATSON_TEAL_LIGHT = "#14b8a6";
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const COLUMN_WIDTH = SCREEN_WIDTH * 0.75;
+const COLUMN_GAP = 12;
 
 interface Tag {
   id: string;
@@ -14,99 +21,97 @@ interface Tag {
   color: string;
 }
 
-interface Contact {
+interface FunnelContact {
   id: string;
   name: string;
   phone: string;
-  email?: string;
-  avatar?: string;
   leadScore: number;
-  funnelStage?: {
-    id: string;
-    name: string;
-    color: string;
-  };
   tags: Tag[];
   lastInteractionAt?: string;
-  conversationCount: number;
-  status: string;
 }
 
-export default function CRMScreen() {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [allTags, setAllTags] = useState<Tag[]>([]);
+interface FunnelStageData {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+  contacts: FunnelContact[];
+  contactCount: number;
+}
+
+interface FunnelBoardData {
+  funnel: { id: string; name: string } | null;
+  stages: FunnelStageData[];
+}
+
+export default function FunilScreen() {
+  const [boardData, setBoardData] = useState<FunnelBoardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const theme = useTheme();
 
-  const fetchData = async () => {
+  const fetchBoard = async () => {
     try {
-      const [contactsRes, tagsRes] = await Promise.all([
-        api.get<{ success: boolean; data: Contact[] }>("/contacts"),
-        api.get<{ success: boolean; data: Tag[] }>("/tags"),
-      ]);
-      setContacts(contactsRes.data.data || []);
-      setAllTags(tagsRes.data.data || []);
+      const res = await api.get<{ success: boolean; data: FunnelBoardData }>("/contacts/funnel-board");
+      setBoardData(res.data.data);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching funnel board:", error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchBoard(); }, []);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchData();
+    fetchBoard();
   }, []);
 
-  // Filter logic
-  const filteredContacts = contacts.filter((contact) => {
-    if (selectedFilter === "all") return true;
-    if (selectedFilter === "score") return contact.leadScore >= 70;
-    if (selectedFilter === "recent") {
-      if (!contact.lastInteractionAt) return false;
-      const daysDiff = Math.floor((Date.now() - new Date(contact.lastInteractionAt).getTime()) / (1000 * 60 * 60 * 24));
-      return daysDiff <= 7;
+  const moveContact = async (contactId: string, newStageId: string) => {
+    try {
+      await api.patch(`/contacts/${contactId}/funnel`, { funnelStageId: newStageId });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      fetchBoard();
+    } catch (error) {
+      Alert.alert("Erro", "Nao foi possivel mover o contato");
     }
-    // Tag filter
-    return contact.tags?.some((t) => t.id === selectedFilter);
-  });
-
-  // Stats
-  const taggedCount = contacts.filter((c) => c.tags && c.tags.length > 0).length;
-  const highScoreCount = contacts.filter((c) => c.leadScore >= 70).length;
-  const recentCount = contacts.filter((c) => {
-    if (!c.lastInteractionAt) return false;
-    const daysDiff = Math.floor((Date.now() - new Date(c.lastInteractionAt).getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 7;
-  }).length;
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Hoje";
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) return `${diffDays}d`;
-    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   };
 
-  const getLastMessage = (contact: Contact) => {
-    // Placeholder - ideally would show last message
-    if (contact.conversationCount > 0) {
-      return `${contact.conversationCount} conversa${contact.conversationCount > 1 ? "s" : ""}`;
+  const showMoveOptions = (contact: FunnelContact, currentStageId: string) => {
+    if (!boardData) return;
+
+    const otherStages = boardData.stages.filter((s) => s.id !== currentStageId);
+    const stageNames = otherStages.map((s) => s.name);
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Cancelar", ...stageNames],
+          cancelButtonIndex: 0,
+          title: `Mover ${contact.name}`,
+          message: "Selecione a nova etapa",
+        },
+        (buttonIndex) => {
+          if (buttonIndex > 0) {
+            moveContact(contact.id, otherStages[buttonIndex - 1].id);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        `Mover ${contact.name}`,
+        "Selecione a nova etapa",
+        [
+          { text: "Cancelar", style: "cancel" },
+          ...otherStages.map((stage) => ({
+            text: stage.name,
+            onPress: () => moveContact(contact.id, stage.id),
+          })),
+        ]
+      );
     }
-    return "Novo contato";
   };
 
   if (isLoading) {
@@ -124,229 +129,207 @@ export default function CRMScreen() {
         {/* Header */}
         <YStack paddingHorizontal="$4" paddingTop="$6" paddingBottom="$3">
           <XStack justifyContent="space-between" alignItems="center">
-            <Text fontSize={28} fontWeight="bold" color="$color">
-              CRM
-            </Text>
-            <XStack gap="$3">
-              <Pressable>
-                <Ionicons name="search-outline" size={24} color={theme.color.val} />
-              </Pressable>
-              <Pressable>
-                <Ionicons name="ellipsis-vertical" size={24} color={theme.color.val} />
-              </Pressable>
-            </XStack>
+            <YStack>
+              <Text fontSize={28} fontWeight="bold" color="$color">
+                Funil
+              </Text>
+              {boardData?.funnel && (
+                <Text fontSize={13} color="$gray8">
+                  {boardData.funnel.name}
+                </Text>
+              )}
+            </YStack>
+            <Pressable onPress={onRefresh}>
+              <Ionicons name="refresh-outline" size={24} color={theme.color.val} />
+            </Pressable>
           </XStack>
         </YStack>
 
-        {/* Filter Chips - WhatsApp Style */}
-        <ScrollView
+        {/* Kanban Board */}
+        <RNScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 80,
+            gap: COLUMN_GAP,
+          }}
+          decelerationRate="fast"
+          snapToInterval={COLUMN_WIDTH + COLUMN_GAP}
+          snapToAlignment="start"
         >
-          <FilterChip
-            label="Todos"
-            count={contacts.length}
-            isSelected={selectedFilter === "all"}
-            onPress={() => setSelectedFilter("all")}
-          />
-          <FilterChip
-            label="Recentes"
-            count={recentCount}
-            isSelected={selectedFilter === "recent"}
-            onPress={() => setSelectedFilter("recent")}
-          />
-          <FilterChip
-            label="Score Alto"
-            count={highScoreCount}
-            isSelected={selectedFilter === "score"}
-            onPress={() => setSelectedFilter("score")}
-          />
-          {allTags.slice(0, 4).map((tag) => (
-            <FilterChip
-              key={tag.id}
-              label={tag.name}
-              count={contacts.filter((c) => c.tags?.some((t) => t.id === tag.id)).length}
-              isSelected={selectedFilter === tag.id}
-              onPress={() => setSelectedFilter(selectedFilter === tag.id ? "all" : tag.id)}
-              color={tag.color}
+          {boardData?.stages.map((stage) => (
+            <KanbanColumn
+              key={stage.id}
+              stage={stage}
+              onContactPress={(c) => router.push(`/contact/${c.id}`)}
+              onContactLongPress={(c) => showMoveOptions(c, stage.id)}
+              isRefreshing={isRefreshing}
+              onRefresh={onRefresh}
             />
           ))}
-        </ScrollView>
-
-        {/* Contact List - WhatsApp Style */}
-        <FlatList
-          data={filteredContacts}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 80 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={WATSON_TEAL}
-              colors={[WATSON_TEAL]}
-            />
-          }
-          renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(`/contact/${item.id}`)}>
-              <XStack
-                paddingHorizontal="$4"
-                paddingVertical="$3"
-                gap="$3"
-                alignItems="center"
-                backgroundColor="$background"
-                borderBottomWidth={StyleSheet.hairlineWidth}
-                borderBottomColor="$gray5"
-              >
-                {/* Avatar */}
-                <YStack
-                  width={52}
-                  height={52}
-                  borderRadius={26}
-                  backgroundColor={getAvatarColor(item.name || item.phone)}
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Text color="white" fontSize={20} fontWeight="600">
-                    {(item.name || item.phone)?.charAt(0)?.toUpperCase() || "?"}
-                  </Text>
-                </YStack>
-
-                {/* Content */}
-                <YStack flex={1}>
-                  <XStack justifyContent="space-between" alignItems="center">
-                    <Text fontSize={16} fontWeight="600" color="$color" numberOfLines={1} flex={1}>
-                      {item.name || item.phone}
-                    </Text>
-                    <Text fontSize={12} color="$gray8">
-                      {formatDate(item.lastInteractionAt)}
-                    </Text>
-                  </XStack>
-
-                  <XStack justifyContent="space-between" alignItems="center" marginTop={2}>
-                    <XStack flex={1} alignItems="center" gap="$2">
-                      {/* Tags inline */}
-                      {item.tags && item.tags.length > 0 ? (
-                        <XStack gap="$1" flex={1}>
-                          {item.tags.slice(0, 2).map((tag) => (
-                            <XStack
-                              key={tag.id}
-                              backgroundColor={`${tag.color}20`}
-                              paddingHorizontal={6}
-                              paddingVertical={2}
-                              borderRadius={4}
-                            >
-                              <Text fontSize={11} color={tag.color} fontWeight="500">
-                                {tag.name}
-                              </Text>
-                            </XStack>
-                          ))}
-                          {item.tags.length > 2 && (
-                            <Text fontSize={11} color="$gray8">+{item.tags.length - 2}</Text>
-                          )}
-                        </XStack>
-                      ) : (
-                        <Text fontSize={14} color="$gray8" numberOfLines={1} flex={1}>
-                          {getLastMessage(item)}
-                        </Text>
-                      )}
-                    </XStack>
-
-                    {/* Score Badge */}
-                    {item.leadScore > 0 && (
-                      <YStack
-                        backgroundColor={getScoreColor(item.leadScore)}
-                        width={24}
-                        height={24}
-                        borderRadius={12}
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Text fontSize={11} color="white" fontWeight="bold">
-                          {item.leadScore}
-                        </Text>
-                      </YStack>
-                    )}
-                  </XStack>
-                </YStack>
-              </XStack>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <YStack alignItems="center" padding="$8">
-              <Ionicons name="people-outline" size={48} color={theme.gray6.val} />
-              <Text fontSize="$4" color="$gray8" marginTop="$3">
-                Nenhum contato encontrado
-              </Text>
-            </YStack>
-          }
-        />
-
-        {/* FAB - WhatsApp Style */}
-        <Pressable
-          style={styles.fab}
-          onPress={() => {/* Add contact action */}}
-        >
-          <Ionicons name="add" size={28} color="white" />
-        </Pressable>
+        </RNScrollView>
       </YStack>
     </>
   );
 }
 
-function FilterChip({
-  label,
-  count,
-  isSelected,
-  onPress,
-  color,
+function KanbanColumn({
+  stage,
+  onContactPress,
+  onContactLongPress,
+  isRefreshing,
+  onRefresh,
 }: {
-  label: string;
-  count?: number;
-  isSelected: boolean;
-  onPress: () => void;
-  color?: string;
+  stage: FunnelStageData;
+  onContactPress: (c: FunnelContact) => void;
+  onContactLongPress: (c: FunnelContact) => void;
+  isRefreshing: boolean;
+  onRefresh: () => void;
 }) {
-  const chipColor = color || WATSON_TEAL;
-
   return (
-    <Pressable onPress={onPress}>
+    <YStack
+      width={COLUMN_WIDTH}
+      backgroundColor="$backgroundStrong"
+      borderRadius={12}
+      overflow="hidden"
+    >
+      {/* Column Header */}
       <XStack
-        backgroundColor={isSelected ? chipColor : `${chipColor}15`}
         paddingHorizontal="$3"
-        paddingVertical="$2"
-        borderRadius={20}
+        paddingVertical="$3"
         alignItems="center"
-        gap="$1"
+        gap="$2"
+        borderBottomWidth={3}
+        borderBottomColor={stage.color}
       >
-        <Text
-          fontSize={13}
-          fontWeight="500"
-          color={isSelected ? "white" : chipColor}
-        >
-          {label}
+        <YStack
+          width={10}
+          height={10}
+          borderRadius={5}
+          backgroundColor={stage.color}
+        />
+        <Text fontWeight="600" color="$color" flex={1} numberOfLines={1}>
+          {stage.name}
         </Text>
-        {count !== undefined && count > 0 && (
-          <Text
-            fontSize={12}
-            fontWeight="600"
-            color={isSelected ? "rgba(255,255,255,0.8)" : `${chipColor}80`}
-          >
-            {count}
+        <YStack
+          backgroundColor={`${stage.color}25`}
+          paddingHorizontal={8}
+          paddingVertical={2}
+          borderRadius={10}
+        >
+          <Text fontSize={12} fontWeight="600" color={stage.color}>
+            {stage.contactCount}
           </Text>
-        )}
+        </YStack>
       </XStack>
-    </Pressable>
+
+      {/* Contact Cards */}
+      <FlatList
+        data={stage.contacts}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ padding: 8, gap: 8 }}
+        nestedScrollEnabled
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={WATSON_TEAL}
+          />
+        }
+        renderItem={({ item }) => (
+          <ContactCard
+            contact={item}
+            stageColor={stage.color}
+            onPress={() => onContactPress(item)}
+            onLongPress={() => onContactLongPress(item)}
+          />
+        )}
+        ListEmptyComponent={
+          <YStack alignItems="center" padding="$4">
+            <Text fontSize={12} color="$gray8">
+              Nenhum contato
+            </Text>
+          </YStack>
+        }
+      />
+    </YStack>
   );
 }
 
-function getAvatarColor(name: string): string {
-  const colors = [
-    "#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b",
-    "#10b981", "#3b82f6", "#ef4444", "#6366f1"
-  ];
-  const index = (name?.charCodeAt(0) || 0) % colors.length;
-  return colors[index];
+function ContactCard({
+  contact,
+  stageColor,
+  onPress,
+  onLongPress,
+}: {
+  contact: FunnelContact;
+  stageColor: string;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress}>
+      <YStack
+        backgroundColor="$background"
+        padding="$3"
+        borderRadius={8}
+        borderLeftWidth={3}
+        borderLeftColor={stageColor}
+        gap="$1"
+      >
+        {/* Name + Score */}
+        <XStack justifyContent="space-between" alignItems="center">
+          <Text fontWeight="600" color="$color" fontSize={14} numberOfLines={1} flex={1}>
+            {contact.name}
+          </Text>
+          {contact.leadScore > 0 && (
+            <YStack
+              backgroundColor={getScoreColor(contact.leadScore)}
+              width={22}
+              height={22}
+              borderRadius={11}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text fontSize={10} color="white" fontWeight="bold">
+                {contact.leadScore}
+              </Text>
+            </YStack>
+          )}
+        </XStack>
+
+        {/* Tags (max 2) */}
+        {contact.tags.length > 0 && (
+          <XStack gap={4} flexWrap="wrap">
+            {contact.tags.slice(0, 2).map((tag) => (
+              <XStack
+                key={tag.id}
+                backgroundColor={`${tag.color}20`}
+                paddingHorizontal={5}
+                paddingVertical={1}
+                borderRadius={3}
+              >
+                <Text fontSize={10} color={tag.color} fontWeight="500">
+                  {tag.name}
+                </Text>
+              </XStack>
+            ))}
+            {contact.tags.length > 2 && (
+              <Text fontSize={10} color="$gray8">+{contact.tags.length - 2}</Text>
+            )}
+          </XStack>
+        )}
+
+        {/* Last interaction */}
+        {contact.lastInteractionAt && (
+          <Text fontSize={11} color="$gray8">
+            {formatDate(contact.lastInteractionAt)}
+          </Text>
+        )}
+      </YStack>
+    </Pressable>
+  );
 }
 
 function getScoreColor(score: number): string {
@@ -355,21 +338,14 @@ function getScoreColor(score: number): string {
   return "#6b7280";
 }
 
-const styles = StyleSheet.create({
-  fab: {
-    position: "absolute",
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: WATSON_TEAL,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-});
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Hoje";
+  if (diffDays === 1) return "Ontem";
+  if (diffDays < 7) return `${diffDays}d atras`;
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}

@@ -86,9 +86,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="crm"
         options={{
-          title: "CRM",
+          title: "Funil",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
+            <Ionicons name="filter-outline" size={size} color={color} />
           ),
         }}
       />

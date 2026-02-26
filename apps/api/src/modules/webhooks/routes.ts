@@ -5,6 +5,7 @@ import { sendTextMessage } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoTagContact } from "../../services/autoTag.service.js";
+import { autoClassifyFunnelStage } from "../../services/autoFunnelStage.service.js";
 import { scheduleFollowUp, cancelFollowUpForConversation, isRejectionMessage } from "../../services/remarketing.service.js";
 
 // Store fastify instance for use in buffer callback
@@ -566,8 +567,11 @@ async function generateAndSendAIResponse(
         select: { content: true, direction: true },
       });
 
+      // Sort messages chronologically for both auto-tag and auto-funnel
+      const sortedMessages = [...recentMessages].reverse();
+
       // Run auto-tagging (non-blocking)
-      autoTagContact(orgId, contact.id, recentMessages.reverse(), fastify.log)
+      autoTagContact(orgId, contact.id, sortedMessages, fastify.log)
         .then((appliedTags) => {
           if (appliedTags.length > 0) {
             fastify.log.info(
@@ -583,6 +587,25 @@ async function generateAndSendAIResponse(
         })
         .catch((err) => {
           fastify.log.error({ error: err, contactId: contact.id }, "Auto-tagging failed");
+        });
+
+      // Auto-classify funnel stage (non-blocking)
+      autoClassifyFunnelStage(orgId, contact.id, sortedMessages, fastify.log)
+        .then((result) => {
+          if (result?.moved) {
+            fastify.log.info(
+              { contactId: contact.id, stage: result.stageName, confidence: result.confidence },
+              "Auto funnel-stage applied"
+            );
+            io.to(`org:${orgId}`).emit("contact:funnel-updated", {
+              contactId: contact.id,
+              stageId: result.stageId,
+              stageName: result.stageName,
+            });
+          }
+        })
+        .catch((err) => {
+          fastify.log.error({ error: err, contactId: contact.id }, "Auto funnel-stage classification failed");
         });
     }
   } catch (error) {

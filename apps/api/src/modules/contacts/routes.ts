@@ -73,6 +73,72 @@ export async function contactRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Get funnel board data (contacts grouped by funnel stages)
+  fastify.get("/funnel-board", { preHandler: [fastify.authenticate] }, async (request) => {
+    const { orgId } = request.user;
+    const query = request.query as Record<string, string>;
+
+    const funnel = await prisma.funnel.findFirst({
+      where: { organizationId: orgId, isDefault: true },
+      include: {
+        stages: { orderBy: { order: "asc" } },
+      },
+    });
+
+    if (!funnel) {
+      return { success: true, data: { funnel: null, stages: [] } };
+    }
+
+    const contactWhere: any = { organizationId: orgId, funnelId: funnel.id };
+    if (query.search) {
+      contactWhere.OR = [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { phone: { contains: query.search } },
+        { pushName: { contains: query.search, mode: "insensitive" } },
+      ];
+    }
+
+    const contacts = await prisma.contact.findMany({
+      where: contactWhere,
+      include: {
+        tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+      },
+      orderBy: { lastInteractionAt: "desc" },
+    });
+
+    // Group contacts by stageId
+    const contactsByStage: Record<string, typeof contacts> = {};
+    for (const contact of contacts) {
+      const stageId = contact.funnelStageId || "__none__";
+      if (!contactsByStage[stageId]) contactsByStage[stageId] = [];
+      contactsByStage[stageId].push(contact);
+    }
+
+    const stages = funnel.stages.map((stage) => ({
+      id: stage.id,
+      name: stage.name,
+      color: stage.color,
+      order: stage.order,
+      contacts: (contactsByStage[stage.id] || []).map((c) => ({
+        id: c.id,
+        name: c.name || c.pushName || c.phone,
+        phone: c.phone,
+        leadScore: c.leadScore,
+        tags: c.tags.map((t) => t.tag),
+        lastInteractionAt: c.lastInteractionAt,
+      })),
+      contactCount: (contactsByStage[stage.id] || []).length,
+    }));
+
+    return {
+      success: true,
+      data: {
+        funnel: { id: funnel.id, name: funnel.name },
+        stages,
+      },
+    };
+  });
+
   // Get contact by ID
   fastify.get<{ Params: { id: string } }>("/:id", { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { orgId } = request.user;

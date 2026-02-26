@@ -310,6 +310,8 @@ export async function authRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: { email: string } }>("/forgot-password", async (request, reply) => {
     const { email } = request.body;
 
+    console.log(`[FORGOT-PASSWORD] Request received for email: ${email}`);
+
     if (!email) {
       return reply.badRequest("Email obrigatorio");
     }
@@ -320,11 +322,14 @@ export async function authRoutes(fastify: FastifyInstance) {
 
     // Always return success to prevent email enumeration
     if (!user) {
+      console.log(`[FORGOT-PASSWORD] User NOT found for: ${email}`);
       return {
         success: true,
         message: "Se o email existir, voce recebera um codigo de recuperacao",
       };
     }
+
+    console.log(`[FORGOT-PASSWORD] User found: ${user.name} (${user.email})`);
 
     // Delete any existing tokens for this email
     await prisma.passwordResetToken.deleteMany({
@@ -346,11 +351,15 @@ export async function authRoutes(fastify: FastifyInstance) {
       },
     });
 
+    console.log(`[FORGOT-PASSWORD] Code generated: ${resetCode} for ${user.email}`);
+
     // Send email
     const emailSent = await sendPasswordResetEmail(user.email, resetCode, user.name);
 
+    console.log(`[FORGOT-PASSWORD] Email sent result: ${emailSent}`);
+
     if (!emailSent) {
-      fastify.log.error({ email: user.email }, "Failed to send password reset email");
+      console.error(`[FORGOT-PASSWORD] FAILED to send email to ${user.email}`);
     }
 
     return {

@@ -194,8 +194,8 @@ export async function personaRoutes(fastify: FastifyInstance) {
   });
 
   // Generate persona from business description (AI)
-  fastify.post<{ Body: { description: string } }>("/generate", { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    const { description } = request.body;
+  fastify.post<{ Body: { description: string; name?: string; businessName?: string } }>("/generate", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { description, name, businessName } = request.body;
 
     if (!description?.trim()) {
       return reply.badRequest("Descricao do negocio obrigatoria");
@@ -206,7 +206,11 @@ export async function personaRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const generated = await generatePersonaFromDescription(description.trim());
+      const generated = await generatePersonaFromDescription(
+        description.trim(),
+        name?.trim() || undefined,
+        businessName?.trim() || undefined
+      );
 
       return {
         success: true,
@@ -230,6 +234,10 @@ export async function personaRoutes(fastify: FastifyInstance) {
         return reply.badRequest("Arquivo de audio obrigatorio");
       }
 
+      // Get name/businessName from multipart fields
+      const fixedName = (data.fields?.name as any)?.value as string | undefined;
+      const fixedBusinessName = (data.fields?.businessName as any)?.value as string | undefined;
+
       // Read audio buffer
       const chunks: Buffer[] = [];
       for await (const chunk of data.file) {
@@ -249,7 +257,12 @@ export async function personaRoutes(fastify: FastifyInstance) {
 
       console.log(`[GENERATE-PERSONA-AUDIO] Received audio: ${data.filename}, type: ${mimeType}, size: ${buffer.length}`);
 
-      const generated = await generatePersonaFromAudio(buffer, mimeType);
+      const generated = await generatePersonaFromAudio(
+        buffer,
+        mimeType,
+        fixedName?.trim() || undefined,
+        fixedBusinessName?.trim() || undefined
+      );
 
       return {
         success: true,

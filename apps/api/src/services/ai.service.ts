@@ -202,24 +202,40 @@ export interface GeneratedPersonaConfig {
   empathyLevel: number;
   responseLength: "CURTA" | "MEDIA" | "LONGA";
   prohibitedTopics: string;
+  businessHoursStart: string;
+  businessHoursEnd: string;
+  workDays: string[];
 }
 
 export async function generatePersonaFromDescription(
-  description: string
+  description: string,
+  fixedName?: string,
+  fixedBusinessName?: string
 ): Promise<GeneratedPersonaConfig> {
   const ai = getGenAI();
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const nameInstruction = fixedName
+    ? `O nome do assistente JA FOI definido pelo usuario como "${fixedName}". Use EXATAMENTE este nome no campo "name".`
+    : `Crie um nome adequado para o assistente (ex: 'Assistente da Barbearia X').`;
+
+  const businessNameInstruction = fixedBusinessName
+    ? `O nome da empresa JA FOI definido pelo usuario como "${fixedBusinessName}". Use EXATAMENTE este nome no campo "businessName".`
+    : `Extraia o nome do negocio da descricao.`;
 
   const prompt = `Voce e um especialista em configurar assistentes virtuais de WhatsApp para empresas brasileiras.
 
 O usuario descreveu seu negocio assim:
 "${description}"
 
+${nameInstruction}
+${businessNameInstruction}
+
 Com base nessa descricao, gere uma configuracao COMPLETA para o assistente virtual. Retorne APENAS um JSON valido (sem markdown, sem \`\`\`) com os seguintes campos:
 
 {
-  "name": "Nome do assistente (ex: 'Assistente da Barbearia X', 'Atendente Virtual Y')",
-  "businessName": "Nome do negocio extraido da descricao",
+  "name": "Nome do assistente",
+  "businessName": "Nome do negocio",
   "systemPrompt": "Prompt detalhado descrevendo quem e o assistente, o que o negocio faz, servicos oferecidos, diferenciais, e como deve atender os clientes. Minimo 3 paragrafos.",
   "greetingMessage": "Mensagem de boas-vindas para novos contatos no WhatsApp. Deve ser acolhedora e mencionar o nome do negocio.",
   "formalityLevel": 0-100 (0=muito casual, 100=muito formal),
@@ -227,14 +243,18 @@ Com base nessa descricao, gere uma configuracao COMPLETA para o assistente virtu
   "energyLevel": 0-100 (0=calmo/sereno, 100=muito energetico),
   "empathyLevel": 0-100 (0=direto ao ponto, 100=muito empatico),
   "responseLength": "CURTA" ou "MEDIA" ou "LONGA",
-  "prohibitedTopics": "Lista de temas que o assistente NAO deve abordar (ex: concorrentes, politica, precos de terceiros)"
+  "prohibitedTopics": "Lista de temas que o assistente NAO deve abordar (ex: concorrentes, politica, precos de terceiros)",
+  "businessHoursStart": "HH:MM formato 24h (ex: 09:00). Se o usuario mencionou horario, use o que ele disse. Senao, use 09:00",
+  "businessHoursEnd": "HH:MM formato 24h (ex: 18:00). Se o usuario mencionou horario, use o que ele disse. Senao, use 18:00",
+  "workDays": ["seg", "ter", "qua", "qui", "sex"] // Array com dias da semana abreviados: seg, ter, qua, qui, sex, sab, dom. Se o usuario mencionou dias, use os que ele disse.
 }
 
 REGRAS:
 - Adapte a personalidade ao tipo de negocio (barbearia = casual, escritorio advocacia = formal)
 - O systemPrompt deve ser rico e detalhado, incluindo informacoes extraidas da descricao
-- A greetingMessage deve ser natural e nao robótica
+- A greetingMessage deve ser natural e nao robotica
 - prohibitedTopics deve incluir temas sensiveis para o tipo de negocio
+- Se o usuario mencionou horario de funcionamento, dias de atendimento, tamanho de respostas, personalidade ou qualquer configuracao especifica, RESPEITE e configure exatamente como ele pediu
 - Retorne SOMENTE o JSON, nada mais`;
 
   const result = await model.generateContent(prompt);
@@ -245,20 +265,33 @@ REGRAS:
 // Generate persona configuration from audio description
 export async function generatePersonaFromAudio(
   audioBuffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  fixedName?: string,
+  fixedBusinessName?: string
 ): Promise<GeneratedPersonaConfig> {
   const ai = getGenAI();
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const nameInstruction = fixedName
+    ? `O nome do assistente JA FOI definido pelo usuario como "${fixedName}". Use EXATAMENTE este nome no campo "name".`
+    : `Crie um nome adequado para o assistente (ex: 'Assistente da Barbearia X').`;
+
+  const businessNameInstruction = fixedBusinessName
+    ? `O nome da empresa JA FOI definido pelo usuario como "${fixedBusinessName}". Use EXATAMENTE este nome no campo "businessName".`
+    : `Extraia o nome do negocio do audio.`;
 
   const prompt = `Voce e um especialista em configurar assistentes virtuais de WhatsApp para empresas brasileiras.
 
 O usuario gravou um AUDIO descrevendo seu negocio e como quer que o assistente Watson trabalhe para ele.
 
+${nameInstruction}
+${businessNameInstruction}
+
 Escute o audio com atencao e, com base no que o usuario disse, gere uma configuracao COMPLETA para o assistente virtual. Retorne APENAS um JSON valido (sem markdown, sem \`\`\`) com os seguintes campos:
 
 {
-  "name": "Nome do assistente (ex: 'Assistente da Barbearia X', 'Atendente Virtual Y')",
-  "businessName": "Nome do negocio extraido do audio",
+  "name": "Nome do assistente",
+  "businessName": "Nome do negocio",
   "systemPrompt": "Prompt detalhado descrevendo quem e o assistente, o que o negocio faz, servicos oferecidos, diferenciais, e como deve atender os clientes. Minimo 3 paragrafos.",
   "greetingMessage": "Mensagem de boas-vindas para novos contatos no WhatsApp. Deve ser acolhedora e mencionar o nome do negocio.",
   "formalityLevel": 0-100 (0=muito casual, 100=muito formal),
@@ -266,7 +299,10 @@ Escute o audio com atencao e, com base no que o usuario disse, gere uma configur
   "energyLevel": 0-100 (0=calmo/sereno, 100=muito energetico),
   "empathyLevel": 0-100 (0=direto ao ponto, 100=muito empatico),
   "responseLength": "CURTA" ou "MEDIA" ou "LONGA",
-  "prohibitedTopics": "Lista de temas que o assistente NAO deve abordar (ex: concorrentes, politica, precos de terceiros)"
+  "prohibitedTopics": "Lista de temas que o assistente NAO deve abordar (ex: concorrentes, politica, precos de terceiros)",
+  "businessHoursStart": "HH:MM formato 24h (ex: 09:00). Se o usuario mencionou horario, use o que ele disse. Senao, use 09:00",
+  "businessHoursEnd": "HH:MM formato 24h (ex: 18:00). Se o usuario mencionou horario, use o que ele disse. Senao, use 18:00",
+  "workDays": ["seg", "ter", "qua", "qui", "sex"] // Array com dias da semana abreviados: seg, ter, qua, qui, sex, sab, dom. Se o usuario mencionou dias, use os que ele disse.
 }
 
 REGRAS:
@@ -274,6 +310,7 @@ REGRAS:
 - O systemPrompt deve ser rico e detalhado, incluindo informacoes extraidas do audio
 - A greetingMessage deve ser natural e nao robotica
 - prohibitedTopics deve incluir temas sensiveis para o tipo de negocio
+- Se o usuario mencionou horario de funcionamento, dias de atendimento, tamanho de respostas, personalidade ou qualquer configuracao especifica, RESPEITE e configure exatamente como ele pediu
 - Retorne SOMENTE o JSON, nada mais`;
 
   const audioBase64 = audioBuffer.toString("base64");
@@ -329,6 +366,21 @@ function clampPersonaValues(parsed: GeneratedPersonaConfig): GeneratedPersonaCon
 
   if (!["CURTA", "MEDIA", "LONGA"].includes(parsed.responseLength)) {
     parsed.responseLength = "MEDIA";
+  }
+
+  // Default business hours if not provided
+  if (!parsed.businessHoursStart) parsed.businessHoursStart = "09:00";
+  if (!parsed.businessHoursEnd) parsed.businessHoursEnd = "18:00";
+
+  // Validate work days
+  const validDays = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"];
+  if (!Array.isArray(parsed.workDays) || parsed.workDays.length === 0) {
+    parsed.workDays = ["seg", "ter", "qua", "qui", "sex"];
+  } else {
+    parsed.workDays = parsed.workDays.filter((d: string) => validDays.includes(d));
+    if (parsed.workDays.length === 0) {
+      parsed.workDays = ["seg", "ter", "qua", "qui", "sex"];
+    }
   }
 
   return parsed;

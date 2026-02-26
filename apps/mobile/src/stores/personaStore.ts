@@ -75,6 +75,9 @@ export interface GeneratedPersonaConfig {
   empathyLevel: number;
   responseLength: "CURTA" | "MEDIA" | "LONGA";
   prohibitedTopics: string;
+  businessHoursStart: string;
+  businessHoursEnd: string;
+  workDays: string[];
 }
 
 interface PersonaActions {
@@ -91,8 +94,8 @@ interface PersonaActions {
   uploadKnowledgeFile: (personaId: string, file: { uri: string; name: string; mimeType: string }) => Promise<void>;
   deleteKnowledgeFile: (personaId: string, fileId: string) => Promise<void>;
   // AI generation
-  generateFromDescription: (description: string) => Promise<GeneratedPersonaConfig>;
-  generateFromAudio: (audioUri: string) => Promise<GeneratedPersonaConfig>;
+  generateFromDescription: (description: string, name?: string, businessName?: string) => Promise<GeneratedPersonaConfig>;
+  generateFromAudio: (audioUri: string, name?: string, businessName?: string) => Promise<GeneratedPersonaConfig>;
 }
 
 export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) => ({
@@ -298,10 +301,10 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
     }
   },
 
-  generateFromDescription: async (description: string) => {
+  generateFromDescription: async (description: string, name?: string, businessName?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post<{ success: boolean; data: GeneratedPersonaConfig }>("/personas/generate", { description });
+      const response = await api.post<{ success: boolean; data: GeneratedPersonaConfig }>("/personas/generate", { description, name, businessName });
       set({ isLoading: false });
       if (response.data.success) {
         return response.data.data;
@@ -316,7 +319,7 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
     }
   },
 
-  generateFromAudio: async (audioUri: string) => {
+  generateFromAudio: async (audioUri: string, name?: string, businessName?: string) => {
     set({ isLoading: true, error: null });
     try {
       const formData = new FormData();
@@ -325,6 +328,8 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
         name: "audio.m4a",
         type: "audio/m4a",
       } as any);
+      if (name) formData.append("name", name);
+      if (businessName) formData.append("businessName", businessName);
 
       const response = await api.post<{ success: boolean; data: GeneratedPersonaConfig }>("/personas/generate-from-audio", formData);
       set({ isLoading: false });

@@ -126,8 +126,9 @@ export default function PersonaEditScreen() {
   };
 
   const applyGenerated = (generated: any) => {
-    setName(generated.name);
-    setBusinessName(generated.businessName);
+    // Only set name/businessName if user hasn't filled them
+    if (!name.trim() && generated.name) setName(generated.name);
+    if (!businessName.trim() && generated.businessName) setBusinessName(generated.businessName);
     setSystemPrompt(generated.systemPrompt);
     setGreetingMessage(generated.greetingMessage);
     setGreetingEnabled(true);
@@ -137,6 +138,10 @@ export default function PersonaEditScreen() {
     setEmpathyLevel(generated.empathyLevel);
     setResponseLength(generated.responseLength);
     setProhibitedTopics(generated.prohibitedTopics);
+    // Apply business hours and work days if AI generated them
+    if (generated.businessHoursStart) setBusinessHoursStart(generated.businessHoursStart);
+    if (generated.businessHoursEnd) setBusinessHoursEnd(generated.businessHoursEnd);
+    if (generated.workDays && generated.workDays.length > 0) setWorkDays(generated.workDays);
     setShowAIModal(false);
     setAIDescription("");
     Alert.alert("Pronto!", "A IA configurou tudo automaticamente. Revise os campos e clique em Salvar.");
@@ -194,7 +199,11 @@ export default function PersonaEditScreen() {
         return;
       }
 
-      const generated = await generateFromAudio(uri);
+      const generated = await generateFromAudio(
+        uri,
+        name.trim() || undefined,
+        businessName.trim() || undefined
+      );
       applyGenerated(generated);
     } catch (error: any) {
       Alert.alert("Erro", error.message || "Erro ao processar audio. Tente novamente.");
@@ -233,7 +242,11 @@ export default function PersonaEditScreen() {
 
     setGenerating(true);
     try {
-      const generated = await generateFromDescription(aiDescription.trim());
+      const generated = await generateFromDescription(
+        aiDescription.trim(),
+        name.trim() || undefined,
+        businessName.trim() || undefined
+      );
       applyGenerated(generated);
     } catch (error: any) {
       Alert.alert("Erro", error.message || "Erro ao gerar com IA. Tente novamente.");
@@ -306,6 +319,49 @@ export default function PersonaEditScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$4">
+            {/* Business Info - FIRST so user fills names before AI */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
+                Informacoes do Negocio
+              </Text>
+
+              <YStack gap="$3">
+                <YStack>
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Nome da Empresa</Text>
+                  <TextInput
+                    value={businessName}
+                    onChangeText={setBusinessName}
+                    placeholder="Ex: Loja do Joao"
+                    placeholderTextColor={theme.gray8.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                    }}
+                  />
+                </YStack>
+
+                <YStack>
+                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Nome do Watson</Text>
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Ex: Assistente Virtual"
+                    placeholderTextColor={theme.gray8.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                    }}
+                  />
+                </YStack>
+              </YStack>
+            </Card>
+
             {/* AI Auto-Configure Button */}
             <Pressable onPress={() => setShowAIModal(true)}>
               <Card
@@ -515,49 +571,6 @@ export default function PersonaEditScreen() {
                 </Text>
               </YStack>
             </Modal>
-
-            {/* Business Info */}
-            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
-                Informacoes do Negocio
-              </Text>
-
-              <YStack gap="$3">
-                <YStack>
-                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Nome da Empresa</Text>
-                  <TextInput
-                    value={businessName}
-                    onChangeText={setBusinessName}
-                    placeholder="Ex: Loja do Joao"
-                    placeholderTextColor={theme.gray8.val}
-                    style={{
-                      backgroundColor: theme.background.val,
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 16,
-                      color: theme.color.val,
-                    }}
-                  />
-                </YStack>
-
-                <YStack>
-                  <Text fontSize="$2" color="$gray8" marginBottom="$1">Nome da Persona</Text>
-                  <TextInput
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Ex: Assistente Virtual"
-                    placeholderTextColor={theme.gray8.val}
-                    style={{
-                      backgroundColor: theme.background.val,
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 16,
-                      color: theme.color.val,
-                    }}
-                  />
-                </YStack>
-              </YStack>
-            </Card>
 
             {/* Greeting Message */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">

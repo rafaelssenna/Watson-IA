@@ -295,19 +295,33 @@ REGRAS:
 
 function parseGeneratedJSON(text: string): GeneratedPersonaConfig {
   // Remove possible markdown wrapping
-  let jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+  let jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "").trim();
 
-  // Fix control characters inside JSON strings (newlines, tabs etc)
-  jsonStr = jsonStr.replace(/[\x00-\x1F\x7F]/g, (ch) => {
-    if (ch === "\n") return "\\n";
-    if (ch === "\r") return "";
-    if (ch === "\t") return "\\t";
-    return "";
-  });
+  // Try parsing directly first
+  try {
+    const parsed = JSON.parse(jsonStr) as GeneratedPersonaConfig;
+    return clampPersonaValues(parsed);
+  } catch {
+    // If it fails, fix control characters ONLY inside JSON string values
+    // This regex matches JSON string literals and escapes newlines within them
+    jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
+      return match
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t");
+    });
 
-  const parsed = JSON.parse(jsonStr) as GeneratedPersonaConfig;
+    try {
+      const parsed = JSON.parse(jsonStr) as GeneratedPersonaConfig;
+      return clampPersonaValues(parsed);
+    } catch (e) {
+      console.error("[parseGeneratedJSON] Failed to parse. Raw text:", text.substring(0, 500));
+      throw e;
+    }
+  }
+}
 
-  // Clamp values to valid ranges
+function clampPersonaValues(parsed: GeneratedPersonaConfig): GeneratedPersonaConfig {
   parsed.formalityLevel = Math.max(0, Math.min(100, parsed.formalityLevel));
   parsed.persuasiveness = Math.max(0, Math.min(100, parsed.persuasiveness));
   parsed.energyLevel = Math.max(0, Math.min(100, parsed.energyLevel));

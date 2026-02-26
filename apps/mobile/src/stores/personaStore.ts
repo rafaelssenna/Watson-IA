@@ -92,6 +92,7 @@ interface PersonaActions {
   deleteKnowledgeFile: (personaId: string, fileId: string) => Promise<void>;
   // AI generation
   generateFromDescription: (description: string) => Promise<GeneratedPersonaConfig>;
+  generateFromAudio: (audioUri: string) => Promise<GeneratedPersonaConfig>;
 }
 
 export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) => ({
@@ -310,6 +311,31 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
       set({
         isLoading: false,
         error: error.response?.data?.error?.message || "Erro ao gerar configuracao com IA",
+      });
+      throw error;
+    }
+  },
+
+  generateFromAudio: async (audioUri: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: audioUri,
+        name: "audio.m4a",
+        type: "audio/m4a",
+      } as any);
+
+      const response = await api.post<{ success: boolean; data: GeneratedPersonaConfig }>("/personas/generate-from-audio", formData);
+      set({ isLoading: false });
+      if (response.data.success) {
+        return response.data.data;
+      }
+      throw new Error("Erro ao gerar configuracao a partir do audio");
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error.response?.data?.error?.message || "Erro ao processar audio com IA",
       });
       throw error;
     }

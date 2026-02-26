@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createPersonaSchema, updatePersonaSchema } from "@watson/shared";
-import { generatePersonaFromDescription } from "../../services/ai.service.js";
+import { generatePersonaFromDescription, generatePersonaFromAudio } from "../../services/ai.service.js";
 
 // Extract text from different file types
 async function extractTextFromFile(buffer: Buffer, mimeType: string): Promise<string> {
@@ -217,6 +217,49 @@ export async function personaRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({
         success: false,
         error: { message: "Erro ao gerar configuracao. Tente novamente." },
+      });
+    }
+  });
+
+  // Generate persona from audio description (AI)
+  fastify.post("/generate-from-audio", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    try {
+      const data = await request.file();
+
+      if (!data) {
+        return reply.badRequest("Arquivo de audio obrigatorio");
+      }
+
+      // Read audio buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of data.file) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+
+      if (buffer.length === 0) {
+        return reply.badRequest("Arquivo de audio vazio");
+      }
+
+      // Map common audio mime types
+      let mimeType = data.mimetype;
+      if (mimeType === "audio/m4a" || mimeType === "audio/x-m4a") {
+        mimeType = "audio/mp4";
+      }
+
+      console.log(`[GENERATE-PERSONA-AUDIO] Received audio: ${data.filename}, type: ${mimeType}, size: ${buffer.length}`);
+
+      const generated = await generatePersonaFromAudio(buffer, mimeType);
+
+      return {
+        success: true,
+        data: generated,
+      };
+    } catch (error: any) {
+      console.error("[GENERATE-PERSONA-AUDIO] Error:", error);
+      return reply.code(500).send({
+        success: false,
+        error: { message: "Erro ao processar audio. Tente novamente." },
       });
     }
   });

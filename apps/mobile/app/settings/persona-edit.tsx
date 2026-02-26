@@ -4,6 +4,7 @@ import { router, Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
+import { Audio } from "expo-av";
 import { usePersonaStore, type CreatePersonaData } from "@/stores/personaStore";
 
 export default function PersonaEditScreen() {
@@ -16,6 +17,7 @@ export default function PersonaEditScreen() {
     createPersona,
     updatePersona,
     generateFromDescription,
+    generateFromAudio,
   } = usePersonaStore();
 
   // Form state
@@ -41,6 +43,12 @@ export default function PersonaEditScreen() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiDescription, setAIDescription] = useState("");
   const [generating, setGenerating] = useState(false);
+
+  // Audio recording
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load default persona on mount
   useEffect(() => {
@@ -117,6 +125,106 @@ export default function PersonaEditScreen() {
     setSaving(false);
   };
 
+  const applyGenerated = (generated: any) => {
+    setName(generated.name);
+    setBusinessName(generated.businessName);
+    setSystemPrompt(generated.systemPrompt);
+    setGreetingMessage(generated.greetingMessage);
+    setGreetingEnabled(true);
+    setFormalityLevel(generated.formalityLevel);
+    setPersuasiveness(generated.persuasiveness);
+    setEnergyLevel(generated.energyLevel);
+    setEmpathyLevel(generated.empathyLevel);
+    setResponseLength(generated.responseLength);
+    setProhibitedTopics(generated.prohibitedTopics);
+    setShowAIModal(false);
+    setAIDescription("");
+    Alert.alert("Pronto!", "A IA configurou tudo automaticamente. Revise os campos e clique em Salvar.");
+  };
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permissao", "Precisamos de permissao para gravar audio");
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimer.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      Alert.alert("Erro", "Nao foi possivel iniciar a gravacao");
+    }
+  };
+
+  const stopAndSendRecording = async () => {
+    if (!recording) return;
+
+    if (recordingTimer.current) {
+      clearInterval(recordingTimer.current);
+      recordingTimer.current = null;
+    }
+
+    setIsRecording(false);
+    setGenerating(true);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+
+      if (!uri) {
+        Alert.alert("Erro", "Nao foi possivel salvar o audio");
+        setGenerating(false);
+        return;
+      }
+
+      const generated = await generateFromAudio(uri);
+      applyGenerated(generated);
+    } catch (error: any) {
+      Alert.alert("Erro", error.message || "Erro ao processar audio. Tente novamente.");
+    }
+    setGenerating(false);
+    setRecordingDuration(0);
+  };
+
+  const cancelRecording = async () => {
+    if (!recording) return;
+
+    if (recordingTimer.current) {
+      clearInterval(recordingTimer.current);
+      recordingTimer.current = null;
+    }
+
+    try {
+      await recording.stopAndUnloadAsync();
+    } catch {}
+    setRecording(null);
+    setIsRecording(false);
+    setRecordingDuration(0);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const handleGenerateWithAI = async () => {
     if (!aiDescription.trim() || aiDescription.trim().length < 10) {
       Alert.alert("Erro", "Descreva seu negocio com mais detalhes (minimo 10 caracteres)");
@@ -126,23 +234,7 @@ export default function PersonaEditScreen() {
     setGenerating(true);
     try {
       const generated = await generateFromDescription(aiDescription.trim());
-
-      // Fill all form fields with AI-generated values
-      setName(generated.name);
-      setBusinessName(generated.businessName);
-      setSystemPrompt(generated.systemPrompt);
-      setGreetingMessage(generated.greetingMessage);
-      setGreetingEnabled(true);
-      setFormalityLevel(generated.formalityLevel);
-      setPersuasiveness(generated.persuasiveness);
-      setEnergyLevel(generated.energyLevel);
-      setEmpathyLevel(generated.empathyLevel);
-      setResponseLength(generated.responseLength);
-      setProhibitedTopics(generated.prohibitedTopics);
-
-      setShowAIModal(false);
-      setAIDescription("");
-      Alert.alert("Pronto!", "A IA configurou tudo automaticamente. Revise os campos e clique em Salvar.");
+      applyGenerated(generated);
     } catch (error: any) {
       Alert.alert("Erro", error.message || "Erro ao gerar com IA. Tente novamente.");
     }
@@ -239,7 +331,7 @@ export default function PersonaEditScreen() {
                       Conte sobre sua empresa
                     </Text>
                     <Text fontSize="$2" color="$blue8" marginTop="$1">
-                      A IA configura tudo automaticamente para voce
+                      Texto ou audio - a IA configura o Watson para voce
                     </Text>
                   </YStack>
                   <Ionicons name="chevron-forward" size={20} color={theme.blue10.val} />
@@ -256,7 +348,7 @@ export default function PersonaEditScreen() {
             >
               <YStack flex={1} backgroundColor={theme.background.val} padding="$4">
                 <XStack justifyContent="space-between" alignItems="center" marginBottom="$4">
-                  <Pressable onPress={() => !generating && setShowAIModal(false)}>
+                  <Pressable onPress={() => !generating && !isRecording && setShowAIModal(false)}>
                     <Text color="$gray8" fontSize="$4">Cancelar</Text>
                   </Pressable>
                   <Text fontSize="$5" fontWeight="700" color={theme.color.val}>
@@ -267,83 +359,160 @@ export default function PersonaEditScreen() {
 
                 <YStack
                   alignItems="center"
-                  padding="$4"
-                  marginBottom="$4"
+                  padding="$3"
+                  marginBottom="$3"
                 >
                   <YStack
-                    width={64}
-                    height={64}
-                    borderRadius={32}
+                    width={56}
+                    height={56}
+                    borderRadius={28}
                     backgroundColor="$blue10"
                     alignItems="center"
                     justifyContent="center"
-                    marginBottom="$3"
+                    marginBottom="$2"
                   >
-                    <Ionicons name="sparkles" size={32} color="white" />
+                    <Ionicons name="sparkles" size={28} color="white" />
                   </YStack>
                   <Text fontSize="$4" fontWeight="600" color={theme.color.val} textAlign="center">
-                    Descreva seu negocio
+                    Conte sobre sua empresa e como o Watson vai trabalhar para voce
                   </Text>
                   <Text fontSize="$2" color="$gray8" textAlign="center" marginTop="$2">
-                    Conte o que sua empresa faz, publico-alvo, diferenciais, tom de comunicacao...
+                    Digite ou grave um audio descrevendo seu negocio
                   </Text>
                 </YStack>
 
-                <TextInput
-                  value={aiDescription}
-                  onChangeText={setAIDescription}
-                  placeholder="Ex: Tenho uma barbearia no centro de BH chamada BarberKing. Atendo homens de 20-40 anos, com cortes modernos, barba e sobrancelha. Somos descontraidos e usamos gírias..."
-                  placeholderTextColor={theme.gray8.val}
-                  multiline
-                  numberOfLines={8}
-                  editable={!generating}
-                  style={{
-                    backgroundColor: theme.backgroundStrong?.val || "#1a1a1a",
-                    borderRadius: 12,
-                    padding: 16,
-                    fontSize: 16,
-                    color: theme.color.val,
-                    minHeight: 180,
-                    textAlignVertical: "top",
-                    borderWidth: 1,
-                    borderColor: theme.gray6.val,
-                  }}
-                />
+                {/* Audio Recording Section */}
+                {isRecording ? (
+                  <YStack alignItems="center" padding="$4" marginBottom="$3">
+                    <YStack
+                      width={80}
+                      height={80}
+                      borderRadius={40}
+                      backgroundColor="$red10"
+                      alignItems="center"
+                      justifyContent="center"
+                      marginBottom="$3"
+                    >
+                      <Ionicons name="mic" size={40} color="white" />
+                    </YStack>
+                    <Text fontSize="$6" fontWeight="700" color="$red10" marginBottom="$1">
+                      {formatDuration(recordingDuration)}
+                    </Text>
+                    <Text fontSize="$2" color="$gray8" marginBottom="$4">
+                      Gravando... Fale sobre seu negocio
+                    </Text>
+                    <XStack gap="$3">
+                      <Pressable onPress={cancelRecording}>
+                        <XStack
+                          backgroundColor="$gray6"
+                          paddingVertical="$3"
+                          paddingHorizontal="$5"
+                          borderRadius="$4"
+                          alignItems="center"
+                          gap="$2"
+                        >
+                          <Ionicons name="close" size={18} color={theme.color.val} />
+                          <Text color="$color" fontWeight="600">Cancelar</Text>
+                        </XStack>
+                      </Pressable>
+                      <Pressable onPress={stopAndSendRecording}>
+                        <XStack
+                          backgroundColor="$blue10"
+                          paddingVertical="$3"
+                          paddingHorizontal="$5"
+                          borderRadius="$4"
+                          alignItems="center"
+                          gap="$2"
+                        >
+                          <Ionicons name="checkmark" size={18} color="white" />
+                          <Text color="white" fontWeight="600">Enviar</Text>
+                        </XStack>
+                      </Pressable>
+                    </XStack>
+                  </YStack>
+                ) : (
+                  <>
+                    {/* Mic Button */}
+                    <Pressable onPress={startRecording} disabled={generating}>
+                      <XStack
+                        backgroundColor={generating ? "$gray6" : "$green9"}
+                        paddingVertical="$3"
+                        borderRadius="$4"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap="$2"
+                        marginBottom="$3"
+                      >
+                        <Ionicons name="mic" size={22} color="white" />
+                        <Text color="white" fontWeight="700" fontSize="$4">
+                          Gravar Audio
+                        </Text>
+                      </XStack>
+                    </Pressable>
 
-                <Text fontSize="$1" color="$gray7" marginTop="$2" textAlign="center">
+                    <XStack alignItems="center" gap="$3" marginBottom="$3">
+                      <YStack flex={1} height={1} backgroundColor="$gray6" />
+                      <Text fontSize="$2" color="$gray8">ou digite</Text>
+                      <YStack flex={1} height={1} backgroundColor="$gray6" />
+                    </XStack>
+
+                    <TextInput
+                      value={aiDescription}
+                      onChangeText={setAIDescription}
+                      placeholder="Ex: Tenho uma barbearia no centro de BH chamada BarberKing. Atendo homens de 20-40 anos, cortes modernos, barba e sobrancelha..."
+                      placeholderTextColor={theme.gray8.val}
+                      multiline
+                      numberOfLines={6}
+                      editable={!generating}
+                      style={{
+                        backgroundColor: theme.backgroundStrong?.val || "#1a1a1a",
+                        borderRadius: 12,
+                        padding: 16,
+                        fontSize: 16,
+                        color: theme.color.val,
+                        minHeight: 140,
+                        textAlignVertical: "top",
+                        borderWidth: 1,
+                        borderColor: theme.gray6.val,
+                      }}
+                    />
+
+                    <Pressable
+                      onPress={handleGenerateWithAI}
+                      disabled={generating || !aiDescription.trim()}
+                      style={{ marginTop: 16 }}
+                    >
+                      <XStack
+                        backgroundColor={generating || !aiDescription.trim() ? "$gray6" : "$blue10"}
+                        paddingVertical="$3"
+                        borderRadius="$4"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap="$2"
+                      >
+                        {generating ? (
+                          <>
+                            <ActivityIndicator size="small" color="white" />
+                            <Text color="white" fontWeight="700" fontSize="$4">
+                              Gerando configuracao...
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <Ionicons name="sparkles" size={20} color="white" />
+                            <Text color="white" fontWeight="700" fontSize="$4">
+                              Gerar com IA
+                            </Text>
+                          </>
+                        )}
+                      </XStack>
+                    </Pressable>
+                  </>
+                )}
+
+                <Text fontSize="$1" color="$gray7" marginTop="$3" textAlign="center">
                   Quanto mais detalhes, melhor sera a configuracao
                 </Text>
-
-                <Pressable
-                  onPress={handleGenerateWithAI}
-                  disabled={generating || !aiDescription.trim()}
-                  style={{ marginTop: 24 }}
-                >
-                  <XStack
-                    backgroundColor={generating || !aiDescription.trim() ? "$gray6" : "$blue10"}
-                    paddingVertical="$4"
-                    borderRadius="$4"
-                    alignItems="center"
-                    justifyContent="center"
-                    gap="$2"
-                  >
-                    {generating ? (
-                      <>
-                        <ActivityIndicator size="small" color="white" />
-                        <Text color="white" fontWeight="700" fontSize="$4">
-                          Gerando configuracao...
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Ionicons name="sparkles" size={20} color="white" />
-                        <Text color="white" fontWeight="700" fontSize="$4">
-                          Gerar com IA
-                        </Text>
-                      </>
-                    )}
-                  </XStack>
-                </Pressable>
               </YStack>
             </Modal>
 

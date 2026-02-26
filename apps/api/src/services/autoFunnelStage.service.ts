@@ -2,6 +2,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@watson/database";
+import { sendTextMessage } from "./uazapi.service.js";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
@@ -174,6 +175,12 @@ Responda SOMENTE com o JSON.`;
       "Auto-moved contact in funnel"
     );
 
+    // Notify owner on closing stages (Ganho/Perdido)
+    const isClosed = matchedStage.name.toLowerCase().includes("fechado");
+    if (isClosed) {
+      notifyOwnerOnClose(orgId, contactId, matchedStage.name, log).catch(() => {});
+    }
+
     return {
       stageId: matchedStage.id,
       stageName: matchedStage.name,
@@ -184,5 +191,87 @@ Responda SOMENTE com o JSON.`;
   } catch (error) {
     log.error({ error, contactId }, "Error in auto funnel-stage classification");
     return null;
+  }
+}
+
+/**
+ * Notify org owner via WhatsApp + push when a contact reaches a closing stage.
+ */
+async function notifyOwnerOnClose(
+  orgId: string,
+  contactId: string,
+  stageName: string,
+  log: Logger
+) {
+  try {
+    const contact = await prisma.contact.findUnique({
+      where: { id: contactId },
+      select: { name: true, pushName: true, phone: true },
+    });
+
+    const contactName = contact?.name || contact?.pushName || contact?.phone || "Contato";
+    const isWon = stageName.toLowerCase().includes("ganho");
+    const emoji = isWon ? "🎉" : "😔";
+    const statusText = isWon ? "FECHOU NEGOCIO" : "PERDIDO";
+
+    const message = `${emoji} *${statusText}*\n\nCliente: *${contactName}*\nEtapa: ${stageName}\n\nAcesse o Watson para ver os detalhes.`;
+
+    // Get WhatsApp connection to send message
+    const connection = await prisma.whatsAppConnection.findFirst({
+      where: { organizationId: orgId, status: "CONNECTED" },
+      select: { uazapiToken: true, phoneNumber: true },
+    });
+
+    // Get owner user(s) for push + WhatsApp notification
+    const owners = await prisma.user.findMany({
+      where: { organizationId: orgId, role: "OWNER" },
+      select: { pushToken: true, name: true },
+    });
+
+    // Send WhatsApp to the connected number (owner's own WhatsApp)
+    if (connection?.uazapiToken && connection.phoneNumber) {
+      await sendTextMessage(connection.uazapiToken, connection.phoneNumber, message);
+      log.info({ orgId, contactName, stage: stageName }, "Sent WhatsApp close notification to owner");
+    }
+
+    // Send Expo push notification to owner(s)
+    for (const owner of owners) {
+      if (owner.pushToken) {
+        await sendExpoPush(
+          owner.pushToken,
+          isWon ? "Negocio Fechado!" : "Cliente Perdido",
+          `${contactName} - ${stageName}`,
+          log
+        );
+      }
+    }
+  } catch (error) {
+    log.error({ error, orgId, contactId }, "Error sending close notification");
+  }
+}
+
+/**
+ * Send push notification via Expo Push API.
+ */
+async function sendExpoPush(pushToken: string, title: string, body: string, log: Logger) {
+  try {
+    if (!pushToken.startsWith("ExponentPushToken")) return;
+
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        sound: "default",
+      }),
+    });
+
+    if (!response.ok) {
+      log.warn({ status: response.status }, "Expo push failed");
+    }
+  } catch (error) {
+    log.error({ error }, "Error sending Expo push");
   }
 }

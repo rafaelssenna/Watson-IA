@@ -1,17 +1,58 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Stack, Redirect, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import { TamaguiProvider, Theme } from "tamagui";
 import { useFonts } from "expo-font";
-import { useColorScheme } from "react-native";
+import { useColorScheme, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import config from "../tamagui.config";
 import { useAuthStore } from "@/stores/authStore";
+import { api } from "@/services/api";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
+
+async function registerForPushNotifications() {
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") return;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Watson",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
+      });
+    }
+
+    const token = await Notifications.getExpoPushTokenAsync({
+      projectId: "watson-ia",
+    });
+
+    // Save token to API
+    await api.post("/auth/push-token", { pushToken: token.data });
+  } catch (error) {
+    console.log("Push notification registration error:", error);
+  }
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -25,6 +66,13 @@ export default function RootLayout() {
   useEffect(() => {
     initialize();
   }, []);
+
+  // Register for push notifications when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      registerForPushNotifications();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (fontsLoaded && !authLoading) {

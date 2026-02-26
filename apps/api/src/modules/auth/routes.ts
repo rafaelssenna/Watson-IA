@@ -277,6 +277,23 @@ export async function authRoutes(fastify: FastifyInstance) {
     return { success: true, message: "Logout realizado com sucesso" };
   });
 
+  // Save push notification token
+  fastify.post<{ Body: { pushToken: string } }>(
+    "/push-token",
+    { preHandler: [fastify.authenticate] },
+    async (request) => {
+      const { userId } = request.user;
+      const { pushToken } = request.body;
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { pushToken },
+      });
+
+      return { success: true };
+    }
+  );
+
   // Get current user
   fastify.get("/me", { preHandler: [fastify.authenticate] }, async (request) => {
     const { userId } = request.user as { userId: string; orgId: string };

@@ -27,6 +27,7 @@ import { automationRoutes } from "./modules/automations/routes.js";
 import { triggerRoutes } from "./modules/triggers/routes.js";
 import { tagRoutes } from "./modules/tags/routes.js";
 import { startAutomationScheduler, stopAutomationScheduler } from "./services/automation.service.js";
+import { startRemarketingScheduler, stopRemarketingScheduler, setRemarketingEventCallback } from "./services/remarketing.service.js";
 import { testEmailConnection, sendTestEmail } from "./services/email.service.js";
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -172,10 +173,17 @@ async function start() {
     // Start automation scheduler
     startAutomationScheduler(server.log);
 
+    // Start remarketing scheduler + wire Socket.IO events
+    setRemarketingEventCallback((orgId, conversationId, message) => {
+      server.io.to(`org:${orgId}`).emit("message:new", { conversationId, message });
+    });
+    startRemarketingScheduler(server.log);
+
     // Graceful shutdown
     const shutdown = async () => {
       server.log.info("Shutting down server...");
       stopAutomationScheduler(server.log);
+      stopRemarketingScheduler(server.log);
       await server.close();
       process.exit(0);
     };

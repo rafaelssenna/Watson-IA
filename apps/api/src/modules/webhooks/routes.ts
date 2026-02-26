@@ -5,6 +5,7 @@ import { sendTextMessage } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoTagContact } from "../../services/autoTag.service.js";
+import { scheduleFollowUp, cancelFollowUpForConversation } from "../../services/remarketing.service.js";
 
 // Store fastify instance for use in buffer callback
 let fastifyInstance: FastifyInstance | null = null;
@@ -228,6 +229,9 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       },
     });
 
+    // Cancel remarketing follow-up (client responded)
+    cancelFollowUpForConversation(conversation.id, fastify.log).catch(() => {});
+
     // Update contact last interaction
     await prisma.contact.update({
       where: { id: contact.id },
@@ -283,6 +287,9 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
           });
 
           fastify.log.info({ conversationId: conversation.id }, "Greeting message sent");
+
+          // Arm remarketing after greeting
+          scheduleFollowUp(conversation.id, fastify.log).catch(() => {});
         }
       }
     }
@@ -532,6 +539,9 @@ async function generateAndSendAIResponse(
     });
 
     fastify.log.info({ conversationId: conversation.id, messageId: outboundMessage.id }, "AI response sent");
+
+    // Arm remarketing follow-up (bot responded)
+    scheduleFollowUp(conversation.id, fastify.log).catch(() => {});
 
     // Auto-tag contact based on conversation (run async, don't block response)
     const contact = await prisma.contact.findUnique({ where: { id: conversation.contactId } });

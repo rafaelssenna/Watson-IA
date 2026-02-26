@@ -26,6 +26,7 @@ model Organization {
   currentPeriodEnd     DateTime?
   timezone             String             @default("America/Sao_Paulo")
   businessHours        Json?
+  remarketingEnabled   Boolean            @default(true)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -263,6 +264,9 @@ model Conversation {
   firstResponseTime  Int?
   avgResponseTime    Int?
   lastAiAction       AiAction?
+  followUpStep       Int                @default(0)
+  followUpNextAt     DateTime?
+  remarketingEnabled Boolean            @default(true)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   closedAt           DateTime?
@@ -274,6 +278,7 @@ model Conversation {
   @@index([status])
   @@index([urgency])
   @@index([lastMessageAt])
+  @@index([followUpNextAt])
 }
 
 enum ConversationStatus {

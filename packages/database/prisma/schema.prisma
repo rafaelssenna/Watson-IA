@@ -41,7 +41,6 @@ model Organization {
   automations         Automation[]
   knowledgeBases      KnowledgeBase[]
   funnels             Funnel[]
-  tags                Tag[]
   dailyMetrics        DailyMetrics[]
 
   @@index([slug])
@@ -181,7 +180,6 @@ model Contact {
   updatedAt       DateTime       @updatedAt
 
   conversations Conversation[]
-  tags          ContactTag[]
   internalNotes InternalNote[]
   tasks         Task[]
 
@@ -213,30 +211,6 @@ enum ContactStatus {
   ACTIVE
   BLOCKED
   ARCHIVED
-}
-
-model Tag {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  name           String
-  color          String       @default("#6366f1")
-  description    String?      // Description for AI to understand when to apply
-  isAuto         Boolean      @default(false) // AI can auto-apply this tag
-  contacts       ContactTag[]
-
-  @@unique([organizationId, name])
-}
-
-model ContactTag {
-  contactId   String
-  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  tagId       String
-  tag         Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  appliedByAi Boolean  @default(false) // Whether AI auto-applied this tag
-  createdAt   DateTime @default(now())
-
-  @@id([contactId, tagId])
 }
 
 // ============================================

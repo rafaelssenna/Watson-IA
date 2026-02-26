@@ -34,11 +34,6 @@ export async function contactRoutes(fastify: FastifyInstance) {
           funnelStage: {
             select: { id: true, name: true, color: true },
           },
-          tags: {
-            include: {
-              tag: { select: { id: true, name: true, color: true } },
-            },
-          },
           _count: {
             select: { conversations: true },
           },
@@ -60,7 +55,6 @@ export async function contactRoutes(fastify: FastifyInstance) {
         avatar: contact.profilePicUrl,
         leadScore: contact.leadScore,
         funnelStage: contact.funnelStage,
-        tags: contact.tags.map((t) => t.tag),
         lastInteractionAt: contact.lastInteractionAt,
         conversationCount: contact._count.conversations,
         status: contact.status,
@@ -100,9 +94,6 @@ export async function contactRoutes(fastify: FastifyInstance) {
 
     const contacts = await prisma.contact.findMany({
       where: contactWhere,
-      include: {
-        tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
-      },
       orderBy: { lastInteractionAt: "desc" },
     });
 
@@ -124,7 +115,6 @@ export async function contactRoutes(fastify: FastifyInstance) {
         name: c.name || c.pushName || c.phone,
         phone: c.phone,
         leadScore: c.leadScore,
-        tags: c.tags.map((t) => t.tag),
         lastInteractionAt: c.lastInteractionAt,
       })),
       contactCount: (contactsByStage[stage.id] || []).length,
@@ -149,9 +139,6 @@ export async function contactRoutes(fastify: FastifyInstance) {
       include: {
         funnelStage: true,
         funnel: true,
-        tags: {
-          include: { tag: true },
-        },
         conversations: {
           orderBy: { lastMessageAt: "desc" },
           take: 5,
@@ -248,57 +235,6 @@ export async function contactRoutes(fastify: FastifyInstance) {
       success: true,
       data: updated,
     };
-  });
-
-  // Add tag to contact
-  fastify.post<{ Params: { id: string }; Body: { tagId: string } }>("/:id/tags", { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    const { orgId } = request.user;
-    const { id } = request.params;
-    const { tagId } = request.body;
-
-    const contact = await prisma.contact.findFirst({
-      where: { id, organizationId: orgId },
-    });
-
-    if (!contact) {
-      return reply.notFound("Contato nao encontrado");
-    }
-
-    const tag = await prisma.tag.findFirst({
-      where: { id: tagId, organizationId: orgId },
-    });
-
-    if (!tag) {
-      return reply.notFound("Tag nao encontrada");
-    }
-
-    await prisma.contactTag.upsert({
-      where: { contactId_tagId: { contactId: id, tagId } },
-      create: { contactId: id, tagId },
-      update: {},
-    });
-
-    return { success: true };
-  });
-
-  // Remove tag from contact
-  fastify.delete<{ Params: { id: string; tagId: string } }>("/:id/tags/:tagId", { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    const { orgId } = request.user;
-    const { id, tagId } = request.params;
-
-    const contact = await prisma.contact.findFirst({
-      where: { id, organizationId: orgId },
-    });
-
-    if (!contact) {
-      return reply.notFound("Contato nao encontrado");
-    }
-
-    await prisma.contactTag.deleteMany({
-      where: { contactId: id, tagId },
-    });
-
-    return { success: true };
   });
 
   // Add internal note

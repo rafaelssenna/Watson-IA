@@ -9,12 +9,6 @@ import { api } from "@/services/api";
 // Watson IA brand colors
 const WATSON_TEAL = "#0d9488";
 
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
 interface FunnelStage {
   id: string;
   name: string;
@@ -36,7 +30,6 @@ interface Contact {
   leadScore: number;
   company?: string;
   notes?: string;
-  tags: Tag[];
   funnel?: Funnel;
   funnelStage?: FunnelStage;
   conversationCount: number;
@@ -189,25 +182,6 @@ export default function ContactDetailScreen() {
                   </Text>
                 )}
               </YStack>
-
-              {/* Tags */}
-              {contact.tags.length > 0 && (
-                <XStack flexWrap="wrap" gap="$2" justifyContent="center">
-                  {contact.tags.map((tag) => (
-                    <YStack
-                      key={tag.id}
-                      backgroundColor={tag.color || "$gray10"}
-                      paddingHorizontal="$2"
-                      paddingVertical="$1"
-                      borderRadius="$2"
-                    >
-                      <Text fontSize="$1" color="white">
-                        {tag.name}
-                      </Text>
-                    </YStack>
-                  ))}
-                </XStack>
-              )}
 
               <Button
                 size="$4"

@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
 import { usePersonaStore, type CreatePersonaData } from "@/stores/personaStore";
+import { api } from "@/services/api";
 
 export default function PersonaEditScreen() {
   const theme = useTheme();
@@ -38,6 +39,10 @@ export default function PersonaEditScreen() {
   const [saving, setSaving] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
   const loadedPersonaId = useRef<string | null>(null);
+
+  // Notification phone
+  const [notificationPhone, setNotificationPhone] = useState("");
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   // AI Generation modal
   const [showAIModal, setShowAIModal] = useState(false);
@@ -85,10 +90,30 @@ export default function PersonaEditScreen() {
     }
   }, [generating]);
 
-  // Load default persona on mount
+  // Load default persona + notification phone on mount
   useEffect(() => {
     loadPersona();
+    loadNotificationPhone();
   }, []);
+
+  const loadNotificationPhone = async () => {
+    try {
+      const res = await api.get<{ success: boolean; data: { notificationPhone?: string } }>("/auth/me");
+      if (res.data.success && res.data.data.notificationPhone) {
+        setNotificationPhone(res.data.data.notificationPhone);
+      }
+    } catch {}
+  };
+
+  const saveNotificationPhone = async () => {
+    try {
+      await api.patch("/auth/notification-phone", { notificationPhone: notificationPhone.trim() });
+      setPhoneSaved(true);
+      setTimeout(() => setPhoneSaved(false), 3000);
+    } catch {
+      Alert.alert("Erro", "Nao foi possivel salvar o numero");
+    }
+  };
 
   const loadPersona = async () => {
     const persona = await fetchDefaultPersona();
@@ -1019,6 +1044,63 @@ export default function PersonaEditScreen() {
                   textAlignVertical: "top",
                 }}
               />
+            </Card>
+
+            {/* Notification Phone */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack alignItems="center" gap="$2" marginBottom="$3">
+                <Ionicons name="notifications-outline" size={20} color={theme.blue10.val} />
+                <YStack>
+                  <Text fontSize="$3" fontWeight="600" color="$color">
+                    Numero para Avisos
+                  </Text>
+                  <Text fontSize="$2" color="$gray8">
+                    Receba avisos por WhatsApp quando a IA transferir
+                  </Text>
+                </YStack>
+              </XStack>
+
+              <XStack gap="$2" alignItems="center">
+                <TextInput
+                  value={notificationPhone}
+                  onChangeText={setNotificationPhone}
+                  placeholder="11999998888"
+                  placeholderTextColor={theme.gray8.val}
+                  keyboardType="phone-pad"
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.background.val,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    color: theme.color.val,
+                    borderWidth: 1,
+                    borderColor: theme.gray6.val,
+                  }}
+                />
+                <Pressable
+                  onPress={saveNotificationPhone}
+                  style={{
+                    backgroundColor: theme.blue10.val,
+                    borderRadius: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                  }}
+                >
+                  <Text color="white" fontWeight="600">Salvar</Text>
+                </Pressable>
+              </XStack>
+
+              {phoneSaved && (
+                <XStack alignItems="center" gap="$1" marginTop="$2">
+                  <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                  <Text fontSize="$2" color="#10b981">Numero salvo!</Text>
+                </XStack>
+              )}
+
+              <Text fontSize="$1" color="$gray7" marginTop="$2">
+                Se nao configurar, o aviso vai pro numero do WhatsApp conectado
+              </Text>
             </Card>
 
           </YStack>

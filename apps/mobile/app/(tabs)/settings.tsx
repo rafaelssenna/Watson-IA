@@ -101,27 +101,6 @@ export default function SettingsScreen() {
           </Card>
         </YStack>
 
-        {/* CRM */}
-        <YStack>
-          <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
-            CRM
-          </Text>
-          <Card backgroundColor="$backgroundStrong" borderRadius="$4" overflow="hidden">
-            <SettingsItem
-              icon="pricetags-outline"
-              title="Tags Automaticas"
-              description="IA aplica tags automaticamente"
-              onPress={() => router.push("/settings/tags")}
-            />
-            <Separator backgroundColor="$gray6" />
-            <SettingsItem
-              icon="funnel-outline"
-              title="Funil de Vendas"
-              description="Configurar etapas do funil"
-            />
-          </Card>
-        </YStack>
-
         {/* Account */}
         <YStack>
           <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
@@ -134,19 +113,6 @@ export default function SettingsScreen() {
               description="Gerenciar plano e pagamento"
               badge="Trial"
               badgeColor="$yellow10"
-            />
-            <Separator backgroundColor="$gray6" />
-            <SettingsItem
-              icon="people-outline"
-              title="Equipe"
-              description="Gerenciar membros da equipe"
-            />
-            <Separator backgroundColor="$gray6" />
-            <SettingsItem
-              icon="notifications-outline"
-              title="Notificacoes"
-              description="Numero para avisos do funil"
-              onPress={() => router.push("/settings/notifications")}
             />
           </Card>
         </YStack>

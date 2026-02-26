@@ -15,18 +15,11 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const COLUMN_WIDTH = SCREEN_WIDTH * 0.75;
 const COLUMN_GAP = 12;
 
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
 interface FunnelContact {
   id: string;
   name: string;
   phone: string;
   leadScore: number;
-  tags: Tag[];
   lastInteractionAt?: string;
 }
 
@@ -298,28 +291,6 @@ function ContactCard({
             </YStack>
           )}
         </XStack>
-
-        {/* Tags (max 2) */}
-        {contact.tags.length > 0 && (
-          <XStack gap={4} flexWrap="wrap">
-            {contact.tags.slice(0, 2).map((tag) => (
-              <XStack
-                key={tag.id}
-                backgroundColor={`${tag.color}20`}
-                paddingHorizontal={5}
-                paddingVertical={1}
-                borderRadius={3}
-              >
-                <Text fontSize={10} color={tag.color} fontWeight="500">
-                  {tag.name}
-                </Text>
-              </XStack>
-            ))}
-            {contact.tags.length > 2 && (
-              <Text fontSize={10} color="$gray8">+{contact.tags.length - 2}</Text>
-            )}
-          </XStack>
-        )}
 
         {/* Last interaction */}
         {contact.lastInteractionAt && (

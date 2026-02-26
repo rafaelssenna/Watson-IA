@@ -4,7 +4,6 @@ import { generateResponse, getDefaultResponse, type ConversationMessage, type Pe
 import { sendTextMessage } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
-import { autoTagContact } from "../../services/autoTag.service.js";
 import { autoClassifyFunnelStage, notifyOwnerOnTransfer } from "../../services/autoFunnelStage.service.js";
 import { scheduleFollowUp, cancelFollowUpForConversation, isRejectionMessage } from "../../services/remarketing.service.js";
 
@@ -603,10 +602,9 @@ async function generateAndSendAIResponse(
     // Arm remarketing follow-up (bot responded)
     scheduleFollowUp(conversation.id, fastify.log).catch(() => {});
 
-    // Auto-tag contact based on conversation (run async, don't block response)
+    // Auto-classify funnel stage (non-blocking)
     const contact = await prisma.contact.findUnique({ where: { id: conversation.contactId } });
     if (contact) {
-      // Get recent messages for auto-tagging
       const recentMessages = await prisma.message.findMany({
         where: { conversationId: conversation.id },
         orderBy: { createdAt: "desc" },
@@ -614,29 +612,8 @@ async function generateAndSendAIResponse(
         select: { content: true, direction: true },
       });
 
-      // Sort messages chronologically for both auto-tag and auto-funnel
       const sortedMessages = [...recentMessages].reverse();
 
-      // Run auto-tagging (non-blocking)
-      autoTagContact(orgId, contact.id, sortedMessages, fastify.log)
-        .then((appliedTags) => {
-          if (appliedTags.length > 0) {
-            fastify.log.info(
-              { contactId: contact.id, tags: appliedTags.map((t) => t.name) },
-              "Auto-tags applied to contact"
-            );
-            // Emit real-time event for tag updates
-            io.to(`org:${orgId}`).emit("contact:tags-updated", {
-              contactId: contact.id,
-              tags: appliedTags,
-            });
-          }
-        })
-        .catch((err) => {
-          fastify.log.error({ error: err, contactId: contact.id }, "Auto-tagging failed");
-        });
-
-      // Auto-classify funnel stage (non-blocking)
       autoClassifyFunnelStage(orgId, contact.id, sortedMessages, fastify.log)
         .then((result) => {
           if (result?.moved) {

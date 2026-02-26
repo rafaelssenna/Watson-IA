@@ -27,6 +27,7 @@ import { automationRoutes } from "./modules/automations/routes.js";
 import { triggerRoutes } from "./modules/triggers/routes.js";
 import { tagRoutes } from "./modules/tags/routes.js";
 import { startAutomationScheduler, stopAutomationScheduler } from "./services/automation.service.js";
+import { testEmailConnection, sendTestEmail } from "./services/email.service.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -120,6 +121,26 @@ async function buildServer() {
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || "0.1.0",
     };
+  });
+
+  // Email test - verifica conexao SMTP
+  fastify.get("/api/v1/test-email", async () => {
+    const result = await testEmailConnection();
+    return result;
+  });
+
+  // Email test - envia email de teste
+  fastify.get<{ Querystring: { to: string } }>("/api/v1/test-email/send", async (request, reply) => {
+    const { to } = request.query;
+    if (!to) {
+      return reply.badRequest("Parametro 'to' obrigatorio. Ex: /api/v1/test-email/send?to=seu@email.com");
+    }
+    const connectionTest = await testEmailConnection();
+    if (!connectionTest.success) {
+      return { success: false, step: "connection", error: connectionTest.message, details: connectionTest.details };
+    }
+    const sent = await sendTestEmail(to);
+    return { success: sent, step: "send", to, message: sent ? "Email enviado! Verifique sua caixa." : "Falha ao enviar. Veja os logs." };
   });
 
   // Register routes

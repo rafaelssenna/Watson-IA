@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Pressable, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { Pressable, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, Switch } from "react-native";
 import { router, Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +21,7 @@ export default function PersonaEditScreen() {
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [greetingMessage, setGreetingMessage] = useState("");
+  const [greetingEnabled, setGreetingEnabled] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [formalityLevel, setFormalityLevel] = useState(50);
   const [persuasiveness, setPersuasiveness] = useState(50);
@@ -53,6 +54,7 @@ export default function PersonaEditScreen() {
       setName(selectedPersona.name);
       setBusinessName(selectedPersona.businessName || "");
       setGreetingMessage(selectedPersona.greetingMessage || "");
+      setGreetingEnabled((selectedPersona as any).greetingEnabled ?? false);
       setSystemPrompt(selectedPersona.systemPrompt || "");
       setFormalityLevel(selectedPersona.formalityLevel ?? 50);
       setPersuasiveness(selectedPersona.persuasiveness ?? 50);
@@ -79,6 +81,7 @@ export default function PersonaEditScreen() {
       name: name.trim(),
       businessName: businessName.trim() || undefined,
       greetingMessage: greetingMessage.trim() || undefined,
+      greetingEnabled,
       systemPrompt: systemPrompt.trim() || undefined,
       formalityLevel,
       persuasiveness,
@@ -218,29 +221,39 @@ export default function PersonaEditScreen() {
 
             {/* Greeting Message */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$2">
-                Mensagem de Saudacao
-              </Text>
+              <XStack justifyContent="space-between" alignItems="center" marginBottom="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color">
+                  Mensagem de Saudacao
+                </Text>
+                <Switch
+                  value={greetingEnabled}
+                  onValueChange={setGreetingEnabled}
+                  trackColor={{ false: theme.gray6.val, true: theme.green8.val }}
+                  thumbColor={greetingEnabled ? theme.green10.val : theme.gray4.val}
+                />
+              </XStack>
               <Text fontSize="$2" color="$gray8" marginBottom="$3">
-                Primeira mensagem para novos contatos
+                {greetingEnabled ? "Ativado - Novos contatos receberao esta mensagem" : "Desativado - IA responde direto"}
               </Text>
-              <TextInput
-                value={greetingMessage}
-                onChangeText={setGreetingMessage}
-                placeholder="Ola! Bem-vindo a nossa loja..."
-                placeholderTextColor={theme.gray8.val}
-                multiline
-                numberOfLines={3}
-                style={{
-                  backgroundColor: theme.background.val,
-                  borderRadius: 8,
-                  padding: 12,
-                  fontSize: 16,
-                  color: theme.color.val,
-                  minHeight: 80,
-                  textAlignVertical: "top",
-                }}
-              />
+              {greetingEnabled && (
+                <TextInput
+                  value={greetingMessage}
+                  onChangeText={setGreetingMessage}
+                  placeholder="Ola! Bem-vindo a nossa loja..."
+                  placeholderTextColor={theme.gray8.val}
+                  multiline
+                  numberOfLines={3}
+                  style={{
+                    backgroundColor: theme.background.val,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    color: theme.color.val,
+                    minHeight: 80,
+                    textAlignVertical: "top",
+                  }}
+                />
+              )}
             </Card>
 
             {/* Personality Sliders */}

@@ -182,7 +182,10 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       },
     });
 
+    let isNewConversation = false;
+
     if (!conversation) {
+      isNewConversation = true;
       // Get default persona for the organization
       const defaultPersona = await prisma.persona.findFirst({
         where: { organizationId: orgId, isDefault: true },
@@ -239,6 +242,50 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     });
 
     fastify.log.info({ conversationId: conversation.id, messageId: newMessage.id }, "Message processed");
+
+    // Send greeting message for new contacts
+    if (isNewContact && isNewConversation && conversation.activePersona?.greetingEnabled && conversation.activePersona?.greetingMessage) {
+      const greetingText = conversation.activePersona.greetingMessage;
+      fastify.log.info({ conversationId: conversation.id, contactId: contact.id }, "Sending greeting message to new contact");
+
+      // Get WhatsApp connection
+      const greetingConnection = await prisma.whatsAppConnection.findFirst({
+        where: { organizationId: orgId, status: "CONNECTED" },
+      });
+
+      if (greetingConnection?.uazapiToken) {
+        const greetingResult = await sendTextMessage(greetingConnection.uazapiToken, waId, greetingText);
+
+        if (greetingResult.success) {
+          // Save greeting as outbound message
+          const greetingMsg = await prisma.message.create({
+            data: {
+              organizationId: orgId,
+              conversationId: conversation.id,
+              waMessageId: greetingResult.messageId,
+              direction: "OUTBOUND",
+              type: "TEXT",
+              content: greetingText,
+              status: "SENT",
+              isAiGenerated: false,
+            },
+          });
+
+          await prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { lastMessageAt: new Date(), messageCount: { increment: 1 } },
+          });
+
+          // Emit real-time event
+          io.to(`org:${orgId}`).emit("message:new", {
+            conversationId: conversation.id,
+            message: greetingMsg,
+          });
+
+          fastify.log.info({ conversationId: conversation.id }, "Greeting message sent");
+        }
+      }
+    }
 
     // Process triggers
     const triggerResult = await processTriggers(

@@ -482,6 +482,7 @@ model Persona {
   // New fields
   businessName       String?
   greetingMessage    String?        @db.Text
+  greetingEnabled    Boolean        @default(false)
   prohibitedTopics   String?        @db.Text
   responseLength     ResponseLength @default(MEDIA)
   businessHoursStart  String?

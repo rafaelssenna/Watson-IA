@@ -239,22 +239,7 @@ REGRAS:
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
-
-  // Parse JSON - remove possible markdown wrapping
-  const jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
-  const parsed = JSON.parse(jsonStr) as GeneratedPersonaConfig;
-
-  // Clamp values to valid ranges
-  parsed.formalityLevel = Math.max(0, Math.min(100, parsed.formalityLevel));
-  parsed.persuasiveness = Math.max(0, Math.min(100, parsed.persuasiveness));
-  parsed.energyLevel = Math.max(0, Math.min(100, parsed.energyLevel));
-  parsed.empathyLevel = Math.max(0, Math.min(100, parsed.empathyLevel));
-
-  if (!["CURTA", "MEDIA", "LONGA"].includes(parsed.responseLength)) {
-    parsed.responseLength = "MEDIA";
-  }
-
-  return parsed;
+  return parseGeneratedJSON(text);
 }
 
 // Generate persona configuration from audio description
@@ -304,9 +289,22 @@ REGRAS:
   ]);
 
   const text = result.response.text().trim();
+  const parsed = parseGeneratedJSON(text);
+  return parsed;
+}
 
-  // Parse JSON - remove possible markdown wrapping
-  const jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+function parseGeneratedJSON(text: string): GeneratedPersonaConfig {
+  // Remove possible markdown wrapping
+  let jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+
+  // Fix control characters inside JSON strings (newlines, tabs etc)
+  jsonStr = jsonStr.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+    if (ch === "\n") return "\\n";
+    if (ch === "\r") return "";
+    if (ch === "\t") return "\\t";
+    return "";
+  });
+
   const parsed = JSON.parse(jsonStr) as GeneratedPersonaConfig;
 
   // Clamp values to valid ranges

@@ -47,19 +47,22 @@ export async function webhookRoutes(fastify: FastifyInstance) {
     const typedPayload = payload as Record<string, any>;
     const eventType = typedPayload.event || typedPayload.type || "";
 
-    fastify.log.info({ eventType, hasMessage: !!typedPayload.message, hasData: !!typedPayload.data }, "Processing webhook event");
+    // Detect connection data in payload (Uazapi sometimes sends connection info without event field)
+    const hasConnectionData = typedPayload.data?.connection || typedPayload.data?.status === "connected" || typedPayload.data?.status === "disconnected" || typedPayload.data?.status === "connecting" || typedPayload.connection;
 
+    fastify.log.info({ eventType, hasMessage: !!typedPayload.message, hasData: !!typedPayload.data, hasConnectionData }, "Processing webhook event");
+
+    // Check if this is a connection update (check FIRST to avoid "status" collision)
+    if (eventType === "connection.update" || eventType === "connection" || eventType === "status.instance" || hasConnectionData) {
+      await handleConnectionUpdate(fastify, connectionId, payload);
+    }
     // Check if this is a message event (Uazapi sends 'messages' event for incoming messages)
-    if (eventType === "messages" || eventType === "messages.upsert" || eventType === "message") {
+    else if (eventType === "messages" || eventType === "messages.upsert" || eventType === "message") {
       await handleIncomingMessage(fastify, orgId, payload);
     }
     // Check if this is a status update
-    else if (eventType === "messages.update" || eventType === "message.status" || eventType === "status") {
+    else if (eventType === "messages.update" || eventType === "messages_update" || eventType === "message.status" || eventType === "status") {
       await handleMessageStatus(fastify, orgId, payload);
-    }
-    // Check if this is a connection update
-    else if (eventType === "connection.update" || eventType === "connection") {
-      await handleConnectionUpdate(fastify, connectionId, payload);
     }
     // If no event type but has message data, treat as incoming message
     else if (typedPayload.message || typedPayload.data?.message) {
@@ -67,7 +70,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       await handleIncomingMessage(fastify, orgId, payload);
     }
     else {
-      fastify.log.info({ eventType, payloadKeys: Object.keys(typedPayload) }, "Unhandled webhook event type");
+      fastify.log.info({ eventType, payloadKeys: Object.keys(typedPayload), rawPayload: JSON.stringify(payload).substring(0, 500) }, "Unhandled webhook event type");
     }
 
     return { success: true };
@@ -612,22 +615,36 @@ async function handleMessageStatus(fastify: FastifyInstance, orgId: string, payl
 async function handleConnectionUpdate(fastify: FastifyInstance, connectionId: string, payload: any) {
   try {
     const update = payload.data || payload;
-    const status = update.connection || update.status;
+    const status = update.connection || update.status || update.state;
+
+    fastify.log.info({ connectionId, status, updateKeys: Object.keys(update), rawPayload: JSON.stringify(payload).substring(0, 500) }, "[connection] Processing connection update");
 
     const statusMap: Record<string, string> = {
       open: "CONNECTED",
       close: "DISCONNECTED",
       connecting: "CONNECTING",
+      connected: "CONNECTED",
+      disconnected: "DISCONNECTED",
+      CONNECTED: "CONNECTED",
+      DISCONNECTED: "DISCONNECTED",
     };
+
+    const mappedStatus = statusMap[status];
+    if (!mappedStatus) {
+      fastify.log.warn({ connectionId, status, payload: JSON.stringify(payload).substring(0, 300) }, "[connection] Unknown connection status");
+      return;
+    }
 
     await prisma.whatsAppConnection.update({
       where: { id: connectionId },
       data: {
-        status: (statusMap[status] || status) as any,
-        ...(status === "open" && { lastConnectedAt: new Date() }),
-        ...(status === "close" && { lastDisconnectedAt: new Date() }),
+        status: mappedStatus as any,
+        ...(mappedStatus === "CONNECTED" && { lastConnectedAt: new Date() }),
+        ...(mappedStatus === "DISCONNECTED" && { lastDisconnectedAt: new Date() }),
       },
     });
+
+    fastify.log.info({ connectionId, mappedStatus }, "[connection] Status updated");
   } catch (error) {
     fastify.log.error({ error, payload }, "Error processing connection update");
   }

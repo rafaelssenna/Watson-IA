@@ -78,9 +78,9 @@ export default function SettingsScreen() {
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem
-              icon="sync-outline"
-              title="Automacoes"
-              description="Follow-ups e mensagens programadas"
+              icon="megaphone-outline"
+              title="Remarketing"
+              description="Follow-up automatico em 7 etapas com IA"
               onPress={() => router.push("/settings/automations")}
             />
           </Card>

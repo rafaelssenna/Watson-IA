@@ -63,6 +63,7 @@ export async function downloadMedia(
       body: JSON.stringify({
         id: messageId,
         generate_mp3: true,
+        return_base64: true,
         return_link: false,
       }),
     });
@@ -75,7 +76,7 @@ export async function downloadMedia(
     const data = await response.json() as { base64Data?: string; mimetype?: string };
 
     if (!data.base64Data || !data.mimetype) {
-      console.error("[uazapi.downloadMedia] No base64Data or mimetype in response");
+      console.error(`[uazapi.downloadMedia] No base64Data or mimetype. Response keys: ${Object.keys(data).join(", ")}. mimetype=${data.mimetype}`);
       return null;
     }
 

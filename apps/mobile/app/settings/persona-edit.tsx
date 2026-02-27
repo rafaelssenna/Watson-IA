@@ -49,6 +49,10 @@ export default function PersonaEditScreen() {
   const [conversationStyle, setConversationStyle] = useState("");
   const [analyzingStyle, setAnalyzingStyle] = useState(false);
 
+  // Trigger activation
+  const [triggerEnabled, setTriggerEnabled] = useState(false);
+  const [triggerMessage, setTriggerMessage] = useState("");
+
   // AI Generation modal
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiDescription, setAIDescription] = useState("");
@@ -213,6 +217,8 @@ export default function PersonaEditScreen() {
       setBusinessHoursEnd(selectedPersona.businessHoursEnd || "18:00");
       setWorkDays(selectedPersona.workDays || ["seg", "ter", "qua", "qui", "sex"]);
       setConversationStyle((selectedPersona as any).conversationStyle || "");
+      setTriggerEnabled((selectedPersona as any).triggerEnabled || false);
+      setTriggerMessage((selectedPersona as any).triggerMessage || "");
       setFormInitialized(true);
     }
   }, [selectedPersona, formInitialized]);
@@ -240,6 +246,8 @@ export default function PersonaEditScreen() {
       businessHoursStart: businessHoursStart || undefined,
       businessHoursEnd: businessHoursEnd || undefined,
       workDays: workDays.length > 0 ? workDays : undefined,
+      triggerEnabled,
+      triggerMessage: triggerEnabled ? triggerMessage.trim() || undefined : undefined,
       isDefault: true,
     };
 
@@ -900,6 +908,55 @@ export default function PersonaEditScreen() {
                     textAlignVertical: "top",
                   }}
                 />
+              )}
+            </Card>
+
+            {/* Trigger Activation */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack alignItems="center" justifyContent="space-between" marginBottom={triggerEnabled ? "$3" : "$0"}>
+                <XStack alignItems="center" gap="$2" flex={1}>
+                  <Ionicons name="flash-outline" size={20} color="#f59e0b" />
+                  <YStack flex={1}>
+                    <Text fontSize="$3" fontWeight="600" color="$color">
+                      Ativar por Mensagem
+                    </Text>
+                    <Text fontSize="$2" color="$gray8">
+                      IA so responde apos mensagem especifica
+                    </Text>
+                  </YStack>
+                </XStack>
+                <Switch
+                  value={triggerEnabled}
+                  onValueChange={setTriggerEnabled}
+                  trackColor={{ false: theme.gray6.val, true: "#f59e0b" }}
+                  thumbColor={triggerEnabled ? "#fbbf24" : theme.gray4.val}
+                />
+              </XStack>
+
+              {triggerEnabled && (
+                <YStack gap="$2">
+                  <Text fontSize="$2" color="$gray8">
+                    Mensagem que ativa a IA (ex: "quero comprar", "oi")
+                  </Text>
+                  <TextInput
+                    value={triggerMessage}
+                    onChangeText={setTriggerMessage}
+                    placeholder="Digite a mensagem gatilho..."
+                    placeholderTextColor={theme.gray7.val}
+                    style={{
+                      backgroundColor: theme.background.val,
+                      borderWidth: 1,
+                      borderColor: theme.gray6.val,
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 16,
+                      color: theme.color.val,
+                    }}
+                  />
+                  <Text fontSize="$1" color="$gray8">
+                    A IA ficara silenciosa ate o cliente enviar uma mensagem que contenha esse texto
+                  </Text>
+                </YStack>
               )}
             </Card>
 

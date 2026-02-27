@@ -51,6 +51,8 @@ export interface CreatePersonaData {
   businessHoursStart?: string;
   businessHoursEnd?: string;
   workDays?: string[];
+  triggerEnabled?: boolean;
+  triggerMessage?: string;
 }
 
 export interface UpdatePersonaData extends Partial<CreatePersonaData> {}

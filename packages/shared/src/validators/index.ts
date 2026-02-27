@@ -75,6 +75,8 @@ export const createPersonaSchema = z.object({
   businessHoursStart: z.string().optional(),
   businessHoursEnd: z.string().optional(),
   workDays: z.array(z.string()).default(["seg", "ter", "qua", "qui", "sex"]),
+  triggerEnabled: z.boolean().default(false),
+  triggerMessage: z.string().optional(),
 });
 
 export const updatePersonaSchema = createPersonaSchema.partial();

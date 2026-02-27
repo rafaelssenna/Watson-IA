@@ -493,6 +493,28 @@ async function generateAndSendAIResponse(
       });
     }
 
+    // Check trigger activation - if enabled, AI only responds after trigger message
+    if (activePersona?.triggerEnabled && activePersona?.triggerMessage) {
+      const triggerMsg = activePersona.triggerMessage.toLowerCase().trim();
+      const incoming = incomingMessage.toLowerCase().trim();
+
+      if (!conversation.aiActivated) {
+        // AI not yet activated for this conversation
+        if (incoming.includes(triggerMsg)) {
+          // Trigger matched! Activate AI for this conversation
+          await prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { aiActivated: true },
+          });
+          fastify.log.info(`[TRIGGER] AI activated for conversation ${conversation.id} by message: "${incomingMessage.substring(0, 50)}"`);
+        } else {
+          // Trigger not matched, stay silent
+          fastify.log.info(`[TRIGGER] AI silent for conversation ${conversation.id} - waiting for trigger: "${activePersona.triggerMessage}"`);
+          return;
+        }
+      }
+    }
+
     // Combine knowledge files content
     let knowledgeContent = "";
     if (activePersona?.knowledgeFiles?.length) {

@@ -242,6 +242,7 @@ model Conversation {
   followUpStep       Int                @default(0)
   followUpNextAt     DateTime?
   remarketingEnabled Boolean            @default(true)
+  aiActivated        Boolean            @default(false) // Whether AI was activated by trigger message
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   closedAt           DateTime?
@@ -470,6 +471,8 @@ model Persona {
   workDays            String[]       @default(["seg", "ter", "qua", "qui", "sex"])
   messageBufferDelay  Int            @default(10) // Delay in seconds to buffer messages before AI responds
   conversationStyle   String?        @db.Text // Extracted communication style from conversation screenshot
+  triggerEnabled      Boolean        @default(false) // AI only responds after trigger message
+  triggerMessage      String?        // Message that activates AI in a conversation
   createdAt           DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 

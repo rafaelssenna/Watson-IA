@@ -104,21 +104,22 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     // { event: "messages", data: { chatid, sender, senderName, text, fromMe, ... } }
     // chatid = "5531971206977@s.whatsapp.net" or group ID
     // sender = same as chatid for individual chats
-    let waId = message.chatid || message.sender || message.from || message.remoteJid || message.key?.remoteJid || "";
+    let waId = String(message.chatid || message.sender || message.from || message.remoteJid || message.key?.remoteJid || "");
 
     // Clean up the waId - remove WhatsApp suffixes
     waId = waId.split("@")[0]; // Get only the number part before any @ suffix
     waId = waId.split(":")[0]; // Handle lid format like "5531971206977:62@lid" - get first part
 
     // Extract content - Uazapi uses 'text' for text messages
-    let content =
+    let content = String(
       message.text ||
       message.body ||
       message.content ||
       message.message?.conversation ||
       message.message?.extendedTextMessage?.text ||
       message.caption ||
-      "";
+      ""
+    );
 
     const messageId = message.messageid || message.id || message.key?.id || message.messageId || message.msgId;
     const pushName = message.senderName || message.pushName || message.notifyName || message.name;
@@ -388,7 +389,9 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       );
     }
   } catch (error) {
-    fastify.log.error({ error: error instanceof Error ? { message: error.message, stack: error.stack } : error, payloadSnippet: JSON.stringify(payload).substring(0, 300) }, "Error processing incoming message");
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack?.split("\n").slice(0, 3).join(" | ") : "";
+    fastify.log.error(`Error processing incoming message: ${errMsg} | Stack: ${errStack} | Payload: ${JSON.stringify(payload).substring(0, 300)}`);
   }
 }
 

@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createPersonaSchema, updatePersonaSchema } from "@watson/shared";
-import { generatePersonaFromDescription, generatePersonaFromAudio, analyzeConversationScreenshot } from "../../services/ai.service.js";
+import { generatePersonaFromDescription, generatePersonaFromAudio, analyzeConversationScreenshots } from "../../services/ai.service.js";
 
 // Extract text from different file types
 async function extractTextFromFile(buffer: Buffer, mimeType: string): Promise<string> {
@@ -415,7 +415,7 @@ export async function personaRoutes(fastify: FastifyInstance) {
   // CONVERSATION STYLE (screenshot analysis)
   // ============================================
 
-  // Upload conversation screenshot and extract style
+  // Upload conversation screenshots and extract style + flow
   fastify.post<{ Params: { id: string } }>("/:id/conversation-style", { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { orgId } = request.user;
     const { id } = request.params;
@@ -428,29 +428,37 @@ export async function personaRoutes(fastify: FastifyInstance) {
       return reply.notFound("Persona nao encontrada");
     }
 
-    const data = await request.file();
-
-    if (!data) {
-      return reply.badRequest("Imagem obrigatoria");
-    }
-
     const allowedMimeTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    const images: Array<{ buffer: Buffer; mimeType: string }> = [];
 
-    if (!allowedMimeTypes.includes(data.mimetype)) {
-      return reply.badRequest("Tipo de arquivo nao suportado. Use PNG, JPG ou WebP.");
+    const files = request.files();
+    for await (const file of files) {
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        return reply.badRequest(`Tipo de arquivo nao suportado: ${file.filename}. Use PNG, JPG ou WebP.`);
+      }
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of file.file) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+
+      if (buffer.length > 10 * 1024 * 1024) {
+        return reply.badRequest(`Imagem muito grande: ${file.filename}. Maximo 10MB por imagem.`);
+      }
+
+      images.push({ buffer, mimeType: file.mimetype });
+
+      if (images.length > 5) {
+        return reply.badRequest("Maximo de 5 imagens permitido.");
+      }
     }
 
-    const chunks: Buffer[] = [];
-    for await (const chunk of data.file) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
-
-    if (buffer.length > 10 * 1024 * 1024) {
-      return reply.badRequest("Imagem muito grande. Maximo 10MB.");
+    if (images.length === 0) {
+      return reply.badRequest("Pelo menos uma imagem e obrigatoria.");
     }
 
-    const style = await analyzeConversationScreenshot(buffer, data.mimetype);
+    const style = await analyzeConversationScreenshots(images);
 
     if (!style?.trim()) {
       return reply.badRequest("Nao foi possivel extrair o estilo da conversa");

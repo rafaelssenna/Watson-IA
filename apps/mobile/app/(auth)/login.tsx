@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Image } from "react-native";
+import { KeyboardAvoidingView, Platform, Image, Alert } from "react-native";
 import { Link, router } from "expo-router";
 import { YStack, XStack, Text, Input, Button, Spinner, useTheme } from "tamagui";
 import { useAuthStore } from "@/stores/authStore";
@@ -27,7 +27,13 @@ export default function LoginScreen() {
       await login(email, password);
       router.replace("/(tabs)");
     } catch (err: any) {
-      setError(err.message || "Erro ao fazer login");
+      const msg = err.message || "Erro ao fazer login";
+      setError(msg);
+
+      // Show alert for subscription/trial issues
+      if (msg.includes("expirou") || msg.includes("cancelada")) {
+        Alert.alert("Acesso bloqueado", msg);
+      }
     }
   };
 
@@ -94,9 +100,21 @@ export default function LoginScreen() {
           </YStack>
 
           {error && (
-            <Text color="$red10" textAlign="center">
-              {error}
-            </Text>
+            <YStack
+              backgroundColor={error.includes("expirou") || error.includes("cancelada") ? "$orange2" : "$red2"}
+              borderRadius="$3"
+              padding="$3"
+              borderWidth={1}
+              borderColor={error.includes("expirou") || error.includes("cancelada") ? "$orange6" : "$red6"}
+            >
+              <Text
+                color={error.includes("expirou") || error.includes("cancelada") ? "$orange11" : "$red10"}
+                textAlign="center"
+                fontWeight="600"
+              >
+                {error}
+              </Text>
+            </YStack>
           )}
 
           <Button

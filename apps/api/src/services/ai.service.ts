@@ -226,9 +226,9 @@ REGRAS DO COMANDO:
     prompt += `\n\nInstrucoes adicionais:\n${persona.customInstructions}`;
   }
 
-  // === 10. ESTILO DE CONVERSA (extraido de screenshot) ===
+  // === 10. ESTILO E FLUXO DE CONVERSA (extraido de screenshots) ===
   if (persona.conversationStyle?.trim()) {
-    prompt += `\n\nESTILO DE CONVERSA (inspire-se neste estilo, NAO copie literalmente - adapte ao contexto):
+    prompt += `\n\nESTILO E FLUXO DE CONVERSA (inspire-se neste padrao de atendimento, NAO copie literalmente - adapte ao contexto):
 ${persona.conversationStyle}`;
   }
 
@@ -507,39 +507,43 @@ export async function transcribeAudio(
   return result.response.text().trim();
 }
 
-// Analyze a conversation screenshot and extract communication style
-export async function analyzeConversationScreenshot(
-  imageBuffer: Buffer,
-  mimeType: string
+// Analyze conversation screenshots and extract communication style + flow
+export async function analyzeConversationScreenshots(
+  images: Array<{ buffer: Buffer; mimeType: string }>
 ): Promise<string> {
   const ai = getGenAI();
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const imageBase64 = imageBuffer.toString("base64");
+  const prompt = `Analise ${images.length > 1 ? "estas screenshots" : "esta screenshot"} de uma conversa de WhatsApp (em ordem cronologica). Extraia o ESTILO e o FLUXO DE CONVERSA do vendedor/atendente (as mensagens enviadas, nao as recebidas).
 
-  const result = await model.generateContent([
-    `Analise esta screenshot de uma conversa de WhatsApp. Extraia o ESTILO DE COMUNICACAO do vendedor/atendente (as mensagens enviadas, nao as recebidas).
-
-Descreva em detalhes:
+ESTILO DE COMUNICACAO:
 - Tom geral (formal, casual, amigavel, profissional)
 - Girias ou expressoes tipicas usadas
-- Como cumprimenta e se despede
-- Como apresenta produtos/servicos
-- Tecnicas de venda ou persuasao usadas
 - Uso de emojis (quais e com que frequencia)
-- Tamanho tipico das mensagens (curtas, medias, longas)
+- Tamanho tipico das mensagens
 - Padroes marcantes de escrita (abreviacoes, pontuacao, etc)
-- Como lida com objecoes ou duvidas do cliente
 
-Retorne APENAS a descricao do estilo, sem introducao ou conclusao. Seja especifico e detalhado para que outra IA consiga imitar esse estilo.`,
-    {
+FLUXO DA CONVERSA:
+- Como abre a conversa / abordagem inicial
+- Como apresenta produtos ou servicos
+- Como lida com objecoes e duvidas do cliente
+- Tecnicas de persuasao e venda usadas
+- Como conduz para o fechamento
+- Como se despede ou faz follow-up
+
+Retorne APENAS a descricao detalhada do estilo e fluxo, sem introducao ou conclusao. Seja especifico para que outra IA consiga reproduzir o mesmo padrao de atendimento.`;
+
+  const contentParts: any[] = [prompt];
+  for (const img of images) {
+    contentParts.push({
       inlineData: {
-        mimeType,
-        data: imageBase64,
+        mimeType: img.mimeType,
+        data: img.buffer.toString("base64"),
       },
-    },
-  ]);
+    });
+  }
 
+  const result = await model.generateContent(contentParts);
   return result.response.text().trim();
 }
 

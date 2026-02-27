@@ -122,7 +122,7 @@ export default function PersonaEditScreen() {
 
   const handleUploadConversationStyle = async () => {
     if (!selectedPersona?.id) {
-      Alert.alert("Erro", "Salve a persona primeiro antes de anexar um print");
+      Alert.alert("Erro", "Salve a persona primeiro antes de anexar prints");
       return;
     }
 
@@ -130,19 +130,27 @@ export default function PersonaEditScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         type: ["image/png", "image/jpeg", "image/jpg", "image/webp"],
         copyToCacheDirectory: true,
+        multiple: true,
       });
 
-      if (result.canceled || !result.assets?.[0]) return;
+      if (result.canceled || !result.assets?.length) return;
 
-      const file = result.assets[0];
+      const files = result.assets.slice(0, 5);
+
+      if (result.assets.length > 5) {
+        Alert.alert("Aviso", "Maximo de 5 imagens. Apenas as 5 primeiras serao usadas.");
+      }
+
       setAnalyzingStyle(true);
 
       const formData = new FormData();
-      formData.append("file", {
-        uri: file.uri,
-        name: file.name || "screenshot.jpg",
-        type: file.mimeType || "image/jpeg",
-      } as any);
+      files.forEach((file, i) => {
+        formData.append("file", {
+          uri: file.uri,
+          name: file.name || `screenshot_${i + 1}.jpg`,
+          type: file.mimeType || "image/jpeg",
+        } as any);
+      });
 
       const res = await api.post<{ success: boolean; style: string }>(
         `/personas/${selectedPersona.id}/conversation-style`,
@@ -151,10 +159,10 @@ export default function PersonaEditScreen() {
 
       if (res.data.success && res.data.style) {
         setConversationStyle(res.data.style);
-        Alert.alert("Sucesso", "Estilo de conversa extraido e salvo!");
+        Alert.alert("Sucesso", `Estilo e fluxo extraidos de ${files.length} print${files.length > 1 ? "s" : ""}!`);
       }
     } catch (error: any) {
-      Alert.alert("Erro", error?.response?.data?.error?.message || "Nao foi possivel analisar a imagem");
+      Alert.alert("Erro", error?.response?.data?.error?.message || "Nao foi possivel analisar as imagens");
     } finally {
       setAnalyzingStyle(false);
     }
@@ -462,7 +470,90 @@ export default function PersonaEditScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$4">
-            {/* Business Info - FIRST so user fills names before AI */}
+            {/* Conversation Style + Flow - FIRST so AI knows the pattern */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack alignItems="center" gap="$2" marginBottom="$3">
+                <Ionicons name="chatbubbles-outline" size={20} color="#8b5cf6" />
+                <YStack flex={1}>
+                  <Text fontSize="$3" fontWeight="600" color="$color">
+                    Estilo e Fluxo de Conversa
+                  </Text>
+                  <Text fontSize="$2" color="$gray8">
+                    Anexe ate 5 prints para a IA se inspirar no fluxo
+                  </Text>
+                </YStack>
+              </XStack>
+
+              {analyzingStyle ? (
+                <YStack alignItems="center" padding="$4" gap="$2">
+                  <ActivityIndicator size="large" color="#8b5cf6" />
+                  <Text fontSize="$2" color="$gray8">Analisando estilo e fluxo da conversa...</Text>
+                </YStack>
+              ) : conversationStyle ? (
+                <YStack gap="$2">
+                  <YStack
+                    backgroundColor="$background"
+                    borderRadius={8}
+                    padding="$3"
+                    borderWidth={1}
+                    borderColor="$gray6"
+                  >
+                    <Text fontSize="$2" color="$gray8" numberOfLines={8}>
+                      {conversationStyle}
+                    </Text>
+                  </YStack>
+                  <XStack gap="$2">
+                    <Pressable
+                      onPress={handleUploadConversationStyle}
+                      style={{
+                        flex: 1,
+                        backgroundColor: "#8b5cf6",
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text color="white" fontWeight="600" fontSize="$2">Trocar Prints</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleRemoveConversationStyle}
+                      style={{
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        borderWidth: 1,
+                        borderColor: theme.red10.val,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text color="$red10" fontWeight="600" fontSize="$2">Remover</Text>
+                    </Pressable>
+                  </XStack>
+                </YStack>
+              ) : (
+                <Pressable
+                  onPress={handleUploadConversationStyle}
+                  style={{
+                    borderWidth: 2,
+                    borderColor: "#8b5cf6",
+                    borderStyle: "dashed",
+                    borderRadius: 8,
+                    paddingVertical: 20,
+                    alignItems: "center",
+                  }}
+                >
+                  <Ionicons name="images-outline" size={32} color="#8b5cf6" />
+                  <Text color="#8b5cf6" fontWeight="600" marginTop="$2">
+                    Anexar Prints de Conversa
+                  </Text>
+                  <Text fontSize="$1" color="$gray8" marginTop="$1">
+                    Ate 5 imagens - PNG, JPG ou WebP
+                  </Text>
+                </Pressable>
+              )}
+            </Card>
+
+            {/* Business Info */}
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
               <Text fontSize="$3" fontWeight="600" color="$color" marginBottom="$3">
                 Informacoes do Negocio
@@ -1110,89 +1201,6 @@ export default function PersonaEditScreen() {
                   textAlignVertical: "top",
                 }}
               />
-            </Card>
-
-            {/* Conversation Style */}
-            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-              <XStack alignItems="center" gap="$2" marginBottom="$3">
-                <Ionicons name="chatbubbles-outline" size={20} color="#8b5cf6" />
-                <YStack flex={1}>
-                  <Text fontSize="$3" fontWeight="600" color="$color">
-                    Estilo de Conversa
-                  </Text>
-                  <Text fontSize="$2" color="$gray8">
-                    Anexe um print de conversa para a IA se inspirar
-                  </Text>
-                </YStack>
-              </XStack>
-
-              {analyzingStyle ? (
-                <YStack alignItems="center" padding="$4" gap="$2">
-                  <ActivityIndicator size="large" color="#8b5cf6" />
-                  <Text fontSize="$2" color="$gray8">Analisando estilo da conversa...</Text>
-                </YStack>
-              ) : conversationStyle ? (
-                <YStack gap="$2">
-                  <YStack
-                    backgroundColor="$background"
-                    borderRadius={8}
-                    padding="$3"
-                    borderWidth={1}
-                    borderColor="$gray6"
-                  >
-                    <Text fontSize="$2" color="$gray8" numberOfLines={6}>
-                      {conversationStyle}
-                    </Text>
-                  </YStack>
-                  <XStack gap="$2">
-                    <Pressable
-                      onPress={handleUploadConversationStyle}
-                      style={{
-                        flex: 1,
-                        backgroundColor: "#8b5cf6",
-                        borderRadius: 8,
-                        paddingVertical: 10,
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text color="white" fontWeight="600" fontSize="$2">Trocar Print</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={handleRemoveConversationStyle}
-                      style={{
-                        borderRadius: 8,
-                        paddingVertical: 10,
-                        paddingHorizontal: 16,
-                        borderWidth: 1,
-                        borderColor: theme.red10.val,
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text color="$red10" fontWeight="600" fontSize="$2">Remover</Text>
-                    </Pressable>
-                  </XStack>
-                </YStack>
-              ) : (
-                <Pressable
-                  onPress={handleUploadConversationStyle}
-                  style={{
-                    borderWidth: 2,
-                    borderColor: "#8b5cf6",
-                    borderStyle: "dashed",
-                    borderRadius: 8,
-                    paddingVertical: 20,
-                    alignItems: "center",
-                  }}
-                >
-                  <Ionicons name="image-outline" size={32} color="#8b5cf6" />
-                  <Text color="#8b5cf6" fontWeight="600" marginTop="$2">
-                    Anexar Print de Conversa
-                  </Text>
-                  <Text fontSize="$1" color="$gray8" marginTop="$1">
-                    PNG, JPG ou WebP
-                  </Text>
-                </Pressable>
-              )}
             </Card>
 
             {/* Notification Phone */}

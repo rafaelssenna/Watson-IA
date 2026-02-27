@@ -174,7 +174,8 @@ REGRAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
 7. Responda sempre em portugues brasileiro
 8. Nao use formatacao markdown (sem *, #, etc)
 9. Nao despeje informacoes. Responda APENAS o que foi perguntado
-10. NUNCA invente informacoes que voce nao tem. Se o cliente perguntar algo que nao esta nas suas instrucoes ou base de conhecimento (preco, politica de troca, desconto, permuta, garantia, etc), diga que vai verificar e retorna ou pergunte mais detalhes. NAO crie respostas ficticias.`;
+10. NUNCA invente informacoes que voce nao tem. Se o cliente perguntar algo que nao esta nas suas instrucoes ou base de conhecimento (preco, politica de troca, desconto, permuta, garantia, etc), diga que vai verificar e retorna ou pergunte mais detalhes. NAO crie respostas ficticias.
+11. NUNCA use colchetes ou placeholders como [nome do produto], [valor], [diferencial], etc. Fale naturalmente - se nao sabe a informacao, diga que vai verificar.`;
 
   // === 4. CONTEXTO DO CLIENTE ===
   if (persona.contactName || persona.contactFunnelStage) {

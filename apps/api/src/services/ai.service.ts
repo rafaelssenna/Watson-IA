@@ -40,6 +40,7 @@ export interface PersonaConfig {
   workDays?: string[]; // ["seg","ter","qua","qui","sex"]
   contactName?: string;
   contactFunnelStage?: string;
+  conversationStyle?: string;
 }
 
 export interface AIResponseResult {
@@ -223,6 +224,12 @@ REGRAS DO COMANDO:
   // === 9. INSTRUCOES ADICIONAIS ===
   if (persona.customInstructions) {
     prompt += `\n\nInstrucoes adicionais:\n${persona.customInstructions}`;
+  }
+
+  // === 10. ESTILO DE CONVERSA (extraido de screenshot) ===
+  if (persona.conversationStyle?.trim()) {
+    prompt += `\n\nESTILO DE CONVERSA (inspire-se neste estilo, NAO copie literalmente - adapte ao contexto):
+${persona.conversationStyle}`;
   }
 
   return prompt;
@@ -493,6 +500,42 @@ export async function transcribeAudio(
       inlineData: {
         mimeType,
         data: audioBase64,
+      },
+    },
+  ]);
+
+  return result.response.text().trim();
+}
+
+// Analyze a conversation screenshot and extract communication style
+export async function analyzeConversationScreenshot(
+  imageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const imageBase64 = imageBuffer.toString("base64");
+
+  const result = await model.generateContent([
+    `Analise esta screenshot de uma conversa de WhatsApp. Extraia o ESTILO DE COMUNICACAO do vendedor/atendente (as mensagens enviadas, nao as recebidas).
+
+Descreva em detalhes:
+- Tom geral (formal, casual, amigavel, profissional)
+- Girias ou expressoes tipicas usadas
+- Como cumprimenta e se despede
+- Como apresenta produtos/servicos
+- Tecnicas de venda ou persuasao usadas
+- Uso de emojis (quais e com que frequencia)
+- Tamanho tipico das mensagens (curtas, medias, longas)
+- Padroes marcantes de escrita (abreviacoes, pontuacao, etc)
+- Como lida com objecoes ou duvidas do cliente
+
+Retorne APENAS a descricao do estilo, sem introducao ou conclusao. Seja especifico e detalhado para que outra IA consiga imitar esse estilo.`,
+    {
+      inlineData: {
+        mimeType,
+        data: imageBase64,
       },
     },
   ]);

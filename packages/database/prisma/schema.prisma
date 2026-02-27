@@ -469,6 +469,7 @@ model Persona {
   businessHoursEnd    String?
   workDays            String[]       @default(["seg", "ter", "qua", "qui", "sex"])
   messageBufferDelay  Int            @default(10) // Delay in seconds to buffer messages before AI responds
+  conversationStyle   String?        @db.Text // Extracted communication style from conversation screenshot
   createdAt           DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 

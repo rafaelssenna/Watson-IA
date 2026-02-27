@@ -5,6 +5,7 @@ import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
+import * as DocumentPicker from "expo-document-picker";
 import { usePersonaStore, type CreatePersonaData } from "@/stores/personaStore";
 import { api } from "@/services/api";
 
@@ -43,6 +44,10 @@ export default function PersonaEditScreen() {
   // Notification phone
   const [notificationPhone, setNotificationPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
+
+  // Conversation style
+  const [conversationStyle, setConversationStyle] = useState("");
+  const [analyzingStyle, setAnalyzingStyle] = useState(false);
 
   // AI Generation modal
   const [showAIModal, setShowAIModal] = useState(false);
@@ -115,6 +120,66 @@ export default function PersonaEditScreen() {
     }
   };
 
+  const handleUploadConversationStyle = async () => {
+    if (!selectedPersona?.id) {
+      Alert.alert("Erro", "Salve a persona primeiro antes de anexar um print");
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["image/png", "image/jpeg", "image/jpg", "image/webp"],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const file = result.assets[0];
+      setAnalyzingStyle(true);
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: file.uri,
+        name: file.name || "screenshot.jpg",
+        type: file.mimeType || "image/jpeg",
+      } as any);
+
+      const res = await api.post<{ success: boolean; style: string }>(
+        `/personas/${selectedPersona.id}/conversation-style`,
+        formData
+      );
+
+      if (res.data.success && res.data.style) {
+        setConversationStyle(res.data.style);
+        Alert.alert("Sucesso", "Estilo de conversa extraido e salvo!");
+      }
+    } catch (error: any) {
+      Alert.alert("Erro", error?.response?.data?.error?.message || "Nao foi possivel analisar a imagem");
+    } finally {
+      setAnalyzingStyle(false);
+    }
+  };
+
+  const handleRemoveConversationStyle = async () => {
+    if (!selectedPersona?.id) return;
+
+    Alert.alert("Remover estilo", "Deseja remover o estilo de conversa?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Remover",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete(`/personas/${selectedPersona.id}/conversation-style`);
+            setConversationStyle("");
+          } catch {
+            Alert.alert("Erro", "Nao foi possivel remover");
+          }
+        },
+      },
+    ]);
+  };
+
   const loadPersona = async () => {
     const persona = await fetchDefaultPersona();
     if (persona) {
@@ -139,6 +204,7 @@ export default function PersonaEditScreen() {
       setBusinessHoursStart(selectedPersona.businessHoursStart || "09:00");
       setBusinessHoursEnd(selectedPersona.businessHoursEnd || "18:00");
       setWorkDays(selectedPersona.workDays || ["seg", "ter", "qua", "qui", "sex"]);
+      setConversationStyle((selectedPersona as any).conversationStyle || "");
       setFormInitialized(true);
     }
   }, [selectedPersona, formInitialized]);
@@ -1044,6 +1110,89 @@ export default function PersonaEditScreen() {
                   textAlignVertical: "top",
                 }}
               />
+            </Card>
+
+            {/* Conversation Style */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack alignItems="center" gap="$2" marginBottom="$3">
+                <Ionicons name="chatbubbles-outline" size={20} color="#8b5cf6" />
+                <YStack flex={1}>
+                  <Text fontSize="$3" fontWeight="600" color="$color">
+                    Estilo de Conversa
+                  </Text>
+                  <Text fontSize="$2" color="$gray8">
+                    Anexe um print de conversa para a IA se inspirar
+                  </Text>
+                </YStack>
+              </XStack>
+
+              {analyzingStyle ? (
+                <YStack alignItems="center" padding="$4" gap="$2">
+                  <ActivityIndicator size="large" color="#8b5cf6" />
+                  <Text fontSize="$2" color="$gray8">Analisando estilo da conversa...</Text>
+                </YStack>
+              ) : conversationStyle ? (
+                <YStack gap="$2">
+                  <YStack
+                    backgroundColor="$background"
+                    borderRadius={8}
+                    padding="$3"
+                    borderWidth={1}
+                    borderColor="$gray6"
+                  >
+                    <Text fontSize="$2" color="$gray8" numberOfLines={6}>
+                      {conversationStyle}
+                    </Text>
+                  </YStack>
+                  <XStack gap="$2">
+                    <Pressable
+                      onPress={handleUploadConversationStyle}
+                      style={{
+                        flex: 1,
+                        backgroundColor: "#8b5cf6",
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text color="white" fontWeight="600" fontSize="$2">Trocar Print</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleRemoveConversationStyle}
+                      style={{
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        borderWidth: 1,
+                        borderColor: theme.red10.val,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text color="$red10" fontWeight="600" fontSize="$2">Remover</Text>
+                    </Pressable>
+                  </XStack>
+                </YStack>
+              ) : (
+                <Pressable
+                  onPress={handleUploadConversationStyle}
+                  style={{
+                    borderWidth: 2,
+                    borderColor: "#8b5cf6",
+                    borderStyle: "dashed",
+                    borderRadius: 8,
+                    paddingVertical: 20,
+                    alignItems: "center",
+                  }}
+                >
+                  <Ionicons name="image-outline" size={32} color="#8b5cf6" />
+                  <Text color="#8b5cf6" fontWeight="600" marginTop="$2">
+                    Anexar Print de Conversa
+                  </Text>
+                  <Text fontSize="$1" color="$gray8" marginTop="$1">
+                    PNG, JPG ou WebP
+                  </Text>
+                </Pressable>
+              )}
             </Card>
 
             {/* Notification Phone */}

@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createPersonaSchema, updatePersonaSchema } from "@watson/shared";
-import { generatePersonaFromDescription, generatePersonaFromAudio } from "../../services/ai.service.js";
+import { generatePersonaFromDescription, generatePersonaFromAudio, analyzeConversationScreenshot } from "../../services/ai.service.js";
 
 // Extract text from different file types
 async function extractTextFromFile(buffer: Buffer, mimeType: string): Promise<string> {
@@ -407,6 +407,80 @@ export async function personaRoutes(fastify: FastifyInstance) {
     }
 
     await prisma.personaKnowledgeFile.delete({ where: { id: fileId } });
+
+    return { success: true };
+  });
+
+  // ============================================
+  // CONVERSATION STYLE (screenshot analysis)
+  // ============================================
+
+  // Upload conversation screenshot and extract style
+  fastify.post<{ Params: { id: string } }>("/:id/conversation-style", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id } = request.params;
+
+    const persona = await prisma.persona.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!persona) {
+      return reply.notFound("Persona nao encontrada");
+    }
+
+    const data = await request.file();
+
+    if (!data) {
+      return reply.badRequest("Imagem obrigatoria");
+    }
+
+    const allowedMimeTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+
+    if (!allowedMimeTypes.includes(data.mimetype)) {
+      return reply.badRequest("Tipo de arquivo nao suportado. Use PNG, JPG ou WebP.");
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of data.file) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    if (buffer.length > 10 * 1024 * 1024) {
+      return reply.badRequest("Imagem muito grande. Maximo 10MB.");
+    }
+
+    const style = await analyzeConversationScreenshot(buffer, data.mimetype);
+
+    if (!style?.trim()) {
+      return reply.badRequest("Nao foi possivel extrair o estilo da conversa");
+    }
+
+    await prisma.persona.update({
+      where: { id },
+      data: { conversationStyle: style },
+    });
+
+    return { success: true, style };
+  });
+
+  // Delete conversation style
+  fastify.delete<{ Params: { id: string } }>("/:id/conversation-style", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id } = request.params;
+
+    const persona = await prisma.persona.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!persona) {
+      return reply.notFound("Persona nao encontrada");
+    }
+
+    await prisma.persona.update({
+      where: { id },
+      data: { conversationStyle: null },
+    });
 
     return { success: true };
   });

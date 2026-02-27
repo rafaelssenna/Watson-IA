@@ -530,6 +530,7 @@ async function generateAndSendAIResponse(
           businessHoursStart: activePersona.businessHoursStart || undefined,
           businessHoursEnd: activePersona.businessHoursEnd || undefined,
           workDays: activePersona.workDays?.length ? activePersona.workDays : undefined,
+          conversationStyle: activePersona.conversationStyle || undefined,
           contactName,
           contactFunnelStage,
         }

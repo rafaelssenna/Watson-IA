@@ -1,18 +1,79 @@
-import { Pressable } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, Switch, Alert, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { YStack, XStack, Text, Card, Separator, useTheme } from "tamagui";
 import { ScrollView } from "react-native";
 import { useAuthStore } from "@/stores/authStore";
 import { Ionicons } from "@expo/vector-icons";
+import { api } from "@/services/api";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 // Watson IA brand colors
 const WATSON_TEAL = "#0d9488";
 
+interface RemarketingConfig {
+  enabled: boolean;
+  totalActive: number;
+  steps: { step: number; count: number }[];
+}
+
 export default function SettingsScreen() {
   const { user, logout } = useAuthStore();
   const theme = useTheme();
+  const [remarketingConfig, setRemarketingConfig] = useState<RemarketingConfig | null>(null);
+  const [togglingRemarketing, setTogglingRemarketing] = useState(false);
+
+  useEffect(() => {
+    loadRemarketingConfig();
+  }, []);
+
+  const loadRemarketingConfig = async () => {
+    try {
+      const response = await api.get<{ success: boolean; data: RemarketingConfig }>("/automations/remarketing/config");
+      if (response.data.success) {
+        setRemarketingConfig(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error loading remarketing config:", error);
+    }
+  };
+
+  const handleToggleRemarketing = async () => {
+    if (!remarketingConfig) return;
+    const newEnabled = !remarketingConfig.enabled;
+
+    if (!newEnabled && remarketingConfig.totalActive > 0) {
+      Alert.alert(
+        "Desativar Remarketing?",
+        `Existem ${remarketingConfig.totalActive} follow-ups ativos. Todos serao cancelados.`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Desativar",
+            style: "destructive",
+            onPress: () => doToggleRemarketing(newEnabled),
+          },
+        ]
+      );
+      return;
+    }
+    doToggleRemarketing(newEnabled);
+  };
+
+  const doToggleRemarketing = async (enabled: boolean) => {
+    setTogglingRemarketing(true);
+    try {
+      await api.patch("/automations/remarketing/config", { enabled });
+      setRemarketingConfig((prev) =>
+        prev ? { ...prev, enabled, totalActive: enabled ? prev.totalActive : 0 } : null
+      );
+    } catch (error) {
+      Alert.alert("Erro", "Erro ao alterar remarketing");
+    } finally {
+      setTogglingRemarketing(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -77,12 +138,40 @@ export default function SettingsScreen() {
               onPress={() => router.push("/settings/triggers")}
             />
             <Separator backgroundColor="$gray6" />
-            <SettingsItem
-              icon="megaphone-outline"
-              title="Remarketing"
-              description="Follow-up automatico em 7 etapas com IA"
-              onPress={() => router.push("/settings/automations")}
-            />
+            <Pressable onPress={() => router.push("/settings/automations")}>
+              <XStack padding="$4" alignItems="center" gap="$3">
+                <Ionicons name="megaphone-outline" size={24} color={theme.gray8.val} />
+                <YStack flex={1}>
+                  <XStack alignItems="center" gap="$2">
+                    <Text fontWeight="600" color="$color" fontSize="$4">Remarketing</Text>
+                    {remarketingConfig?.enabled && remarketingConfig.totalActive > 0 && (
+                      <YStack
+                        backgroundColor={WATSON_TEAL}
+                        paddingHorizontal="$2"
+                        paddingVertical={2}
+                        borderRadius="$2"
+                      >
+                        <Text fontSize={10} color="white" fontWeight="600">
+                          {remarketingConfig.totalActive} ativos
+                        </Text>
+                      </YStack>
+                    )}
+                  </XStack>
+                  <Text fontSize="$2" color="$gray8" marginTop={2}>
+                    Follow-up automatico em 7 etapas com IA
+                  </Text>
+                </YStack>
+                {togglingRemarketing ? (
+                  <ActivityIndicator size="small" color={WATSON_TEAL} />
+                ) : (
+                  <Switch
+                    value={remarketingConfig?.enabled || false}
+                    onValueChange={handleToggleRemarketing}
+                    trackColor={{ false: theme.gray6.val, true: WATSON_TEAL }}
+                  />
+                )}
+              </XStack>
+            </Pressable>
           </Card>
         </YStack>
 

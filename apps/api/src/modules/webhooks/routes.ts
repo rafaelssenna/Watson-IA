@@ -132,11 +132,12 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     }
 
     // Transcribe audio messages
-    const isAudio = messageType === "audio" || messageType === "ptt";
-    if (isAudio && !content && messageId) {
-      fastify.log.info({ messageId, messageType }, "Audio message detected, attempting transcription");
+    const isAudio = messageType === "audio" || messageType === "ptt" ||
+      !!message.audioMessage || !!message.message?.audioMessage;
+
+    if (isAudio && messageId) {
+      fastify.log.info(`Audio detected: type=${messageType}, id=${messageId}, originalContent=${content?.substring(0, 50)}`);
       try {
-        // Get WhatsApp connection token
         const connection = await prisma.whatsAppConnection.findFirst({
           where: { organizationId: orgId, status: "CONNECTED" },
         });
@@ -145,16 +146,22 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
           const media = await downloadMedia(connection.uazapiToken, messageId);
           if (media) {
             const audioBuffer = Buffer.from(media.base64Data, "base64");
-            content = await transcribeAudio(audioBuffer, media.mimetype);
-            fastify.log.info({ transcription: content?.substring(0, 100) }, "Audio transcribed successfully");
+            const transcribed = await transcribeAudio(audioBuffer, media.mimetype);
+            if (transcribed) {
+              content = transcribed;
+              fastify.log.info(`Audio transcribed: ${content.substring(0, 100)}`);
+            } else {
+              fastify.log.warn(`Audio transcription returned empty for ${messageId}`);
+            }
           } else {
-            fastify.log.warn({ messageId }, "Failed to download audio media");
+            fastify.log.warn(`Failed to download audio media for ${messageId}`);
           }
         } else {
           fastify.log.warn("No connected WhatsApp instance found for audio download");
         }
       } catch (err) {
-        fastify.log.error({ error: err, messageId }, "Audio transcription failed");
+        const errMsg = err instanceof Error ? err.message : String(err);
+        fastify.log.error(`Audio transcription failed: ${errMsg}`);
       }
     }
 

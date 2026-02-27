@@ -243,6 +243,169 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Get insights metrics
+  fastify.get("/insights", { preHandler: [fastify.authenticate] }, async (request) => {
+    const { orgId } = request.user;
+    const { period } = request.query as { period?: string };
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate: Date;
+
+    if (period === "7d") {
+      startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 30);
+    } else {
+      startDate = today;
+    }
+
+    const dateFilter = { gte: startDate };
+
+    const [
+      totalOutbound,
+      aiMessages,
+      transfersToHuman,
+      totalConversations,
+      openConversations,
+      resolvedConversations,
+      closedConversations,
+      avgResponseTimeAgg,
+      newContacts,
+      totalContacts,
+      inboundCount,
+      respondedCount,
+    ] = await Promise.all([
+      // Total outbound messages
+      prisma.message.count({
+        where: { organizationId: orgId, direction: "OUTBOUND", createdAt: dateFilter },
+      }),
+      // AI generated messages
+      prisma.message.count({
+        where: { organizationId: orgId, direction: "OUTBOUND", isAiGenerated: true, createdAt: dateFilter },
+      }),
+      // Transfers to human
+      prisma.conversation.count({
+        where: { organizationId: orgId, lastAiAction: "ESCALATED_TO_HUMAN", updatedAt: dateFilter },
+      }),
+      // Total conversations
+      prisma.conversation.count({
+        where: { organizationId: orgId, createdAt: dateFilter },
+      }),
+      // Open
+      prisma.conversation.count({
+        where: { organizationId: orgId, status: { in: ["OPEN", "WAITING_CLIENT", "WAITING_AGENT", "IN_PROGRESS"] }, createdAt: dateFilter },
+      }),
+      // Resolved
+      prisma.conversation.count({
+        where: { organizationId: orgId, status: "RESOLVED", createdAt: dateFilter },
+      }),
+      // Closed
+      prisma.conversation.count({
+        where: { organizationId: orgId, status: "CLOSED", createdAt: dateFilter },
+      }),
+      // Avg response time
+      prisma.conversation.aggregate({
+        where: { organizationId: orgId, avgResponseTime: { not: null }, createdAt: dateFilter },
+        _avg: { avgResponseTime: true },
+      }),
+      // New contacts
+      prisma.contact.count({
+        where: { organizationId: orgId, createdAt: dateFilter },
+      }),
+      // Total contacts
+      prisma.contact.count({
+        where: { organizationId: orgId },
+      }),
+      // Inbound messages (for response rate)
+      prisma.message.count({
+        where: { organizationId: orgId, direction: "INBOUND", createdAt: dateFilter },
+      }),
+      // Conversations that got a reply
+      prisma.conversation.count({
+        where: {
+          organizationId: orgId,
+          messages: { some: { direction: "OUTBOUND", createdAt: dateFilter } },
+        },
+      }),
+    ]);
+
+    const humanMessages = totalOutbound - aiMessages;
+    const aiPercentage = totalOutbound > 0 ? Math.round((aiMessages / totalOutbound) * 100) : 0;
+    const avgResponseTime = avgResponseTimeAgg._avg.avgResponseTime
+      ? Math.round(avgResponseTimeAgg._avg.avgResponseTime / 60)
+      : 0;
+    const responseRate = inboundCount > 0 ? Math.round((respondedCount / inboundCount) * 100) : 100;
+
+    // Peak hours (last 24h) - raw SQL for grouping by hour
+    const peakHoursRaw = await prisma.$queryRaw<Array<{ hour: number; count: bigint }>>`
+      SELECT EXTRACT(HOUR FROM "createdAt") as hour, COUNT(*) as count
+      FROM "Message"
+      WHERE "organizationId" = ${orgId}
+        AND "createdAt" >= ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
+      GROUP BY EXTRACT(HOUR FROM "createdAt")
+      ORDER BY hour
+    `;
+    const peakHours = peakHoursRaw.map((r) => ({
+      hour: `${String(Number(r.hour)).padStart(2, "0")}:00`,
+      count: Number(r.count),
+    }));
+
+    // Messages per day (last 7 days)
+    const daysCount = period === "30d" ? 30 : period === "7d" ? 7 : 1;
+    const msgsPerDayStart = new Date(today);
+    msgsPerDayStart.setDate(msgsPerDayStart.getDate() - daysCount);
+
+    const msgsPerDayRaw = await prisma.$queryRaw<Array<{ date: Date; direction: string; count: bigint }>>`
+      SELECT DATE("createdAt") as date, "direction", COUNT(*) as count
+      FROM "Message"
+      WHERE "organizationId" = ${orgId}
+        AND "createdAt" >= ${msgsPerDayStart}
+      GROUP BY DATE("createdAt"), "direction"
+      ORDER BY date
+    `;
+
+    const dayMap = new Map<string, { date: string; inbound: number; outbound: number }>();
+    for (let i = 0; i < daysCount; i++) {
+      const d = new Date(msgsPerDayStart);
+      d.setDate(d.getDate() + i + 1);
+      const key = d.toISOString().split("T")[0];
+      dayMap.set(key, { date: key, inbound: 0, outbound: 0 });
+    }
+    for (const row of msgsPerDayRaw) {
+      const key = new Date(row.date).toISOString().split("T")[0];
+      const entry = dayMap.get(key);
+      if (entry) {
+        if (row.direction === "INBOUND") entry.inbound = Number(row.count);
+        else entry.outbound = Number(row.count);
+      }
+    }
+    const messagesPerDay = Array.from(dayMap.values());
+
+    return {
+      success: true,
+      data: {
+        totalOutbound,
+        aiMessages,
+        humanMessages,
+        aiPercentage,
+        transfersToHuman,
+        totalConversations,
+        openConversations,
+        resolvedConversations,
+        closedConversations,
+        avgResponseTime,
+        responseRate,
+        newContacts,
+        totalContacts,
+        peakHours,
+        messagesPerDay,
+      },
+    };
+  });
+
   // Get AI suggestions
   fastify.get("/suggestions", { preHandler: [fastify.authenticate] }, async (request) => {
     const { orgId } = request.user;

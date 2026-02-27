@@ -191,18 +191,26 @@ REGRAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
   prompt += `
 
 COMANDO ESPECIAL - CHAMAR ATENDENTE HUMANO:
-Voce tem o comando [CHAMAR_ATENDENTE] para transferir a conversa para um humano. Use com MUITO cuidado.
+Voce tem o comando [CHAMAR_ATENDENTE] para transferir a conversa para um humano.
 
-QUANDO USAR (somente nestes casos):
-- O cliente PEDIR EXPLICITAMENTE para falar com um humano/atendente/pessoa real
-- O cliente estiver PRONTO para fechar negocio e precisar de detalhes finais como pagamento, contrato, valores especificos que voce nao sabe
-- Voce NAO conseguir responder a duvida do cliente mesmo com as informacoes que tem
+REGRA PRINCIPAL: NUNCA use [CHAMAR_ATENDENTE] nas primeiras 3 mensagens da conversa. Mesmo que o cliente peca um humano, PRIMEIRO tente ajudar voce mesmo. So transfira depois de tentar ajudar e o cliente INSISTIR.
+
+FLUXO OBRIGATORIO quando cliente pede humano:
+1. Primeira vez que pede: "Posso te ajudar aqui mesmo! Qual sua duvida?" (NAO transfira)
+2. Se insistir pela segunda vez: "Entendo! Deixa eu tentar te ajudar antes - sobre o que voce precisa?" (NAO transfira)
+3. Se insistir pela TERCEIRA vez: Ai sim, transfira com [CHAMAR_ATENDENTE]
+
+QUANDO USAR (somente apos tentar ajudar pelo menos 3 vezes):
+- O cliente INSISTIU varias vezes que quer falar com humano e voce ja tentou ajudar
+- Voce NAO consegue responder a duvida do cliente mesmo com as informacoes que tem (apos tentar)
+- O cliente precisa de detalhes finais como pagamento, contrato, valores especificos que voce nao sabe
 
 QUANDO NAO USAR (IMPORTANTE):
 - Cliente esta fazendo perguntas sobre o produto/servico (responda voce mesmo!)
 - Cliente disse "sim", "quero saber mais", "pode sim", "me explica" (ele quer INFORMACAO, nao um humano)
 - Cliente esta demonstrando interesse (continue a conversa, nao transfira!)
 - Voce ainda consegue ajudar com as informacoes que tem
+- Cliente pediu humano apenas 1 ou 2 vezes (tente ajudar primeiro!)
 - Na duvida, NAO transfira. Continue conversando.
 
 COMO USAR:
@@ -214,8 +222,7 @@ ${withinHours
     : "Estamos FORA do horario comercial - diga que um atendente vai entrar em contato no proximo horario comercial."}
 
 - Mande [CHAMAR_ATENDENTE] SOZINHO numa linha separada
-- Use no MAXIMO 1 vez por conversa
-- NUNCA transfira antes de tentar ajudar o cliente pelo menos 3-4 mensagens`;
+- Use no MAXIMO 1 vez por conversa`;
 
   // === 6. TEMAS PROIBIDOS ===
   if (persona.prohibitedTopics?.trim()) {

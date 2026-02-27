@@ -388,7 +388,7 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       );
     }
   } catch (error) {
-    fastify.log.error({ error, payload }, "Error processing incoming message");
+    fastify.log.error({ error: error instanceof Error ? { message: error.message, stack: error.stack } : error, payloadSnippet: JSON.stringify(payload).substring(0, 300) }, "Error processing incoming message");
   }
 }
 

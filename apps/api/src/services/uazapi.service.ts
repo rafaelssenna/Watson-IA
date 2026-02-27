@@ -47,3 +47,41 @@ export async function sendTextMessage(
     return { success: false, error: String(error) };
   }
 }
+
+// Download media from a message (audio, image, video, etc.)
+export async function downloadMedia(
+  instanceToken: string,
+  messageId: string
+): Promise<{ base64Data: string; mimetype: string } | null> {
+  try {
+    const response = await fetch(`${UAZAPI_BASE_URL}/message/download`, {
+      method: "POST",
+      headers: {
+        token: instanceToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: messageId,
+        generate_mp3: true,
+        return_link: false,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`[uazapi.downloadMedia] Failed: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json() as { base64Data?: string; mimetype?: string };
+
+    if (!data.base64Data || !data.mimetype) {
+      console.error("[uazapi.downloadMedia] No base64Data or mimetype in response");
+      return null;
+    }
+
+    return { base64Data: data.base64Data, mimetype: data.mimetype };
+  } catch (error) {
+    console.error("[uazapi.downloadMedia] Exception:", error);
+    return null;
+  }
+}

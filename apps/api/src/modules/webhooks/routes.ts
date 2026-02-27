@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
-import { generateResponse, getDefaultResponse, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
-import { sendTextMessage } from "../../services/uazapi.service.js";
+import { generateResponse, getDefaultResponse, transcribeAudio, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
+import { sendTextMessage, downloadMedia } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoClassifyFunnelStage, notifyOwnerOnTransfer } from "../../services/autoFunnelStage.service.js";
@@ -111,7 +111,7 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     waId = waId.split(":")[0]; // Handle lid format like "5531971206977:62@lid" - get first part
 
     // Extract content - Uazapi uses 'text' for text messages
-    const content =
+    let content =
       message.text ||
       message.body ||
       message.content ||
@@ -122,6 +122,7 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
 
     const messageId = message.messageid || message.id || message.key?.id || message.messageId || message.msgId;
     const pushName = message.senderName || message.pushName || message.notifyName || message.name;
+    const messageType = message.messageType || message.type || "";
 
     // Skip if this is an outgoing message (fromMe)
     if (message.fromMe === true || message.key?.fromMe === true) {
@@ -129,12 +130,40 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       return;
     }
 
-    fastify.log.info({ waId, content: content?.substring(0, 50), messageId, pushName }, "Extracted message details");
+    // Transcribe audio messages
+    const isAudio = messageType === "audio" || messageType === "ptt";
+    if (isAudio && !content && messageId) {
+      fastify.log.info({ messageId, messageType }, "Audio message detected, attempting transcription");
+      try {
+        // Get WhatsApp connection token
+        const connection = await prisma.whatsAppConnection.findFirst({
+          where: { organizationId: orgId, status: "CONNECTED" },
+        });
+
+        if (connection?.uazapiToken) {
+          const media = await downloadMedia(connection.uazapiToken, messageId);
+          if (media) {
+            const audioBuffer = Buffer.from(media.base64Data, "base64");
+            content = await transcribeAudio(audioBuffer, media.mimetype);
+            fastify.log.info({ transcription: content?.substring(0, 100) }, "Audio transcribed successfully");
+          } else {
+            fastify.log.warn({ messageId }, "Failed to download audio media");
+          }
+        } else {
+          fastify.log.warn("No connected WhatsApp instance found for audio download");
+        }
+      } catch (err) {
+        fastify.log.error({ error: err, messageId }, "Audio transcription failed");
+      }
+    }
+
+    fastify.log.info({ waId, content: content?.substring(0, 50), messageId, pushName, messageType }, "Extracted message details");
 
     if (!waId || !content) {
       fastify.log.warn({
         waId,
         content,
+        messageType,
         messageKeys: Object.keys(message),
         fullMessage: JSON.stringify(message).substring(0, 500)
       }, "Invalid message payload - missing waId or content");

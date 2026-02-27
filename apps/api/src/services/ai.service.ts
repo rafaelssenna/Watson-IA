@@ -477,6 +477,29 @@ function clampPersonaValues(parsed: GeneratedPersonaConfig): GeneratedPersonaCon
   return parsed;
 }
 
+// Transcribe audio using Gemini
+export async function transcribeAudio(
+  audioBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const audioBase64 = audioBuffer.toString("base64");
+
+  const result = await model.generateContent([
+    "Transcreva este audio em portugues brasileiro. Retorne APENAS o texto falado, sem nenhuma explicacao ou formatacao extra.",
+    {
+      inlineData: {
+        mimeType,
+        data: audioBase64,
+      },
+    },
+  ]);
+
+  return result.response.text().trim();
+}
+
 // Simple response for when AI is not configured
 export function getDefaultResponse(): string {
   return "Ola! Recebi sua mensagem. Em breve um atendente ira responder.";

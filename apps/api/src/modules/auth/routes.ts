@@ -126,8 +126,11 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   // Login
   fastify.post<{ Body: LoginInput }>("/login", async (request, reply) => {
+    fastify.log.info(`[LOGIN] Request received - email: ${request.body?.email || "missing"}`);
+
     const result = loginSchema.safeParse(request.body);
     if (!result.success) {
+      fastify.log.warn(`[LOGIN] Validation failed: ${result.error.message}`);
       return reply.badRequest(result.error.message);
     }
 
@@ -138,13 +141,23 @@ export async function authRoutes(fastify: FastifyInstance) {
       include: { organization: true },
     });
 
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (!user) {
+      fastify.log.warn(`[LOGIN] User not found: ${email}`);
       return reply.unauthorized("Email ou senha invalidos");
     }
+
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatch) {
+      fastify.log.warn(`[LOGIN] Wrong password for: ${email}`);
+      return reply.unauthorized("Email ou senha invalidos");
+    }
+
+    fastify.log.info(`[LOGIN] User found: ${user.name} (${email}) - org: ${user.organization.name} - sub: ${user.organization.subscriptionStatus}`);
 
     // Check subscription status
     const org = user.organization;
     if (org.subscriptionStatus === "TRIAL" && org.trialEndsAt && org.trialEndsAt < new Date()) {
+      fastify.log.warn(`[LOGIN] Trial expired for ${email} - trialEndsAt: ${org.trialEndsAt}`);
       return reply.code(402).send({
         success: false,
         error: {
@@ -155,6 +168,7 @@ export async function authRoutes(fastify: FastifyInstance) {
     }
 
     if (org.subscriptionStatus === "CANCELLED") {
+      fastify.log.warn(`[LOGIN] Subscription cancelled for ${email}`);
       return reply.code(402).send({
         success: false,
         error: {
@@ -188,6 +202,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         expiresAt: refreshExpiresAt,
       },
     });
+
+    fastify.log.info(`[LOGIN] Success! User ${email} logged in. Token expires in 15m.`);
 
     return {
       success: true,

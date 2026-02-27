@@ -125,9 +125,44 @@ export default function PersonaEditScreen() {
   };
 
   const handleUploadConversationStyle = async () => {
-    if (!selectedPersona?.id) {
-      Alert.alert("Erro", "Salve a persona primeiro antes de anexar prints");
-      return;
+    let personaId = selectedPersona?.id;
+
+    // Auto-save persona if it doesn't exist yet
+    if (!personaId) {
+      if (!name.trim()) {
+        Alert.alert("Erro", "Preencha pelo menos o nome da persona antes de anexar prints");
+        return;
+      }
+      try {
+        setSaving(true);
+        const data: CreatePersonaData = {
+          name: name.trim(),
+          businessName: businessName.trim() || undefined,
+          greetingMessage: greetingMessage.trim() || undefined,
+          greetingEnabled,
+          systemPrompt: systemPrompt.trim() || undefined,
+          formalityLevel,
+          persuasiveness,
+          energyLevel,
+          empathyLevel,
+          responseLength,
+          prohibitedTopics: prohibitedTopics.trim() || undefined,
+          businessHoursStart: businessHoursStart || undefined,
+          businessHoursEnd: businessHoursEnd || undefined,
+          workDays: workDays.length > 0 ? workDays : undefined,
+          triggerEnabled,
+          triggerMessage: triggerEnabled ? triggerMessage.trim() || undefined : undefined,
+          isDefault: true,
+        };
+        const newPersona = await createPersona(data);
+        personaId = newPersona.id;
+        loadedPersonaId.current = newPersona.id;
+      } catch (error: any) {
+        Alert.alert("Erro", error.message || "Erro ao salvar persona");
+        return;
+      } finally {
+        setSaving(false);
+      }
     }
 
     try {
@@ -157,7 +192,7 @@ export default function PersonaEditScreen() {
       });
 
       const res = await api.post<{ success: boolean; style: string }>(
-        `/personas/${selectedPersona.id}/conversation-style`,
+        `/personas/${personaId}/conversation-style`,
         formData
       );
 

@@ -111,19 +111,18 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
     waId = waId.split(":")[0]; // Handle lid format like "5531971206977:62@lid" - get first part
 
     // Extract content - Uazapi uses 'text' for text messages
-    let content = String(
-      message.text ||
-      message.body ||
-      message.content ||
+    // Only pick string values to avoid [object Object] from audio/media metadata
+    const rawContent = message.text || message.body ||
+      (typeof message.content === "string" ? message.content : null) ||
       message.message?.conversation ||
       message.message?.extendedTextMessage?.text ||
       message.caption ||
-      ""
-    );
+      "";
+    let content = typeof rawContent === "string" ? rawContent : "";
 
     const messageId = message.messageid || message.id || message.key?.id || message.messageId || message.msgId;
     const pushName = message.senderName || message.pushName || message.notifyName || message.name;
-    const messageType = message.messageType || message.type || "";
+    const messageType = String(message.messageType || message.type || "").toLowerCase();
 
     // Skip if this is an outgoing message (fromMe)
     if (message.fromMe === true || message.key?.fromMe === true) {
@@ -131,8 +130,10 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
       return;
     }
 
-    // Transcribe audio messages
-    const isAudio = messageType === "audio" || messageType === "ptt" ||
+    fastify.log.info(`Message details: waId=${waId}, messageType=${messageType}, contentPreview=${content?.substring(0, 80)}, messageId=${messageId}`);
+
+    // Transcribe audio messages (UAZAPI sends messageType as "AudioMessage", "PttMessage", etc.)
+    const isAudio = messageType.includes("audio") || messageType.includes("ptt") ||
       !!message.audioMessage || !!message.message?.audioMessage;
 
     if (isAudio && messageId) {

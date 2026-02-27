@@ -191,20 +191,31 @@ REGRAS DE COMUNICACAO (SIGA RIGOROSAMENTE):
   prompt += `
 
 COMANDO ESPECIAL - CHAMAR ATENDENTE HUMANO:
-Quando o cliente demonstrar que quer COMPRAR, FECHAR NEGOCIO, agendar REUNIAO/DEMO, ou pedir para FALAR COM UMA PESSOA/ATENDENTE, voce deve:
-1. Responder normalmente confirmando que um atendente vai entrar em contato
+Voce tem o comando [CHAMAR_ATENDENTE] para transferir a conversa para um humano. Use com MUITO cuidado.
+
+QUANDO USAR (somente nestes casos):
+- O cliente PEDIR EXPLICITAMENTE para falar com um humano/atendente/pessoa real
+- O cliente estiver PRONTO para fechar negocio e precisar de detalhes finais como pagamento, contrato, valores especificos que voce nao sabe
+- Voce NAO conseguir responder a duvida do cliente mesmo com as informacoes que tem
+
+QUANDO NAO USAR (IMPORTANTE):
+- Cliente esta fazendo perguntas sobre o produto/servico (responda voce mesmo!)
+- Cliente disse "sim", "quero saber mais", "pode sim", "me explica" (ele quer INFORMACAO, nao um humano)
+- Cliente esta demonstrando interesse (continue a conversa, nao transfira!)
+- Voce ainda consegue ajudar com as informacoes que tem
+- Na duvida, NAO transfira. Continue conversando.
+
+COMO USAR:
+1. Responda normalmente confirmando que um atendente vai entrar em contato
 2. Numa linha SEPARADA, escreva EXATAMENTE: [CHAMAR_ATENDENTE]
 
 ${withinHours
     ? "Estamos DENTRO do horario comercial - diga que um atendente vai falar com ele em breve."
     : "Estamos FORA do horario comercial - diga que um atendente vai entrar em contato no proximo horario comercial."}
 
-REGRAS DO COMANDO:
-- Mande [CHAMAR_ATENDENTE] SOZINHO numa linha separada, sem nada antes ou depois na mesma linha
-- Use APENAS quando o cliente claramente quer atendimento humano, quer comprar, ou quer reuniao
-- NAO use se o cliente esta apenas tirando duvidas que voce pode responder
-- Depois de enviar o comando, continue conversando normalmente se o cliente quiser
-- Use no MAXIMO 1 vez por conversa`;
+- Mande [CHAMAR_ATENDENTE] SOZINHO numa linha separada
+- Use no MAXIMO 1 vez por conversa
+- NUNCA transfira antes de tentar ajudar o cliente pelo menos 3-4 mensagens`;
 
   // === 6. TEMAS PROIBIDOS ===
   if (persona.prohibitedTopics?.trim()) {

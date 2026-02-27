@@ -264,8 +264,8 @@ export async function authRoutes(fastify: FastifyInstance) {
     };
   });
 
-  // Logout
-  fastify.post("/logout", { preHandler: [fastify.authenticate] }, async (request) => {
+  // Logout (no auth required - user may have expired token)
+  fastify.post("/logout", async (request) => {
     const { refreshToken } = request.body as { refreshToken?: string };
 
     if (refreshToken) {

@@ -125,10 +125,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
 
         try {
+          console.log("[login] Sending login request...");
           const response = await api.post<{
             success: boolean;
             data: { user: User; accessToken: string; refreshToken: string };
-          }>("/auth/login", { email, password });
+          }>("/auth/login", { email, password }, { skipAuth: true });
+
+          console.log("[login] Response:", JSON.stringify(response.data).substring(0, 200));
 
           if (response.data.success) {
             const { user, accessToken, refreshToken } = response.data.data;
@@ -140,8 +143,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               isAuthenticated: true,
               isLoading: false,
             });
+            console.log("[login] Login successful, user:", user.email);
           }
         } catch (error: any) {
+          console.log("[login] Login error:", error.message, error.response?.status, JSON.stringify(error.response?.data).substring(0, 200));
           set({ isLoading: false });
           throw new Error(
             error.response?.data?.error?.message || error.message || "Erro ao fazer login"
@@ -156,7 +161,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           const response = await api.post<{
             success: boolean;
             data: { user: User; accessToken: string; refreshToken: string };
-          }>("/auth/register", data);
+          }>("/auth/register", data, { skipAuth: true });
 
           if (response.data.success) {
             const { user, accessToken, refreshToken } = response.data.data;
@@ -181,7 +186,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         const { refreshToken } = get();
 
         try {
-          await api.post("/auth/logout", { refreshToken });
+          await api.post("/auth/logout", { refreshToken }, { skipAuth: true });
         } catch {
           // Ignore errors on logout
         }
@@ -204,7 +209,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         const response = await api.post<{
           success: boolean;
           data: { accessToken: string; refreshToken: string };
-        }>("/auth/refresh", { refreshToken });
+        }>("/auth/refresh", { refreshToken }, { skipAuth: true });
 
         if (response.data.success) {
           const { accessToken: newAccessToken, refreshToken: newRefreshToken } =

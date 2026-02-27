@@ -353,7 +353,7 @@ async function executeTriggerActions(
         where: { id: context.conversationId },
         data: {
           mode: "HUMAN_ONLY",
-          status: "WAITING_HUMAN",
+          status: "WAITING_AGENT",
         },
       });
       log.info({ conversationId: context.conversationId }, "Transferred to human");

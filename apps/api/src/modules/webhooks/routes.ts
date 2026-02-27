@@ -603,7 +603,7 @@ async function generateAndSendAIResponse(
       // Switch conversation to human mode
       await prisma.conversation.update({
         where: { id: conversation.id },
-        data: { mode: "HUMAN_ONLY", status: "WAITING_HUMAN" },
+        data: { mode: "HUMAN_ONLY", status: "WAITING_AGENT" },
       });
 
       // Cancel remarketing (human will take over)
@@ -612,7 +612,7 @@ async function generateAndSendAIResponse(
       // Emit real-time update
       io.to(`org:${orgId}`).emit("conversation:update", {
         conversationId: conversation.id,
-        updates: { mode: "HUMAN_ONLY", status: "WAITING_HUMAN" },
+        updates: { mode: "HUMAN_ONLY", status: "WAITING_AGENT" },
       });
 
       // Notify owner (non-blocking)

@@ -37,7 +37,7 @@ interface Conversation {
   contact: Contact;
   messages: Message[];
   status: string;
-  mode: "AI_ASSISTED" | "HUMAN_ONLY" | "AI_ONLY";
+  mode: "AI_AUTO" | "AI_ASSISTED" | "HUMAN_ONLY";
   intent?: string;
   urgency: string;
   sentiment?: string;
@@ -122,7 +122,7 @@ export default function ConversationDetailScreen() {
 
   const overrideWatson = async () => {
     try {
-      await api.post(`/conversations/${id}/override`);
+      await api.post(`/conversations/${id}/override`, {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       fetchConversation();
     } catch (error) {
@@ -180,6 +180,8 @@ export default function ConversationDetailScreen() {
           headerShown: true,
           title: "",
           headerBackTitle: "Voltar",
+          headerStyle: { backgroundColor: theme.background.val },
+          headerShadowVisible: false,
           headerLeft: () => (
             <Pressable onPress={() => router.back()}>
               <XStack alignItems="center" gap="$2">
@@ -209,16 +211,19 @@ export default function ConversationDetailScreen() {
           ),
           headerRight: () => (
             <XStack gap="$2" alignItems="center">
-              {conversation.mode === "AI_ASSISTED" && (
+              {conversation.mode !== "HUMAN_ONLY" && (
                 <Pressable onPress={overrideWatson}>
                   <XStack
                     backgroundColor="#eab308"
                     paddingHorizontal="$2"
                     paddingVertical="$1"
                     borderRadius="$2"
+                    alignItems="center"
+                    gap={4}
                   >
+                    <Ionicons name="person" size={12} color="white" />
                     <Text fontSize="$1" color="white" fontWeight="600">
-                      Override
+                      Assumir
                     </Text>
                   </XStack>
                 </Pressable>
@@ -509,7 +514,7 @@ function ModeBadge({ mode, primary }: { mode: string; primary: string }) {
   const config: Record<string, { label: string; bg: string }> = {
     AI_ASSISTED: { label: "IA", bg: primary },
     HUMAN_ONLY: { label: "Humano", bg: "#eab308" },
-    AI_ONLY: { label: "Auto", bg: "#22c55e" },
+    AI_AUTO: { label: "Auto", bg: "#22c55e" },
   };
   const { label, bg } = config[mode] || { label: mode, bg: "#64748b" };
 

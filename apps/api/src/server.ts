@@ -65,6 +65,20 @@ async function buildServer() {
   });
 
   await fastify.register(sensible);
+
+  // Allow empty JSON bodies (mobile sends POST with Content-Type: application/json but no body)
+  fastify.removeContentTypeParser("application/json");
+  fastify.addContentTypeParser("application/json", { parseAs: "string" }, function (_req, body, done) {
+    if (!body || body === "") {
+      done(null, {});
+      return;
+    }
+    try {
+      done(null, JSON.parse(body as string));
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  });
   await fastify.register(websocket);
   await fastify.register(multipart, {
     limits: {

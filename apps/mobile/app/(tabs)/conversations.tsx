@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { FlatList, RefreshControl, Pressable } from "react-native";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { FlatList, RefreshControl, Pressable, Image } from "react-native";
 import { router } from "expo-router";
 import { YStack, XStack, Text, Input, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,9 +19,28 @@ interface Conversation {
   urgency: string;
   leadScore: number;
   messageCount: number;
+  unreadCount: number;
+  mode: string;
+  closingProbability?: number;
+  sentiment?: string;
 }
 
 type Filter = "all" | "urgent" | "purchase";
+
+const AVATAR_COLORS = [
+  "#6366f1", "#8b5cf6", "#a855f7", "#d946ef",
+  "#ec4899", "#f43f5e", "#ef4444", "#f97316",
+  "#eab308", "#84cc16", "#22c55e", "#14b8a6",
+  "#06b6d4", "#0ea5e9", "#3b82f6", "#2563eb",
+];
+
+function avatarColor(contactId: string): string {
+  let hash = 0;
+  for (let i = 0; i < contactId.length; i++) {
+    hash = contactId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 export default function ConversationsScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -57,10 +76,26 @@ export default function ConversationsScreen() {
     fetchConversations();
   }, []);
 
-  const urgentCount = conversations.filter(c => c.urgency === "HIGH" || c.urgency === "CRITICAL").length;
-  const purchaseCount = conversations.filter(c => c.intent === "purchase").length;
+  // Group conversations by contactId — keep only the most recent, sum unreadCount
+  const grouped = useMemo(() => {
+    const map = new Map<string, Conversation>();
+    // conversations are already sorted by lastMessageAt desc from API
+    for (const conv of conversations) {
+      const existing = map.get(conv.contactId);
+      if (!existing) {
+        map.set(conv.contactId, { ...conv });
+      } else {
+        // Sum unread counts from all conversations of same contact
+        existing.unreadCount = (existing.unreadCount || 0) + (conv.unreadCount || 0);
+      }
+    }
+    return Array.from(map.values());
+  }, [conversations]);
 
-  const filteredConversations = conversations.filter((conv) => {
+  const urgentCount = grouped.filter(c => c.urgency === "HIGH" || c.urgency === "CRITICAL").length;
+  const purchaseCount = grouped.filter(c => c.intent === "purchase").length;
+
+  const filteredConversations = grouped.filter((conv) => {
     const matchesSearch =
       !search ||
       conv.contactName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -149,7 +184,7 @@ export default function ConversationsScreen() {
             primary={primary}
           />
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.contactId}
         contentContainerStyle={{ paddingBottom: 16 }}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
@@ -182,7 +217,9 @@ function ConversationRow({
   primary: string;
 }) {
   const isUrgent = conversation.urgency === "HIGH" || conversation.urgency === "CRITICAL";
-  const isPurchase = conversation.intent === "purchase";
+  const hasUnread = (conversation.unreadCount || 0) > 0;
+  const isAI = conversation.mode === "AI_AUTO" || conversation.mode === "AI_ASSISTED";
+  const bgColor = avatarColor(conversation.contactId);
 
   return (
     <Pressable
@@ -195,45 +232,68 @@ function ConversationRow({
       <XStack paddingHorizontal="$4" paddingVertical="$3" gap="$3" alignItems="center">
         {/* Avatar */}
         <YStack position="relative">
+          {conversation.contactAvatar ? (
+            <Image
+              source={{ uri: conversation.contactAvatar }}
+              style={{ width: 50, height: 50, borderRadius: 25 }}
+            />
+          ) : (
+            <YStack
+              width={50}
+              height={50}
+              borderRadius={25}
+              backgroundColor={bgColor}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text color="white" fontSize="$5" fontWeight="bold">
+                {conversation.contactName?.charAt(0)?.toUpperCase() || "?"}
+              </Text>
+            </YStack>
+          )}
+          {/* Mode indicator — bottom-right badge */}
           <YStack
-            width={50}
-            height={50}
-            borderRadius={25}
-            backgroundColor={primary}
+            position="absolute"
+            bottom={-2}
+            right={-2}
+            width={18}
+            height={18}
+            borderRadius={9}
+            backgroundColor={isAI ? "#22c55e" : "#f59e0b"}
+            borderWidth={2}
+            borderColor="$background"
             alignItems="center"
             justifyContent="center"
           >
-            <Text color="white" fontSize="$5" fontWeight="bold">
-              {conversation.contactName?.charAt(0)?.toUpperCase() || "?"}
-            </Text>
-          </YStack>
-          {isUrgent && (
-            <YStack
-              position="absolute"
-              bottom={-1}
-              right={-1}
-              width={14}
-              height={14}
-              borderRadius={7}
-              backgroundColor={conversation.urgency === "CRITICAL" ? "#ef4444" : "#eab308"}
-              borderWidth={2}
-              borderColor="$background"
+            <Ionicons
+              name={isAI ? "hardware-chip-outline" : "person"}
+              size={10}
+              color="white"
             />
-          )}
+          </YStack>
         </YStack>
 
         {/* Content */}
         <YStack flex={1} gap={2}>
           <XStack justifyContent="space-between" alignItems="center">
             <XStack flex={1} alignItems="center" gap="$2">
-              <Text fontWeight="600" fontSize={16} numberOfLines={1} color="$color">
+              <Text
+                fontWeight={hasUnread ? "bold" : "600"}
+                fontSize={16}
+                numberOfLines={1}
+                color="$color"
+              >
                 {conversation.contactName || conversation.contactPhone}
               </Text>
-              {isPurchase && (
-                <Ionicons name="cart" size={14} color="#22c55e" />
+              {isUrgent && (
+                <Ionicons
+                  name="alert-circle"
+                  size={14}
+                  color={conversation.urgency === "CRITICAL" ? "#ef4444" : "#eab308"}
+                />
               )}
             </XStack>
-            <Text fontSize={12} color="$gray8">
+            <Text fontSize={12} color={hasUnread ? primary : "$gray8"} fontWeight={hasUnread ? "bold" : "400"}>
               {formatTime(conversation.lastMessageAt)}
             </Text>
           </XStack>
@@ -245,20 +305,22 @@ function ConversationRow({
               numberOfLines={1}
               flex={1}
               marginRight="$2"
+              fontWeight={hasUnread ? "500" : "400"}
             >
               {conversation.lastMessage || "Sem mensagens"}
             </Text>
-            {conversation.messageCount > 0 && (
+            {hasUnread && (
               <YStack
                 backgroundColor={primary}
-                width={20}
+                minWidth={20}
                 height={20}
                 borderRadius={10}
+                paddingHorizontal={6}
                 alignItems="center"
                 justifyContent="center"
               >
                 <Text fontSize={10} color="white" fontWeight="bold">
-                  {conversation.messageCount > 99 ? "99" : conversation.messageCount}
+                  {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
                 </Text>
               </YStack>
             )}

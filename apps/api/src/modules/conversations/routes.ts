@@ -57,6 +57,37 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       prisma.conversation.count({ where }),
     ]);
 
+    // Calculate unread count for each conversation (INBOUND messages after last OUTBOUND)
+    const convIds = conversations.map((c) => c.id);
+    const unreadCounts: Record<string, number> = {};
+
+    if (convIds.length > 0) {
+      for (const conv of conversations) {
+        // Find last outbound message time
+        const lastOutbound = await prisma.message.findFirst({
+          where: { conversationId: conv.id, direction: "OUTBOUND" },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        });
+
+        if (lastOutbound) {
+          const count = await prisma.message.count({
+            where: {
+              conversationId: conv.id,
+              direction: "INBOUND",
+              createdAt: { gt: lastOutbound.createdAt },
+            },
+          });
+          unreadCounts[conv.id] = count;
+        } else {
+          // No outbound messages = all inbound are "unread"
+          unreadCounts[conv.id] = await prisma.message.count({
+            where: { conversationId: conv.id, direction: "INBOUND" },
+          });
+        }
+      }
+    }
+
     return {
       success: true,
       data: conversations.map((conv) => ({
@@ -75,6 +106,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
         sentiment: conv.sentiment,
         mode: conv.mode,
         messageCount: conv.messageCount,
+        unreadCount: unreadCounts[conv.id] || 0,
       })),
       meta: {
         page: pagination.page,

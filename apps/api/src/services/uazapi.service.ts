@@ -69,9 +69,11 @@ export async function fetchProfilePicUrl(
 
     if (!response.ok) return null;
 
-    const data = await response.json() as { chats?: { image?: string }[] };
-    const image = data.chats?.[0]?.image;
-    return image && image.length > 0 ? image : null;
+    const data = await response.json() as { chats?: { image?: string; imagePreview?: string }[] };
+    const chat = data.chats?.[0];
+    const image = (chat?.image && chat.image.length > 0 ? chat.image : null)
+      || (chat?.imagePreview && chat.imagePreview.length > 0 ? chat.imagePreview : null);
+    return image;
   } catch (error) {
     console.error("[uazapi.fetchProfilePicUrl] Exception:", error);
     return null;

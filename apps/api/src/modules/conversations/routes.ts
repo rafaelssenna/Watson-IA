@@ -246,7 +246,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
         where: { id: message.id },
         data: {
           status: sendResult.success ? "SENT" : "FAILED",
-          externalId: sendResult.messageId,
+          waMessageId: sendResult.messageId || undefined,
         },
       });
 

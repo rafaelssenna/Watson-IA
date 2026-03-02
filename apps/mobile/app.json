@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.watson.ai",
+      "softwareKeyboardLayoutMode": "adjustResize",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",

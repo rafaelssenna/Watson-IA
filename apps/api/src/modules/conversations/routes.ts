@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { paginationSchema, updateConversationSchema, sendMessageSchema } from "@watson/shared";
+import { sendTextMessage } from "../../services/uazapi.service.js";
 
 export async function conversationRoutes(fastify: FastifyInstance) {
   // List conversations
@@ -227,8 +228,32 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       },
     });
 
-    // TODO: Send via UAZAPI
-    // await uazapiService.sendMessage(conversation.contact.waId, result.data);
+    // Send via UAZAPI
+    const connection = await prisma.whatsAppConnection.findFirst({
+      where: { organizationId: orgId, status: "CONNECTED" },
+      select: { uazapiToken: true },
+    });
+
+    if (connection?.uazapiToken && result.data.type === "TEXT") {
+      const sendResult = await sendTextMessage(
+        connection.uazapiToken,
+        conversation.contact.waId,
+        result.data.content
+      );
+
+      // Update message status based on send result
+      await prisma.message.update({
+        where: { id: message.id },
+        data: {
+          status: sendResult.success ? "SENT" : "FAILED",
+          externalId: sendResult.messageId,
+        },
+      });
+
+      if (!sendResult.success) {
+        fastify.log.error({ error: sendResult.error }, "Failed to send message via UAZAPI");
+      }
+    }
 
     // Emit new message via Socket.IO
     const io = fastify.io;

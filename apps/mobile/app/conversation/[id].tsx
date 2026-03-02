@@ -4,6 +4,7 @@ import { useLocalSearchParams, router, Stack } from "expo-router";
 import { YStack, XStack, Text, Input, Card, Spinner, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
@@ -53,6 +54,7 @@ export default function ConversationDetailScreen() {
   const theme = useTheme();
   const { gradient, primary, primaryLight, bubbleOut } = useAppColors();
 
+  const insets = useSafeAreaInsets();
   const isDark = theme.background.val === "#020617" || theme.background.val === "#000000" || theme.background.val?.startsWith("#0");
 
   const fetchConversation = useCallback(async () => {
@@ -295,7 +297,8 @@ export default function ConversationDetailScreen() {
         {/* Input Area */}
         <XStack
           paddingHorizontal="$3"
-          paddingVertical="$2"
+          paddingTop="$2"
+          paddingBottom={Math.max(insets.bottom, 8)}
           gap="$2"
           backgroundColor="$background"
           borderTopWidth={1}

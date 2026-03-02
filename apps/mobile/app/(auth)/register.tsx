@@ -2,10 +2,9 @@ import { useState } from "react";
 import { ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { Link, router } from "expo-router";
 import { YStack, XStack, H1, Text, Input, Button, Spinner, Checkbox, Label, useTheme } from "tamagui";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "@/stores/authStore";
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
@@ -19,6 +18,7 @@ export default function RegisterScreen() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const theme = useTheme();
+  const { gradient, primary } = useAppColors();
 
   const { register, isLoading } = useAuthStore();
 
@@ -68,12 +68,22 @@ export default function RegisterScreen() {
         style={{ backgroundColor: theme.background.val }}
       >
         <YStack flex={1} padding="$6" paddingTop="$10" backgroundColor="$background">
-          <YStack marginBottom="$6">
-            <H1 color="$color">Criar Conta</H1>
-            <Text color="$gray8">
+          <LinearGradient
+            colors={gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingHorizontal: 24,
+              paddingVertical: 24,
+              borderRadius: 20,
+              marginBottom: 24,
+            }}
+          >
+            <H1 color="white">Criar Conta</H1>
+            <Text color="rgba(255,255,255,0.85)">
               Comece seu teste gratuito de 7 dias
             </Text>
-          </YStack>
+          </LinearGradient>
 
           <YStack gap="$4">
             <YStack>
@@ -201,7 +211,7 @@ export default function RegisterScreen() {
                 borderColor="$gray6"
               >
                 <Checkbox.Indicator>
-                  <Text color={WATSON_TEAL}>✓</Text>
+                  <Text color={primary}>✓</Text>
                 </Checkbox.Indicator>
               </Checkbox>
               <Label htmlFor="terms" fontSize="$2" color="$gray8">
@@ -220,7 +230,7 @@ export default function RegisterScreen() {
               onPress={handleRegister}
               disabled={isLoading}
               size="$5"
-              backgroundColor={WATSON_TEAL}
+              backgroundColor={primary}
               pressStyle={{ opacity: 0.9 }}
               marginTop="$2"
               borderRadius="$4"
@@ -231,7 +241,7 @@ export default function RegisterScreen() {
             <XStack justifyContent="center" marginTop="$4">
               <Text color="$gray8">Ja tem conta? </Text>
               <Link href="/(auth)/login" asChild>
-                <Text color={WATSON_TEAL} fontWeight="600">Entrar</Text>
+                <Text color={primary} fontWeight="600">Entrar</Text>
               </Link>
             </XStack>
           </YStack>

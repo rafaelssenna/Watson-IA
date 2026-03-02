@@ -3,8 +3,8 @@ import { ScrollView, RefreshControl } from "react-native";
 import { YStack, XStack, Text, Card, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
-
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
+import { LinearGradient } from "expo-linear-gradient";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
@@ -34,6 +34,7 @@ export default function InsightsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const theme = useTheme();
+  const { primary, gradient } = useAppColors();
 
   const fetchInsights = useCallback(async () => {
     try {
@@ -86,23 +87,23 @@ export default function InsightsScreen() {
             Insights
           </Text>
           <XStack gap="$2">
-            <PeriodChip label="Hoje" value="today" active={period === "today"} onPress={setPeriod} />
-            <PeriodChip label="7 dias" value="7d" active={period === "7d"} onPress={setPeriod} />
-            <PeriodChip label="30 dias" value="30d" active={period === "30d"} onPress={setPeriod} />
+            <PeriodChip label="Hoje" value="today" active={period === "today"} onPress={setPeriod} primary={primary} />
+            <PeriodChip label="7 dias" value="7d" active={period === "7d"} onPress={setPeriod} primary={primary} />
+            <PeriodChip label="30 dias" value="30d" active={period === "30d"} onPress={setPeriod} primary={primary} />
           </XStack>
         </YStack>
 
         {/* Card 1 - Performance IA */}
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
           <XStack alignItems="center" gap="$2" marginBottom="$3">
-            <Ionicons name="sparkles-outline" size={18} color={WATSON_TEAL} />
+            <Ionicons name="sparkles-outline" size={18} color={primary} />
             <Text fontSize="$4" fontWeight="600" color="$color">
               Performance da IA
             </Text>
           </XStack>
 
           <YStack alignItems="center" marginBottom="$4">
-            <Text fontSize={48} fontWeight="bold" color={WATSON_TEAL}>
+            <Text fontSize={48} fontWeight="bold" color={primary}>
               {data?.aiPercentage || 0}%
             </Text>
             <Text color="$gray8" fontSize="$3">
@@ -113,16 +114,20 @@ export default function InsightsScreen() {
           {/* AI vs Human bar */}
           <YStack marginBottom="$3">
             <XStack height={12} borderRadius={6} overflow="hidden" backgroundColor="$gray5">
-              <YStack
-                height="100%"
-                width={`${data?.aiPercentage || 0}%`}
-                backgroundColor={WATSON_TEAL}
-                borderRadius={6}
+              <LinearGradient
+                colors={gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  height: "100%",
+                  width: `${data?.aiPercentage || 0}%`,
+                  borderRadius: 6,
+                }}
               />
             </XStack>
             <XStack justifyContent="space-between" marginTop="$2">
               <XStack alignItems="center" gap="$1">
-                <YStack width={8} height={8} borderRadius={4} backgroundColor={WATSON_TEAL} />
+                <YStack width={8} height={8} borderRadius={4} backgroundColor={primary} />
                 <Text fontSize="$2" color="$gray8">
                   IA: {data?.aiMessages || 0}
                 </Text>
@@ -153,7 +158,7 @@ export default function InsightsScreen() {
         {/* Card 2 - Conversas */}
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
           <XStack alignItems="center" gap="$2" marginBottom="$3">
-            <Ionicons name="chatbubbles-outline" size={18} color={WATSON_TEAL} />
+            <Ionicons name="chatbubbles-outline" size={18} color={primary} />
             <Text fontSize="$4" fontWeight="600" color="$color">
               Conversas
             </Text>
@@ -163,7 +168,7 @@ export default function InsightsScreen() {
               label="Total"
               value={data?.totalConversations || 0}
               icon="chatbubble-outline"
-              color={WATSON_TEAL}
+              color={primary}
             />
             <MiniStat
               label="Abertas"
@@ -189,7 +194,7 @@ export default function InsightsScreen() {
         {/* Card 3 - Velocidade */}
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
           <XStack alignItems="center" gap="$2" marginBottom="$3">
-            <Ionicons name="speedometer-outline" size={18} color={WATSON_TEAL} />
+            <Ionicons name="speedometer-outline" size={18} color={primary} />
             <Text fontSize="$4" fontWeight="600" color="$color">
               Velocidade
             </Text>
@@ -217,14 +222,14 @@ export default function InsightsScreen() {
         {/* Card 4 - Contatos */}
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
           <XStack alignItems="center" gap="$2" marginBottom="$3">
-            <Ionicons name="person-add-outline" size={18} color={WATSON_TEAL} />
+            <Ionicons name="person-add-outline" size={18} color={primary} />
             <Text fontSize="$4" fontWeight="600" color="$color">
               Contatos
             </Text>
           </XStack>
           <XStack justifyContent="space-around">
             <YStack alignItems="center">
-              <Text fontSize="$8" fontWeight="bold" color={WATSON_TEAL}>
+              <Text fontSize="$8" fontWeight="bold" color={primary}>
                 {data?.newContacts || 0}
               </Text>
               <Text fontSize="$2" color="$gray8">
@@ -246,7 +251,7 @@ export default function InsightsScreen() {
         {(data?.peakHours?.length || 0) > 0 && (
           <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
             <XStack alignItems="center" gap="$2" marginBottom="$3">
-              <Ionicons name="time-outline" size={18} color={WATSON_TEAL} />
+              <Ionicons name="time-outline" size={18} color={primary} />
               <Text fontSize="$4" fontWeight="600" color="$color">
                 Horarios de Pico
               </Text>
@@ -270,7 +275,7 @@ export default function InsightsScreen() {
                     <YStack
                       height="100%"
                       width={`${Math.max((h.count / maxPeakCount) * 100, 2)}%`}
-                      backgroundColor={WATSON_TEAL}
+                      backgroundColor={primary}
                       borderRadius={8}
                     />
                   </YStack>
@@ -287,7 +292,7 @@ export default function InsightsScreen() {
         {(data?.messagesPerDay?.length || 0) > 1 && (
           <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
             <XStack alignItems="center" gap="$2" marginBottom="$3">
-              <Ionicons name="bar-chart-outline" size={18} color={WATSON_TEAL} />
+              <Ionicons name="bar-chart-outline" size={18} color={primary} />
               <Text fontSize="$4" fontWeight="600" color="$color">
                 Mensagens por Dia
               </Text>
@@ -315,7 +320,7 @@ export default function InsightsScreen() {
                       <YStack
                         height="100%"
                         width={`${maxDayCount > 0 ? (d.outbound / maxDayCount) * 100 : 0}%`}
-                        backgroundColor={WATSON_TEAL}
+                        backgroundColor={primary}
                       />
                     </XStack>
                   </YStack>
@@ -330,7 +335,7 @@ export default function InsightsScreen() {
                 </Text>
               </XStack>
               <XStack alignItems="center" gap="$1">
-                <YStack width={8} height={8} borderRadius={4} backgroundColor={WATSON_TEAL} />
+                <YStack width={8} height={8} borderRadius={4} backgroundColor={primary} />
                 <Text fontSize="$1" color="$gray8">
                   Enviadas
                 </Text>
@@ -348,18 +353,20 @@ function PeriodChip({
   value,
   active,
   onPress,
+  primary,
 }: {
   label: string;
   value: Period;
   active: boolean;
   onPress: (v: Period) => void;
+  primary: string;
 }) {
   return (
     <YStack
       paddingHorizontal="$3"
       paddingVertical="$2"
       borderRadius="$3"
-      backgroundColor={active ? WATSON_TEAL : "$backgroundStrong"}
+      backgroundColor={active ? primary : "$backgroundStrong"}
       pressStyle={{ opacity: 0.7 }}
       onPress={() => onPress(value)}
     >

@@ -3,9 +3,9 @@ import { Link, router } from "expo-router";
 import { Alert, Pressable } from "react-native";
 import { YStack, XStack, Text, Input, Button, Spinner, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/services/api";
-
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 type Step = "email" | "code" | "password";
 
@@ -18,6 +18,7 @@ export default function ForgotPasswordScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const theme = useTheme();
+  const { gradient, primary } = useAppColors();
 
   const handleRequestCode = async () => {
     if (!email) {
@@ -92,14 +93,24 @@ export default function ForgotPasswordScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.color.val} />
         </Pressable>
 
-        <YStack marginTop="$6">
-          <Text fontSize={28} fontWeight="bold" color="$color">
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            marginTop: 24,
+            paddingHorizontal: 24,
+            paddingVertical: 24,
+            borderRadius: 20,
+          }}
+        >
+          <Text fontSize={28} fontWeight="bold" color="white">
             Esqueceu a senha?
           </Text>
-          <Text color="$gray8" marginTop="$2" fontSize={15}>
+          <Text color="rgba(255,255,255,0.85)" marginTop="$2" fontSize={15}>
             Digite seu email e enviaremos um codigo de 6 digitos para recuperar sua senha.
           </Text>
-        </YStack>
+        </LinearGradient>
 
         <YStack gap="$4" marginTop="$8">
           <YStack>
@@ -124,7 +135,7 @@ export default function ForgotPasswordScreen() {
             onPress={handleRequestCode}
             disabled={isLoading || !email}
             size="$5"
-            backgroundColor={WATSON_TEAL}
+            backgroundColor={primary}
             pressStyle={{ opacity: 0.9 }}
             marginTop="$4"
           >
@@ -152,11 +163,11 @@ export default function ForgotPasswordScreen() {
             width={80}
             height={80}
             borderRadius={40}
-            backgroundColor={`${WATSON_TEAL}20`}
+            backgroundColor={`${primary}20`}
             alignItems="center"
             justifyContent="center"
           >
-            <Ionicons name="mail-open-outline" size={40} color={WATSON_TEAL} />
+            <Ionicons name="mail-open-outline" size={40} color={primary} />
           </YStack>
 
           <Text fontSize={24} fontWeight="bold" color="$color" marginTop="$4">
@@ -195,7 +206,7 @@ export default function ForgotPasswordScreen() {
             onPress={handleVerifyCode}
             disabled={isLoading || code.length !== 6}
             size="$5"
-            backgroundColor={WATSON_TEAL}
+            backgroundColor={primary}
             pressStyle={{ opacity: 0.9 }}
             marginTop="$2"
           >
@@ -207,7 +218,7 @@ export default function ForgotPasswordScreen() {
           </Button>
 
           <Pressable onPress={handleRequestCode}>
-            <Text color={WATSON_TEAL} textAlign="center" marginTop="$2" fontSize={14}>
+            <Text color={primary} textAlign="center" marginTop="$2" fontSize={14}>
               Reenviar codigo
             </Text>
           </Pressable>
@@ -284,7 +295,7 @@ export default function ForgotPasswordScreen() {
           onPress={handleResetPassword}
           disabled={isLoading || !newPassword || !confirmPassword}
           size="$5"
-          backgroundColor={WATSON_TEAL}
+          backgroundColor={primary}
           pressStyle={{ opacity: 0.9 }}
           marginTop="$4"
         >

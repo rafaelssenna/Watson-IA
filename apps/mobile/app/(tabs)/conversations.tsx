@@ -4,8 +4,7 @@ import { router } from "expo-router";
 import { YStack, XStack, Text, Input, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
-
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 interface Conversation {
   id: string;
@@ -31,6 +30,7 @@ export default function ConversationsScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const theme = useTheme();
+  const { primary } = useAppColors();
   const isDark = theme.background.val === "#020617" || theme.background.val === "#000000" || theme.background.val?.startsWith("#0");
 
   const fetchConversations = async () => {
@@ -120,18 +120,21 @@ export default function ConversationsScreen() {
           label="Todos"
           active={filter === "all"}
           onPress={() => setFilter("all")}
+          primary={primary}
         />
         <FilterChip
           label="Urgentes"
           count={urgentCount}
           active={filter === "urgent"}
           onPress={() => setFilter("urgent")}
+          primary={primary}
         />
         <FilterChip
           label="Compra"
           count={purchaseCount}
           active={filter === "purchase"}
           onPress={() => setFilter("purchase")}
+          primary={primary}
         />
       </XStack>
 
@@ -143,6 +146,7 @@ export default function ConversationsScreen() {
             conversation={item}
             onPress={() => router.push(`/conversation/${item.id}`)}
             isDark={isDark}
+            primary={primary}
           />
         )}
         keyExtractor={(item) => item.id}
@@ -170,10 +174,12 @@ function ConversationRow({
   conversation,
   onPress,
   isDark,
+  primary,
 }: {
   conversation: Conversation;
   onPress: () => void;
   isDark: boolean;
+  primary: string;
 }) {
   const isUrgent = conversation.urgency === "HIGH" || conversation.urgency === "CRITICAL";
   const isPurchase = conversation.intent === "purchase";
@@ -193,7 +199,7 @@ function ConversationRow({
             width={50}
             height={50}
             borderRadius={25}
-            backgroundColor={WATSON_TEAL}
+            backgroundColor={primary}
             alignItems="center"
             justifyContent="center"
           >
@@ -244,7 +250,7 @@ function ConversationRow({
             </Text>
             {conversation.messageCount > 0 && (
               <YStack
-                backgroundColor={WATSON_TEAL}
+                backgroundColor={primary}
                 width={20}
                 height={20}
                 borderRadius={10}
@@ -268,11 +274,13 @@ function FilterChip({
   count,
   active = false,
   onPress,
+  primary,
 }: {
   label: string;
   count?: number;
   active?: boolean;
   onPress: () => void;
+  primary: string;
 }) {
   return (
     <Pressable onPress={onPress}>
@@ -280,7 +288,7 @@ function FilterChip({
         paddingHorizontal="$3"
         paddingVertical="$2"
         borderRadius={20}
-        backgroundColor={active ? WATSON_TEAL : "$backgroundStrong"}
+        backgroundColor={active ? primary : "$backgroundStrong"}
         alignItems="center"
         gap="$1"
       >
@@ -293,13 +301,13 @@ function FilterChip({
         </Text>
         {count !== undefined && count > 0 && (
           <YStack
-            backgroundColor={active ? "white" : WATSON_TEAL}
+            backgroundColor={active ? "white" : primary}
             paddingHorizontal={6}
             borderRadius={8}
             minWidth={18}
             alignItems="center"
           >
-            <Text fontSize={10} color={active ? WATSON_TEAL : "white"} fontWeight="bold">
+            <Text fontSize={10} color={active ? primary : "white"} fontWeight="bold">
               {count}
             </Text>
           </YStack>

@@ -4,8 +4,7 @@ import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
-
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
@@ -57,6 +56,7 @@ const TRIGGER_TYPES: TriggerType[] = [
 
 export default function TriggersScreen() {
   const theme = useTheme();
+  const { primary } = useAppColors();
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -147,7 +147,7 @@ export default function TriggersScreen() {
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <ActivityIndicator size="large" color={WATSON_TEAL} />
+        <ActivityIndicator size="large" color={primary} />
       </YStack>
     );
   }
@@ -267,7 +267,7 @@ export default function TriggersScreen() {
           <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
             <YStack gap="$3">
               <XStack alignItems="flex-start" gap="$2">
-                <Ionicons name="chatbubble-outline" size={18} color={WATSON_TEAL} />
+                <Ionicons name="chatbubble-outline" size={18} color={primary} />
                 <Text fontSize="$2" color="$gray8" flex={1}>
                   Envia uma mensagem automatica gerada pela IA
                 </Text>

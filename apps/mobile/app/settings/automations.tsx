@@ -4,9 +4,7 @@ import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 const STEP_LABELS = ["5min", "2h", "8h", "2d", "4d", "7d", "10d"];
 const STEP_STRATEGIES = ["Sutil", "Gentil", "Lembrete", "Valor", "Urgencia", "Direto", "Adeus"];
@@ -19,6 +17,7 @@ interface RemarketingConfig {
 
 export default function AutomationsScreen() {
   const theme = useTheme();
+  const { primary } = useAppColors();
   const [isLoading, setIsLoading] = useState(true);
 
   // Remarketing state
@@ -79,7 +78,7 @@ export default function AutomationsScreen() {
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <ActivityIndicator size="large" color={WATSON_TEAL} />
+        <ActivityIndicator size="large" color={primary} />
         <Text color="$gray8" marginTop="$3">Carregando...</Text>
       </YStack>
     );
@@ -98,7 +97,7 @@ export default function AutomationsScreen() {
             <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
               <XStack justifyContent="space-between" alignItems="center" marginBottom="$3">
                 <XStack alignItems="center" gap="$2">
-                  <Ionicons name="megaphone-outline" size={22} color={WATSON_TEAL} />
+                  <Ionicons name="megaphone-outline" size={22} color={primary} />
                   <YStack>
                     <Text fontSize="$4" fontWeight="700" color="$color">
                       Remarketing 7 Etapas
@@ -109,12 +108,12 @@ export default function AutomationsScreen() {
                   </YStack>
                 </XStack>
                 {togglingRemarketing ? (
-                  <ActivityIndicator size="small" color={WATSON_TEAL} />
+                  <ActivityIndicator size="small" color={primary} />
                 ) : (
                   <Switch
                     value={remarketingConfig.enabled}
                     onValueChange={handleToggleRemarketing}
-                    trackColor={{ false: theme.gray6.val, true: WATSON_TEAL }}
+                    trackColor={{ false: theme.gray6.val, true: primary }}
                   />
                 )}
               </XStack>
@@ -129,7 +128,7 @@ export default function AutomationsScreen() {
                           width={36}
                           height={36}
                           borderRadius={18}
-                          backgroundColor={s.count > 0 ? WATSON_TEAL : "$gray4"}
+                          backgroundColor={s.count > 0 ? primary : "$gray4"}
                           alignItems="center"
                           justifyContent="center"
                         >
@@ -151,12 +150,12 @@ export default function AutomationsScreen() {
                   <Card padding="$3" backgroundColor="$background" borderRadius="$3">
                     <XStack alignItems="center" justifyContent="space-between">
                       <XStack alignItems="center" gap="$2">
-                        <Ionicons name="people-outline" size={18} color={WATSON_TEAL} />
+                        <Ionicons name="people-outline" size={18} color={primary} />
                         <Text fontSize="$3" color="$color">
                           Follow-ups ativos
                         </Text>
                       </XStack>
-                      <Text fontSize="$5" fontWeight="700" color={WATSON_TEAL}>
+                      <Text fontSize="$5" fontWeight="700" color={primary}>
                         {remarketingConfig.totalActive}
                       </Text>
                     </XStack>
@@ -164,7 +163,7 @@ export default function AutomationsScreen() {
 
                   {/* How it works */}
                   <XStack alignItems="center" gap="$2" marginTop="$3">
-                    <Ionicons name="sparkles" size={14} color={WATSON_TEAL} />
+                    <Ionicons name="sparkles" size={14} color={primary} />
                     <Text fontSize="$2" color="$gray8" flex={1}>
                       A IA le o historico da conversa para continuar no mesmo assunto
                     </Text>
@@ -177,9 +176,9 @@ export default function AutomationsScreen() {
           {/* Info Card */}
           <Card padding="$4" backgroundColor="$teal5" borderRadius="$4">
             <XStack gap="$3" alignItems="flex-start">
-              <Ionicons name="sync-outline" size={24} color={WATSON_TEAL} />
+              <Ionicons name="sync-outline" size={24} color={primary} />
               <YStack flex={1}>
-                <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
+                <Text color={primary} fontWeight="600" fontSize="$4">
                   Como funciona?
                 </Text>
                 <Text color="$color" marginTop="$2" fontSize="$3">

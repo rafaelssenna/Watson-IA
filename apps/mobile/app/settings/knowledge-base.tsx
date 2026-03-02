@@ -5,12 +5,11 @@ import { YStack, XStack, Text, Card, ScrollView, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { usePersonaStore, type PersonaKnowledgeFile } from "@/stores/personaStore";
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 export default function KnowledgeBaseScreen() {
   const theme = useTheme();
+  const { primary } = useAppColors();
 
   const {
     selectedPersona,
@@ -124,7 +123,7 @@ export default function KnowledgeBaseScreen() {
   if (isLoading && !selectedPersona) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <ActivityIndicator size="large" color={WATSON_TEAL} />
+        <ActivityIndicator size="large" color={primary} />
         <Text color="$gray8" marginTop="$3">Carregando...</Text>
       </YStack>
     );
@@ -138,9 +137,9 @@ export default function KnowledgeBaseScreen() {
           headerRight: () => (
             <Pressable onPress={handleSaveInstructions} disabled={saving}>
               {saving ? (
-                <ActivityIndicator size="small" color={WATSON_TEAL} />
+                <ActivityIndicator size="small" color={primary} />
               ) : (
-                <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
+                <Text color={primary} fontWeight="600" fontSize="$4">
                   Salvar
                 </Text>
               )}
@@ -156,9 +155,9 @@ export default function KnowledgeBaseScreen() {
           {/* Info Card */}
           <Card padding="$4" backgroundColor="$teal5" borderRadius="$4">
             <XStack gap="$3" alignItems="flex-start">
-              <Ionicons name="bulb-outline" size={24} color={WATSON_TEAL} />
+              <Ionicons name="bulb-outline" size={24} color={primary} />
               <YStack flex={1}>
-                <Text color={WATSON_TEAL} fontWeight="600" fontSize="$4">
+                <Text color={primary} fontWeight="600" fontSize="$4">
                   Como funciona?
                 </Text>
                 <Text color="$color" marginTop="$2" fontSize="$3">
@@ -171,7 +170,7 @@ export default function KnowledgeBaseScreen() {
           {/* Custom Instructions */}
           <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
             <XStack alignItems="center" gap="$2" marginBottom="$2">
-              <Ionicons name="create-outline" size={20} color={WATSON_TEAL} />
+              <Ionicons name="create-outline" size={20} color={primary} />
               <Text fontSize="$3" fontWeight="600" color="$color">
                 Instrucoes Adicionais
               </Text>
@@ -224,10 +223,10 @@ export default function KnowledgeBaseScreen() {
               </YStack>
               <Pressable onPress={handlePickFile} disabled={isUploading}>
                 {isUploading ? (
-                  <ActivityIndicator size="small" color={WATSON_TEAL} />
+                  <ActivityIndicator size="small" color={primary} />
                 ) : (
                   <XStack
-                    backgroundColor={WATSON_TEAL}
+                    backgroundColor={primary}
                     paddingHorizontal="$3"
                     paddingVertical="$2"
                     borderRadius="$3"
@@ -257,7 +256,7 @@ export default function KnowledgeBaseScreen() {
                 </Text>
                 <Pressable onPress={handlePickFile} disabled={isUploading}>
                   <XStack
-                    backgroundColor={WATSON_TEAL}
+                    backgroundColor={primary}
                     paddingHorizontal="$4"
                     paddingVertical="$3"
                     borderRadius="$3"
@@ -367,9 +366,10 @@ function FormatBadge({ label, color }: { label: string; color: string }) {
 }
 
 function TipItem({ icon, text }: { icon: string; text: string }) {
+  const { primary } = useAppColors();
   return (
     <XStack alignItems="flex-start" gap="$2">
-      <Ionicons name={icon as any} size={18} color={WATSON_TEAL} style={{ marginTop: 2 }} />
+      <Ionicons name={icon as any} size={18} color={primary} style={{ marginTop: 2 }} />
       <Text color="$gray8" fontSize="$3" flex={1}>
         {text}
       </Text>

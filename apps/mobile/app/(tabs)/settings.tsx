@@ -3,14 +3,15 @@ import { Pressable, Switch, Alert, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { YStack, XStack, Text, Card, Separator, useTheme } from "tamagui";
 import { ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "@/stores/authStore";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
+import { useAppColors } from "@/hooks/useAppColors";
+import { useThemeStore, COLOR_PRESETS } from "@/stores/themeStore";
+import * as Haptics from "expo-haptics";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
 
 interface RemarketingConfig {
   enabled: boolean;
@@ -21,6 +22,8 @@ interface RemarketingConfig {
 export default function SettingsScreen() {
   const { user, logout } = useAuthStore();
   const theme = useTheme();
+  const { gradient, primary } = useAppColors();
+  const { preset, setPreset } = useThemeStore();
   const [remarketingConfig, setRemarketingConfig] = useState<RemarketingConfig | null>(null);
   const [togglingRemarketing, setTogglingRemarketing] = useState(false);
 
@@ -80,36 +83,98 @@ export default function SettingsScreen() {
     router.replace("/(auth)/login");
   };
 
+  const handleSelectPreset = (name: string) => {
+    setPreset(name);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.background.val }}
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
     >
       <YStack gap="$4">
-        {/* User Card */}
+        {/* User Card with gradient avatar */}
         <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
           <XStack gap="$4" alignItems="center">
-            <YStack
-              width={60}
-              height={60}
-              borderRadius={30}
-              backgroundColor={WATSON_TEAL}
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Text color="white" fontSize="$7" fontWeight="bold">
-                {user?.name?.charAt(0)?.toUpperCase() || "?"}
-              </Text>
+            <YStack width={60} height={60} borderRadius={30} overflow="hidden">
+              <LinearGradient
+                colors={gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ width: 60, height: 60, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text color="white" fontSize="$7" fontWeight="bold">
+                  {user?.name?.charAt(0)?.toUpperCase() || "?"}
+                </Text>
+              </LinearGradient>
             </YStack>
             <YStack flex={1}>
               <Text fontSize="$5" fontWeight="bold" color="$color">{user?.name}</Text>
               <Text color="$gray8" fontSize="$3">{user?.email}</Text>
-              <Text fontSize="$2" color={WATSON_TEAL} marginTop="$1">
+              <Text fontSize="$2" color={primary} marginTop="$1">
                 {user?.organizationName}
               </Text>
             </YStack>
           </XStack>
         </Card>
+
+        {/* Appearance */}
+        <YStack>
+          <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
+            APARENCIA
+          </Text>
+          <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+            <XStack alignItems="center" gap="$2" marginBottom="$3">
+              <Ionicons name="color-palette-outline" size={20} color={primary} />
+              <Text fontSize="$4" fontWeight="600" color="$color">
+                Tema de Cores
+              </Text>
+            </XStack>
+
+            {/* Color preset grid */}
+            <XStack flexWrap="wrap" gap="$3" justifyContent="center">
+              {Object.values(COLOR_PRESETS).map((p) => (
+                <Pressable key={p.name} onPress={() => handleSelectPreset(p.name)}>
+                  <YStack alignItems="center" gap="$1">
+                    <YStack
+                      width={48}
+                      height={48}
+                      borderRadius={24}
+                      overflow="hidden"
+                      borderWidth={preset === p.name ? 3 : 0}
+                      borderColor="$color"
+                    >
+                      <LinearGradient
+                        colors={p.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
+                      >
+                        {preset === p.name && (
+                          <Ionicons name="checkmark" size={20} color="white" />
+                        )}
+                      </LinearGradient>
+                    </YStack>
+                    <Text fontSize={11} color={preset === p.name ? "$color" : "$gray8"} fontWeight={preset === p.name ? "600" : "400"}>
+                      {p.label}
+                    </Text>
+                  </YStack>
+                </Pressable>
+              ))}
+            </XStack>
+
+            {/* Preview bar */}
+            <YStack marginTop="$3" height={6} borderRadius={3} overflow="hidden">
+              <LinearGradient
+                colors={gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ flex: 1 }}
+              />
+            </YStack>
+          </Card>
+        </YStack>
 
         {/* Watson Configuration */}
         <YStack>
@@ -122,6 +187,7 @@ export default function SettingsScreen() {
               title="Base de Conhecimento"
               description="PDFs, FAQs e informacoes da empresa"
               onPress={() => router.push("/settings/knowledge-base")}
+              primary={primary}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem
@@ -129,6 +195,7 @@ export default function SettingsScreen() {
               title="Persona da IA"
               description="Configure a personalidade do Watson"
               onPress={() => router.push("/settings/persona-edit")}
+              primary={primary}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem
@@ -136,6 +203,7 @@ export default function SettingsScreen() {
               title="Triggers"
               description="Gatilhos inteligentes"
               onPress={() => router.push("/settings/triggers")}
+              primary={primary}
             />
             <Separator backgroundColor="$gray6" />
             <Pressable onPress={() => router.push("/settings/automations")}>
@@ -146,7 +214,7 @@ export default function SettingsScreen() {
                     <Text fontWeight="600" color="$color" fontSize="$4">Remarketing</Text>
                     {remarketingConfig?.enabled && remarketingConfig.totalActive > 0 && (
                       <YStack
-                        backgroundColor={WATSON_TEAL}
+                        backgroundColor={primary}
                         paddingHorizontal="$2"
                         paddingVertical={2}
                         borderRadius="$2"
@@ -162,12 +230,12 @@ export default function SettingsScreen() {
                   </Text>
                 </YStack>
                 {togglingRemarketing ? (
-                  <ActivityIndicator size="small" color={WATSON_TEAL} />
+                  <ActivityIndicator size="small" color={primary} />
                 ) : (
                   <Switch
                     value={remarketingConfig?.enabled || false}
                     onValueChange={handleToggleRemarketing}
-                    trackColor={{ false: theme.gray6.val, true: WATSON_TEAL }}
+                    trackColor={{ false: theme.gray6.val, true: primary }}
                   />
                 )}
               </XStack>
@@ -186,6 +254,7 @@ export default function SettingsScreen() {
               title="Conexao WhatsApp"
               description="Status e configuracoes da conexao"
               onPress={() => router.push("/settings/whatsapp")}
+              primary={primary}
             />
           </Card>
         </YStack>
@@ -202,6 +271,7 @@ export default function SettingsScreen() {
               description="Gerenciar plano e pagamento"
               badge="Trial"
               badgeColor="$yellow10"
+              primary={primary}
             />
           </Card>
         </YStack>
@@ -209,11 +279,7 @@ export default function SettingsScreen() {
         {/* Danger Zone */}
         <YStack marginTop="$2">
           <Pressable onPress={handleLogout}>
-            <Card
-              padding="$4"
-              backgroundColor="$red5"
-              borderRadius="$4"
-            >
+            <Card padding="$4" backgroundColor="$red5" borderRadius="$4">
               <XStack alignItems="center" justifyContent="center" gap="$2">
                 <Ionicons name="log-out-outline" size={20} color="#ef4444" />
                 <Text color="$red10" fontWeight="600" fontSize="$4">Sair da Conta</Text>
@@ -238,6 +304,7 @@ function SettingsItem({
   badge,
   badgeColor,
   onPress,
+  primary,
 }: {
   icon: IoniconsName;
   title: string;
@@ -245,6 +312,7 @@ function SettingsItem({
   badge?: string;
   badgeColor?: string;
   onPress?: () => void;
+  primary?: string;
 }) {
   const theme = useTheme();
 

@@ -3,11 +3,11 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable } from "react-nativ
 import { useLocalSearchParams, router, Stack } from "expo-router";
 import { YStack, XStack, Text, Input, Card, Spinner, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { api } from "@/services/api";
+import { useAppColors } from "@/hooks/useAppColors";
 
-const WATSON_TEAL = "#0d9488";
-const BUBBLE_OUT = "#0d9488";
 const BUBBLE_IN_LIGHT = "#f1f5f9";
 const BUBBLE_IN_DARK = "#1e293b";
 
@@ -51,6 +51,7 @@ export default function ConversationDetailScreen() {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const theme = useTheme();
+  const { gradient, primary, primaryLight, bubbleOut } = useAppColors();
 
   const isDark = theme.background.val === "#020617" || theme.background.val === "#000000" || theme.background.val?.startsWith("#0");
 
@@ -130,7 +131,7 @@ export default function ConversationDetailScreen() {
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <Spinner size="large" color={WATSON_TEAL} />
+        <Spinner size="large" color={primary} />
         <Text marginTop="$4" color="$gray8">
           Carregando conversa...
         </Text>
@@ -150,7 +151,7 @@ export default function ConversationDetailScreen() {
             marginTop="$4"
             paddingHorizontal="$4"
             paddingVertical="$2"
-            backgroundColor={WATSON_TEAL}
+            backgroundColor={primary}
             borderRadius="$3"
           >
             <Text color="white" fontWeight="600">Voltar</Text>
@@ -180,12 +181,12 @@ export default function ConversationDetailScreen() {
           headerLeft: () => (
             <Pressable onPress={() => router.back()}>
               <XStack alignItems="center" gap="$2">
-                <Ionicons name="chevron-back" size={24} color={WATSON_TEAL} />
+                <Ionicons name="chevron-back" size={24} color={primary} />
                 <YStack
                   width={36}
                   height={36}
                   borderRadius={18}
-                  backgroundColor={WATSON_TEAL}
+                  backgroundColor={primary}
                   alignItems="center"
                   justifyContent="center"
                 >
@@ -220,7 +221,7 @@ export default function ConversationDetailScreen() {
                   </XStack>
                 </Pressable>
               )}
-              <ModeBadge mode={conversation.mode} />
+              <ModeBadge mode={conversation.mode} primary={primary} />
             </XStack>
           ),
         }}
@@ -235,7 +236,7 @@ export default function ConversationDetailScreen() {
             if (item.type === "date") {
               return <DateSeparator date={item.label} />;
             }
-            return <MessageBubble message={item.message} bubbleInColor={bubbleInColor} />;
+            return <MessageBubble message={item.message} bubbleInColor={bubbleInColor} gradient={gradient} primary={primary} bubbleOut={bubbleOut} />;
           }}
           keyExtractor={(item, index) =>
             item.type === "date" ? `date-${index}` : item.message.id
@@ -259,15 +260,15 @@ export default function ConversationDetailScreen() {
             marginBottom="$2"
             padding="$3"
             backgroundColor={isDark ? "#042f2e" : "#f0fdfa"}
-            borderColor={WATSON_TEAL}
+            borderColor={primary}
             borderWidth={1}
             borderRadius="$3"
           >
             <XStack justifyContent="space-between" alignItems="flex-start">
               <YStack flex={1}>
                 <XStack alignItems="center" gap="$2" marginBottom="$2">
-                  <Ionicons name="sparkles" size={14} color={WATSON_TEAL} />
-                  <Text fontSize="$2" fontWeight="600" color={WATSON_TEAL}>
+                  <Ionicons name="sparkles" size={14} color={primary} />
+                  <Text fontSize="$2" fontWeight="600" color={primary}>
                     Sugestao do Watson
                   </Text>
                 </XStack>
@@ -310,7 +311,7 @@ export default function ConversationDetailScreen() {
               alignItems="center"
               justifyContent="center"
             >
-              <Ionicons name="add" size={22} color={WATSON_TEAL} />
+              <Ionicons name="add" size={22} color={primary} />
             </YStack>
           </Pressable>
 
@@ -338,25 +339,38 @@ export default function ConversationDetailScreen() {
           </YStack>
 
           <Pressable onPress={sendMessage} disabled={isSending || !message.trim()}>
-            <YStack
-              width={40}
-              height={40}
-              borderRadius={20}
-              backgroundColor={message.trim() ? WATSON_TEAL : isDark ? "#1e293b" : "#f1f5f9"}
-              alignItems="center"
-              justifyContent="center"
-              opacity={isSending ? 0.5 : 1}
-            >
-              {isSending ? (
-                <Spinner size="small" color="white" />
-              ) : (
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color={message.trim() ? "white" : "#94a3b8"}
-                />
-              )}
-            </YStack>
+            {message.trim() ? (
+              <LinearGradient
+                colors={gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: isSending ? 0.5 : 1,
+                }}
+              >
+                {isSending ? (
+                  <Spinner size="small" color="white" />
+                ) : (
+                  <Ionicons name="send" size={18} color="white" />
+                )}
+              </LinearGradient>
+            ) : (
+              <YStack
+                width={40}
+                height={40}
+                borderRadius={20}
+                backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons name="send" size={18} color="#94a3b8" />
+              </YStack>
+            )}
           </Pressable>
         </XStack>
       </YStack>
@@ -386,11 +400,48 @@ function DateSeparator({ date }: { date: string }) {
 function MessageBubble({
   message,
   bubbleInColor,
+  gradient,
+  primary,
+  bubbleOut,
 }: {
   message: Message;
   bubbleInColor: string;
+  gradient: string[];
+  primary: string;
+  bubbleOut: string;
 }) {
   const isOut = message.direction === "OUTBOUND";
+
+  const bubbleContent = (
+    <>
+      {/* AI badge */}
+      {message.isAiGenerated && (
+        <XStack alignItems="center" gap={4} marginBottom={2}>
+          <Ionicons name="sparkles" size={10} color={isOut ? "#99f6e4" : primary} />
+          <Text fontSize={10} color={isOut ? "#99f6e4" : primary} fontWeight="600">
+            Watson IA
+          </Text>
+        </XStack>
+      )}
+
+      {/* Content */}
+      <Text
+        color={isOut ? "white" : "$color"}
+        fontSize={15}
+        lineHeight={20}
+      >
+        {message.content}
+      </Text>
+
+      {/* Time + Status */}
+      <XStack justifyContent="flex-end" alignItems="center" gap={4} marginTop={4}>
+        <Text fontSize={11} color={isOut ? "rgba(255,255,255,0.6)" : "$gray8"}>
+          {formatTime(message.createdAt)}
+        </Text>
+        {isOut && <StatusIcon status={message.status} />}
+      </XStack>
+    </>
+  );
 
   return (
     <XStack
@@ -399,42 +450,35 @@ function MessageBubble({
       paddingLeft={isOut ? 48 : 0}
       paddingRight={isOut ? 0 : 48}
     >
-      <YStack
-        backgroundColor={isOut ? BUBBLE_OUT : bubbleInColor}
-        paddingHorizontal="$3"
-        paddingVertical="$2"
-        borderRadius={18}
-        borderBottomRightRadius={isOut ? 4 : 18}
-        borderBottomLeftRadius={isOut ? 18 : 4}
-        maxWidth="100%"
-      >
-        {/* AI badge */}
-        {message.isAiGenerated && (
-          <XStack alignItems="center" gap={4} marginBottom={2}>
-            <Ionicons name="sparkles" size={10} color={isOut ? "#99f6e4" : WATSON_TEAL} />
-            <Text fontSize={10} color={isOut ? "#99f6e4" : WATSON_TEAL} fontWeight="600">
-              Watson IA
-            </Text>
-          </XStack>
-        )}
-
-        {/* Content */}
-        <Text
-          color={isOut ? "white" : "$color"}
-          fontSize={15}
-          lineHeight={20}
+      {isOut ? (
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 18,
+            borderBottomRightRadius: 4,
+            borderBottomLeftRadius: 18,
+            maxWidth: "100%",
+          }}
         >
-          {message.content}
-        </Text>
-
-        {/* Time + Status */}
-        <XStack justifyContent="flex-end" alignItems="center" gap={4} marginTop={4}>
-          <Text fontSize={11} color={isOut ? "rgba(255,255,255,0.6)" : "$gray8"}>
-            {formatTime(message.createdAt)}
-          </Text>
-          {isOut && <StatusIcon status={message.status} />}
-        </XStack>
-      </YStack>
+          {bubbleContent}
+        </LinearGradient>
+      ) : (
+        <YStack
+          backgroundColor={bubbleInColor}
+          paddingHorizontal="$3"
+          paddingVertical="$2"
+          borderRadius={18}
+          borderBottomRightRadius={18}
+          borderBottomLeftRadius={4}
+          maxWidth="100%"
+        >
+          {bubbleContent}
+        </YStack>
+      )}
     </XStack>
   );
 }
@@ -458,9 +502,9 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 // -- Mode Badge --
-function ModeBadge({ mode }: { mode: string }) {
+function ModeBadge({ mode, primary }: { mode: string; primary: string }) {
   const config: Record<string, { label: string; bg: string }> = {
-    AI_ASSISTED: { label: "IA", bg: WATSON_TEAL },
+    AI_ASSISTED: { label: "IA", bg: primary },
     HUMAN_ONLY: { label: "Humano", bg: "#eab308" },
     AI_ONLY: { label: "Auto", bg: "#22c55e" },
   };

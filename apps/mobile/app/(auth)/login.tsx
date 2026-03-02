@@ -2,16 +2,16 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Image, Alert } from "react-native";
 import { Link, router } from "expo-router";
 import { YStack, XStack, Text, Input, Button, Spinner, useTheme } from "tamagui";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "@/stores/authStore";
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const theme = useTheme();
+  const { gradient, primary } = useAppColors();
 
   const { login, isLoading } = useAuthStore();
 
@@ -49,16 +49,26 @@ export default function LoginScreen() {
         justifyContent="center"
       >
         {/* Logo Watson IA */}
-        <YStack alignItems="center" marginBottom="$8">
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            alignItems: "center",
+            paddingVertical: 32,
+            borderRadius: 24,
+            marginBottom: 32,
+          }}
+        >
           <Image
             source={require("../../assets/watson-logo.png")}
             style={{ width: 180, height: 180, marginBottom: 8 }}
             resizeMode="contain"
           />
-          <Text color="$gray8" marginTop="$2" fontSize="$3">
+          <Text color="white" marginTop="$2" fontSize="$3">
             Assistente de vendas inteligente
           </Text>
-        </YStack>
+        </LinearGradient>
 
         {/* Form */}
         <YStack gap="$4">
@@ -121,7 +131,7 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={isLoading}
             size="$5"
-            backgroundColor={WATSON_TEAL}
+            backgroundColor={primary}
             pressStyle={{ opacity: 0.9 }}
             marginTop="$2"
             borderRadius="$4"
@@ -130,7 +140,7 @@ export default function LoginScreen() {
           </Button>
 
           <Link href="/(auth)/forgot-password" asChild>
-            <Text color={WATSON_TEAL} textAlign="center" marginTop="$3" fontSize="$3">
+            <Text color={primary} textAlign="center" marginTop="$3" fontSize="$3">
               Esqueceu a senha?
             </Text>
           </Link>
@@ -140,7 +150,7 @@ export default function LoginScreen() {
         <XStack justifyContent="center" marginTop="$8">
           <Text color="$gray8">Nao tem conta? </Text>
           <Link href="/(auth)/register" asChild>
-            <Text color={WATSON_TEAL} fontWeight="600">
+            <Text color={primary} fontWeight="600">
               Criar conta
             </Text>
           </Link>

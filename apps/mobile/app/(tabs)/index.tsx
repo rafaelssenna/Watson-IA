@@ -3,9 +3,7 @@ import { ScrollView, RefreshControl } from "react-native";
 import { YStack, XStack, H2, Text, Card, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
@@ -27,6 +25,7 @@ export default function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const theme = useTheme();
+  const { primary } = useAppColors();
 
   const fetchDashboard = async () => {
     try {
@@ -183,11 +182,12 @@ function StatCard({
   highlight?: boolean;
 }) {
   const theme = useTheme();
+  const { primary } = useAppColors();
 
   // Map tamagui colors to hex (Watson IA brand)
   const colorMap: Record<string, string> = {
-    "$teal10": WATSON_TEAL,
-    "$blue10": WATSON_TEAL,
+    "$teal10": primary,
+    "$blue10": primary,
     "$green10": "#22c55e",
     "$red10": "#ef4444",
     "$yellow10": "#eab308",

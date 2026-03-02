@@ -5,9 +5,7 @@ import { YStack, XStack, Text, Card, Button, Spinner, Input, TextArea, useTheme 
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { api } from "@/services/api";
-
-// Watson IA brand colors
-const WATSON_TEAL = "#0d9488";
+import { useAppColors } from "@/hooks/useAppColors";
 
 interface FunnelStage {
   id: string;
@@ -46,6 +44,7 @@ interface ConversationSummary {
 }
 
 export default function ContactDetailScreen() {
+  const { primary } = useAppColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [contact, setContact] = useState<Contact | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -114,7 +113,7 @@ export default function ContactDetailScreen() {
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
-        <Spinner size="large" color={WATSON_TEAL} />
+        <Spinner size="large" color={primary} />
         <Text marginTop="$4" color="$colorSubtle">
           Carregando contato...
         </Text>
@@ -157,7 +156,7 @@ export default function ContactDetailScreen() {
                 width={80}
                 height={80}
                 borderRadius={40}
-                backgroundColor={WATSON_TEAL}
+                backgroundColor={primary}
                 alignItems="center"
                 justifyContent="center"
               >
@@ -177,7 +176,7 @@ export default function ContactDetailScreen() {
                   </Text>
                 )}
                 {contact.company && (
-                  <Text color={WATSON_TEAL} fontSize="$2" marginTop="$1">
+                  <Text color={primary} fontSize="$2" marginTop="$1">
                     {contact.company}
                   </Text>
                 )}
@@ -224,7 +223,7 @@ export default function ContactDetailScreen() {
               />
 
               <YStack alignItems="center">
-                <Text fontSize="$7" fontWeight="bold" color={WATSON_TEAL}>
+                <Text fontSize="$7" fontWeight="bold" color={primary}>
                   {contact.conversationCount}
                 </Text>
                 <Text fontSize="$2" color="$colorSubtle">
@@ -263,7 +262,7 @@ export default function ContactDetailScreen() {
                     width={12}
                     height={12}
                     borderRadius={6}
-                    backgroundColor={contact.funnelStage.color || WATSON_TEAL}
+                    backgroundColor={contact.funnelStage.color || primary}
                   />
                   <Text fontWeight="600" color="$color">{contact.funnelStage.name}</Text>
                   <Text color="$colorSubtle">em {contact.funnel.name}</Text>
@@ -306,7 +305,7 @@ export default function ContactDetailScreen() {
                     >
                       Cancelar
                     </Button>
-                    <Button size="$3" backgroundColor={WATSON_TEAL} onPress={saveNotes}>
+                    <Button size="$3" backgroundColor={primary} onPress={saveNotes}>
                       <Text color="white" fontWeight="600">Salvar</Text>
                     </Button>
                   </XStack>
@@ -347,7 +346,7 @@ export default function ContactDetailScreen() {
                         <XStack alignItems="center" gap="$2">
                           <StatusBadge status={conv.status} />
                           {conv.intent && (
-                            <Text fontSize="$2" color={WATSON_TEAL}>
+                            <Text fontSize="$2" color={primary}>
                               {conv.intent}
                             </Text>
                           )}
@@ -440,8 +439,9 @@ function InfoRow({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { primary } = useAppColors();
   const config: Record<string, { label: string; color: string }> = {
-    OPEN: { label: "Aberta", color: WATSON_TEAL },
+    OPEN: { label: "Aberta", color: primary },
     WAITING_AGENT: { label: "Aguardando", color: "$yellow10" },
     WAITING_CLIENT: { label: "Aguardando Cliente", color: "$gray10" },
     IN_PROGRESS: { label: "Em Andamento", color: "$green10" },

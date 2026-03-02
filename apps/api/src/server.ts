@@ -25,6 +25,7 @@ import { webhookRoutes } from "./modules/webhooks/routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/routes.js";
 import { automationRoutes } from "./modules/automations/routes.js";
 import { triggerRoutes } from "./modules/triggers/routes.js";
+import { crmRoutes } from "./modules/crm/routes.js";
 import { startAutomationScheduler, stopAutomationScheduler } from "./services/automation.service.js";
 import { startRemarketingScheduler, stopRemarketingScheduler, setRemarketingEventCallback } from "./services/remarketing.service.js";
 import { testEmailConnection, sendTestEmail } from "./services/email.service.js";
@@ -154,6 +155,7 @@ async function buildServer() {
   await fastify.register(whatsappRoutes, { prefix: "/api/v1/whatsapp" });
   await fastify.register(automationRoutes, { prefix: "/api/v1/automations" });
   await fastify.register(triggerRoutes, { prefix: "/api/v1/triggers" });
+  await fastify.register(crmRoutes, { prefix: "/api/v1/crm" });
   return fastify;
 }
 

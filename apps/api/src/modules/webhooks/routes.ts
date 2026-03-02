@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { generateResponse, getDefaultResponse, transcribeAudio, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
-import { sendTextMessage, downloadMedia } from "../../services/uazapi.service.js";
+import { sendTextMessage, downloadMedia, fetchProfilePicUrl } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoClassifyFunnelStage, notifyOwnerOnTransfer } from "../../services/autoFunnelStage.service.js";
@@ -210,6 +210,25 @@ async function handleIncomingMessage(fastify: FastifyInstance, orgId: string, pa
         where: { id: contact.id },
         data: { pushName },
       });
+    }
+
+    // Fetch profile pic in background if contact doesn't have one
+    if (!contact.profilePicUrl) {
+      const connection = await prisma.whatsAppConnection.findFirst({
+        where: { organizationId: orgId, status: "CONNECTED" },
+        select: { uazapiToken: true },
+      });
+      if (connection?.uazapiToken) {
+        fetchProfilePicUrl(connection.uazapiToken, waId).then(async (picUrl) => {
+          if (picUrl) {
+            await prisma.contact.update({
+              where: { id: contact!.id },
+              data: { profilePicUrl: picUrl },
+            });
+            fastify.log.info(`Updated profile pic for contact ${contact!.id}`);
+          }
+        }).catch(() => {});
+      }
     }
 
     // Find or create conversation

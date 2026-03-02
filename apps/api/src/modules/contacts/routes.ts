@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { paginationSchema, createContactSchema, updateContactSchema } from "@watson/shared";
+import { fetchProfilePicUrl } from "../../services/uazapi.service.js";
 
 export async function contactRoutes(fastify: FastifyInstance) {
   // List contacts
@@ -302,6 +303,43 @@ export async function contactRoutes(fastify: FastifyInstance) {
     return {
       success: true,
       data: conversations,
+    };
+  });
+
+  // Sync profile pictures from UAZAPI for contacts without one
+  fastify.post("/sync-photos", { preHandler: [fastify.authenticate] }, async (request) => {
+    const { orgId } = request.user;
+
+    const connection = await prisma.whatsAppConnection.findFirst({
+      where: { organizationId: orgId, status: "CONNECTED" },
+      select: { uazapiToken: true },
+    });
+
+    if (!connection?.uazapiToken) {
+      return { success: false, error: "Nenhuma conexao WhatsApp ativa" };
+    }
+
+    const contacts = await prisma.contact.findMany({
+      where: { organizationId: orgId, profilePicUrl: null },
+      select: { id: true, waId: true },
+      take: 50,
+    });
+
+    let updated = 0;
+    for (const contact of contacts) {
+      const picUrl = await fetchProfilePicUrl(connection.uazapiToken, contact.waId);
+      if (picUrl) {
+        await prisma.contact.update({
+          where: { id: contact.id },
+          data: { profilePicUrl: picUrl },
+        });
+        updated++;
+      }
+    }
+
+    return {
+      success: true,
+      data: { checked: contacts.length, updated },
     };
   });
 

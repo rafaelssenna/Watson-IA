@@ -48,6 +48,36 @@ export async function sendTextMessage(
   }
 }
 
+// Fetch profile picture URL for a contact via /chat/find
+export async function fetchProfilePicUrl(
+  instanceToken: string,
+  waId: string
+): Promise<string | null> {
+  try {
+    const chatId = waId.includes("@") ? waId : `${waId}@s.whatsapp.net`;
+    const response = await fetch(`${UAZAPI_BASE_URL}/chat/find`, {
+      method: "POST",
+      headers: {
+        token: instanceToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        wa_chatid: chatId,
+        limit: 1,
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json() as { chats?: { image?: string }[] };
+    const image = data.chats?.[0]?.image;
+    return image && image.length > 0 ? image : null;
+  } catch (error) {
+    console.error("[uazapi.fetchProfilePicUrl] Exception:", error);
+    return null;
+  }
+}
+
 // Download media from a message (audio, image, video, etc.)
 export async function downloadMedia(
   instanceToken: string,

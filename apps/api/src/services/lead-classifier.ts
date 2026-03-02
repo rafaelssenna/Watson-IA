@@ -124,27 +124,18 @@ function classifyLeadByKeywords(
     .map((m) => m.content.toLowerCase())
     .join(" ");
 
-  const qualifiedKeywords = [
+  // Fallback NEVER classifies as qualified — only AI can do that
+  const interestedKeywords = [
     "quero comprar",
     "vou levar",
-    "pode separar",
     "qual o pix",
     "como pago",
     "aceita cartao",
     "parcela",
-    "frete",
-    "entrega",
     "manda o link",
-    "enviar link",
     "finalizar",
     "fechar",
-    "vou pegar",
-    "me passa o valor",
-    "quero esse",
     "vou querer",
-  ];
-
-  const interestedKeywords = [
     "quanto custa",
     "qual o preco",
     "tem foto",
@@ -163,15 +154,7 @@ function classifyLeadByKeywords(
     "me fala mais",
   ];
 
-  if (qualifiedKeywords.some((kw) => customerMessages.includes(kw))) {
-    return {
-      score: "qualified",
-      confidence: 70,
-      reasons: ["Demonstrou intencao clara de compra (palavras-chave)"],
-    };
-  }
-
-  if (interestedKeywords.some((kw) => customerMessages.includes(kw))) {
+  if (interestedKeywords.some((kw: string) => customerMessages.includes(kw))) {
     return {
       score: "interested",
       confidence: 60,

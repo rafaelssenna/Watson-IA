@@ -38,7 +38,7 @@ const privacyPageHtml = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Watson AI - Politica de Privacidade</title>
+<title>Watson AI - Política de Privacidade</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#1e293b;line-height:1.7}
@@ -68,19 +68,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </style>
 </head>
 <body>
-<div class="header"><h1>Watson AI</h1><p>Politica de Privacidade</p></div>
+<div class="header"><h1>Watson AI</h1><p>Pol&#237;tica de Privacidade</p></div>
 <div class="container">
-<p class="updated">Ultima atualizacao: 04 de marco de 2026</p>
-<div class="section"><h2>1. Introducao</h2><p>O Watson AI ("nos", "nosso" ou "aplicativo") e um assistente inteligente para WhatsApp com CRM integrado. Esta politica descreve como coletamos, usamos e protegemos seus dados pessoais em conformidade com a Lei Geral de Protecao de Dados (LGPD - Lei 13.709/2018).</p></div>
-<div class="section"><h2>2. Dados que Coletamos</h2><p>Ao utilizar o Watson AI, podemos coletar:</p><ul><li><strong>Dados de cadastro:</strong> nome, email, telefone e senha (criptografada)</li><li><strong>Dados de conversas:</strong> mensagens trocadas via WhatsApp processadas pelo assistente de IA</li><li><strong>Dados de contatos (CRM):</strong> informacoes de contatos adicionados ao CRM</li><li><strong>Dados de uso:</strong> logs de acesso, interacoes com o aplicativo e preferencias</li><li><strong>Dados do dispositivo:</strong> modelo do aparelho, sistema operacional e identificadores unicos</li></ul></div>
-<div class="section"><h2>3. Como Usamos seus Dados</h2><ul><li>Fornecer e manter o servico de assistente de IA para WhatsApp</li><li>Gerenciar o CRM e contatos vinculados a sua conta</li><li>Melhorar a qualidade das respostas automaticas da IA</li><li>Enviar notificacoes relevantes sobre suas conversas</li><li>Garantir a seguranca e prevenir fraudes</li></ul></div>
-<div class="section"><h2>4. Compartilhamento de Dados</h2><p>Seus dados podem ser compartilhados com:</p><ul><li><strong>Provedores de IA:</strong> para processamento de mensagens (dados anonimizados quando possivel)</li><li><strong>Servicos de infraestrutura:</strong> para hospedagem e armazenamento seguro</li><li><strong>Integracao WhatsApp:</strong> para envio e recebimento de mensagens via API oficial</li></ul><p>Nao vendemos seus dados pessoais a terceiros.</p></div>
-<div class="section"><h2>5. Armazenamento e Seguranca</h2><p>Seus dados sao armazenados em servidores seguros com criptografia em transito (HTTPS/TLS) e em repouso. Senhas sao armazenadas utilizando hash criptografico (bcrypt). Implementamos medidas tecnicas e organizacionais para proteger seus dados contra acesso nao autorizado.</p></div>
-<div class="section"><h2>6. Seus Direitos (LGPD)</h2><p>De acordo com a LGPD, voce tem direito a:</p><ul><li>Confirmar a existencia de tratamento de seus dados</li><li>Acessar seus dados pessoais</li><li>Corrigir dados incompletos ou desatualizados</li><li>Solicitar a anonimizacao ou bloqueio de dados desnecessarios</li><li><strong>Solicitar a exclusao total de seus dados pessoais</strong></li><li>Revogar o consentimento a qualquer momento</li></ul></div>
-<div class="section delete-section" id="delete-section"><h2>7. Exclusao de Dados</h2><p>Voce pode solicitar a exclusao completa de todos os seus dados vinculados a sua conta. Isso inclui: dados de perfil, conversas, contatos do CRM e todo historico de uso.</p><p><strong>Atencao:</strong> esta acao e irreversivel. Apos a exclusao, nao sera possivel recuperar seus dados.</p>
-<form id="deleteForm" style="margin-top:1.5rem"><div class="form-group"><label for="email">Email da conta</label><input type="email" id="email" placeholder="seu@email.com" required></div><div class="form-group"><label for="password">Senha</label><input type="password" id="password" placeholder="Sua senha" required></div><div class="form-group"><label for="confirm">Digite "EXCLUIR MEUS DADOS" para confirmar</label><input type="text" id="confirm" placeholder="EXCLUIR MEUS DADOS" required></div><button type="submit" class="btn-delete" id="deleteBtn">Solicitar Exclusao dos Meus Dados</button><div class="status-msg" id="statusMsg"></div></form></div>
-<div class="section"><h2>8. Contato</h2><p>Para duvidas, solicitacoes ou exercer seus direitos, entre em contato:</p><ul><li><strong>Email:</strong> contato@watson-ai.com</li></ul></div>
-<div class="section"><h2>9. Alteracoes nesta Politica</h2><p>Podemos atualizar esta politica periodicamente. Notificaremos sobre mudancas significativas atraves do aplicativo ou por email.</p></div>
+<p class="updated">&#218;ltima atualiza&#231;&#227;o: 04 de mar&#231;o de 2026</p>
+<div class="section"><h2>1. Introdu&#231;&#227;o</h2><p>O Watson AI (&ldquo;n&#243;s&rdquo;, &ldquo;nosso&rdquo; ou &ldquo;aplicativo&rdquo;) &#233; um assistente inteligente para WhatsApp com CRM integrado. Esta pol&#237;tica descreve como coletamos, usamos e protegemos seus dados pessoais em conformidade com a Lei Geral de Prote&#231;&#227;o de Dados (LGPD &ndash; Lei 13.709/2018).</p></div>
+<div class="section"><h2>2. Dados que Coletamos</h2><p>Ao utilizar o Watson AI, podemos coletar:</p><ul><li><strong>Dados de cadastro:</strong> nome, e-mail, telefone e senha (criptografada).</li><li><strong>Dados de conversas:</strong> mensagens trocadas via WhatsApp processadas pelo assistente de IA.</li><li><strong>Dados de contatos (CRM):</strong> informa&#231;&#245;es de contatos adicionados ao CRM.</li><li><strong>Dados de uso:</strong> logs de acesso, intera&#231;&#245;es com o aplicativo e prefer&#234;ncias.</li><li><strong>Dados do dispositivo:</strong> modelo do aparelho, sistema operacional e identificadores &#250;nicos.</li></ul></div>
+<div class="section"><h2>3. Como Usamos seus Dados</h2><ul><li>Fornecer e manter o servi&#231;o de assistente de IA para WhatsApp.</li><li>Gerenciar o CRM e contatos vinculados &#224; sua conta.</li><li>Melhorar a qualidade das respostas autom&#225;ticas da IA.</li><li>Enviar notifica&#231;&#245;es relevantes sobre suas conversas.</li><li>Garantir a seguran&#231;a e prevenir fraudes.</li></ul></div>
+<div class="section"><h2>4. Compartilhamento de Dados</h2><p>Seus dados podem ser compartilhados com:</p><ul><li><strong>Provedores de IA:</strong> para processamento de mensagens (dados anonimizados quando poss&#237;vel).</li><li><strong>Servi&#231;os de infraestrutura:</strong> para hospedagem e armazenamento seguro.</li><li><strong>Integra&#231;&#227;o WhatsApp:</strong> para envio e recebimento de mensagens via API oficial.</li></ul><p>N&#227;o vendemos seus dados pessoais a terceiros.</p></div>
+<div class="section"><h2>5. Armazenamento e Seguran&#231;a</h2><p>Seus dados s&#227;o armazenados em servidores seguros com criptografia em tr&#226;nsito (HTTPS/TLS) e em repouso. Senhas s&#227;o armazenadas utilizando hash criptogr&#225;fico (bcrypt). Implementamos medidas t&#233;cnicas e organizacionais para proteger seus dados contra acesso n&#227;o autorizado.</p></div>
+<div class="section"><h2>6. Seus Direitos (LGPD)</h2><p>De acordo com a LGPD, voc&#234; tem direito a:</p><ul><li>Confirmar a exist&#234;ncia de tratamento de seus dados.</li><li>Acessar seus dados pessoais.</li><li>Corrigir dados incompletos ou desatualizados.</li><li>Solicitar a anonimiza&#231;&#227;o ou bloqueio de dados desnecess&#225;rios.</li><li><strong>Solicitar a exclus&#227;o total de seus dados pessoais.</strong></li><li>Revogar o consentimento a qualquer momento.</li></ul></div>
+<div class="section delete-section" id="delete-section"><h2>7. Exclus&#227;o de Dados</h2><p>Voc&#234; pode solicitar a exclus&#227;o completa de todos os seus dados vinculados &#224; sua conta. Isso inclui: dados de perfil, conversas, contatos do CRM e todo hist&#243;rico de uso.</p><p><strong>Aten&#231;&#227;o:</strong> esta a&#231;&#227;o &#233; irrevers&#237;vel. Ap&#243;s a exclus&#227;o, n&#227;o ser&#225; poss&#237;vel recuperar seus dados.</p>
+<form id="deleteForm" style="margin-top:1.5rem"><div class="form-group"><label for="email">E-mail da conta</label><input type="email" id="email" placeholder="seu@email.com" required></div><div class="form-group"><label for="password">Senha</label><input type="password" id="password" placeholder="Sua senha" required></div><div class="form-group"><label for="confirm">Digite &ldquo;EXCLUIR MEUS DADOS&rdquo; para confirmar</label><input type="text" id="confirm" placeholder="EXCLUIR MEUS DADOS" required></div><button type="submit" class="btn-delete" id="deleteBtn">Solicitar Exclus&#227;o dos Meus Dados</button><div class="status-msg" id="statusMsg"></div></form></div>
+<div class="section"><h2>8. Contato</h2><p>Para d&#250;vidas, solicita&#231;&#245;es ou exercer seus direitos, entre em contato:</p><ul><li><strong>E-mail:</strong> relacionamento@helsenia.com.br</li></ul></div>
+<div class="section"><h2>9. Altera&#231;&#245;es nesta Pol&#237;tica</h2><p>Podemos atualizar esta pol&#237;tica periodicamente. Notificaremos sobre mudan&#231;as significativas atrav&#233;s do aplicativo ou por e-mail.</p></div>
 </div>
 <div class="footer"><p>&copy; 2026 Watson AI. Todos os direitos reservados.</p></div>
 <script>
@@ -93,20 +93,20 @@ var confirmVal=document.getElementById('confirm').value.trim();
 var btn=document.getElementById('deleteBtn');
 var statusMsg=document.getElementById('statusMsg');
 statusMsg.className='status-msg';statusMsg.style.display='none';
-if(confirmVal!=='EXCLUIR MEUS DADOS'){statusMsg.className='status-msg error';statusMsg.textContent='Por favor, digite "EXCLUIR MEUS DADOS" exatamente como indicado.';return;}
+if(confirmVal!=='EXCLUIR MEUS DADOS'){statusMsg.className='status-msg error';statusMsg.textContent='Por favor, digite "EXCLUIR MEUS DADOS" exatamente como indicado para confirmar.';return;}
 btn.disabled=true;btn.textContent='Processando...';
 try{
 var loginRes=await fetch(API_URL+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password})});
-if(!loginRes.ok)throw new Error('Email ou senha incorretos.');
+if(!loginRes.ok)throw new Error('E-mail ou senha incorretos.');
 var loginData=await loginRes.json();
 var token=loginData.data?loginData.data.accessToken:loginData.accessToken;
-if(!token)throw new Error('Erro na autenticacao. Tente novamente.');
+if(!token)throw new Error('Erro na autenticação. Tente novamente.');
 var deleteRes=await fetch(API_URL+'/auth/delete-account',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}});
-if(!deleteRes.ok){var errData=await deleteRes.json().catch(function(){return null});throw new Error(errData&&errData.message?errData.message:'Erro ao processar exclusao.');}
-statusMsg.className='status-msg success';statusMsg.textContent='Seus dados foram excluidos com sucesso. Sua conta foi removida permanentemente.';
+if(!deleteRes.ok){var errData=await deleteRes.json().catch(function(){return null});throw new Error(errData&&errData.message?errData.message:'Erro ao processar exclusão. Tente novamente.');}
+statusMsg.className='status-msg success';statusMsg.textContent='Seus dados foram excluídos com sucesso. Sua conta foi removida permanentemente.';
 document.getElementById('deleteForm').reset();
 }catch(err){statusMsg.className='status-msg error';statusMsg.textContent=err.message;}
-finally{btn.disabled=false;btn.textContent='Solicitar Exclusao dos Meus Dados';}
+finally{btn.disabled=false;btn.textContent='Solicitar Exclusão dos Meus Dados';}
 });
 </script>
 </body></html>`;

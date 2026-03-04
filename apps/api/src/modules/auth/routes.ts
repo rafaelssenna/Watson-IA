@@ -357,6 +357,48 @@ export async function authRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Delete account and all associated data (LGPD compliance)
+  fastify.delete(
+    "/delete-account",
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { userId, orgId } = request.user;
+
+      try {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        await prisma.$transaction(async (tx) => {
+          // Delete tokens first (no cascade from org)
+          await tx.refreshToken.deleteMany({ where: { userId } });
+          if (user?.email) {
+            await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
+          }
+
+          // Nullify optional FKs that could block cascade
+          await tx.conversation.updateMany({
+            where: { organizationId: orgId },
+            data: { activePersonaId: null, assignedToId: null },
+          });
+          await tx.contact.updateMany({
+            where: { organizationId: orgId },
+            data: { funnelId: null, funnelStageId: null },
+          });
+
+          // Delete the organization — all related models cascade via onDelete: Cascade
+          await tx.organization.delete({ where: { id: orgId } });
+        });
+
+        return {
+          success: true,
+          message: "Conta e todos os dados associados foram excluidos permanentemente.",
+        };
+      } catch (err) {
+        fastify.log.error(err, "Error deleting account");
+        return reply.internalServerError("Erro ao excluir conta. Tente novamente.");
+      }
+    }
+  );
+
   // Forgot Password - Request reset code
   fastify.post<{ Body: { email: string } }>("/forgot-password", async (request, reply) => {
     const { email } = request.body;

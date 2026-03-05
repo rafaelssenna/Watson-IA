@@ -50,7 +50,7 @@ export default function PersonaEditScreen() {
   const [triggerMessage, setTriggerMessage] = useState("");
 
   // Auto-transfer rules
-  const [autoTransferRules, setAutoTransferRules] = useState<string[]>([]);
+  const [autoTransferRules, setAutoTransferRules] = useState<string[]>(["AGENDAMENTO", "INTERESSE", "PEDIDO_PRECO", "FECHAMENTO"]);
 
   // AI Generation modal
   const [showAIModal, setShowAIModal] = useState(false);
@@ -234,7 +234,8 @@ export default function PersonaEditScreen() {
       setConversationStyle((selectedPersona as any).conversationStyle || "");
       setTriggerEnabled((selectedPersona as any).triggerEnabled || false);
       setTriggerMessage((selectedPersona as any).triggerMessage || "");
-      setAutoTransferRules((selectedPersona as any).autoTransferRules || []);
+      const savedRules = (selectedPersona as any).autoTransferRules;
+      setAutoTransferRules(savedRules?.length ? savedRules : ["AGENDAMENTO", "INTERESSE", "PEDIDO_PRECO", "FECHAMENTO"]);
       setFormInitialized(true);
     }
   }, [selectedPersona, formInitialized]);
@@ -1044,7 +1045,7 @@ export default function PersonaEditScreen() {
 
               {autoTransferRules.length === 0 && (
                 <Text fontSize="$1" color="$gray7" marginTop="$2" textAlign="center">
-                  Nenhuma regra selecionada - a IA nao transferira automaticamente
+                  Nenhuma regra selecionada - a IA so transferira se o cliente pedir 3 vezes
                 </Text>
               )}
             </Card>

@@ -574,7 +574,9 @@ async function generateAndSendAIResponse(
           conversationStyle: activePersona.conversationStyle || undefined,
           contactName,
           contactFunnelStage,
-          autoTransferRules: activePersona.autoTransferRules || [],
+          autoTransferRules: activePersona.autoTransferRules?.length
+            ? activePersona.autoTransferRules
+            : ["AGENDAMENTO", "INTERESSE", "PEDIDO_PRECO", "FECHAMENTO"],
         }
       : {
           name: "Assistente Watson",
@@ -585,6 +587,7 @@ async function generateAndSendAIResponse(
           businessName: org?.name,
           contactName,
           contactFunnelStage,
+          autoTransferRules: ["AGENDAMENTO", "INTERESSE", "PEDIDO_PRECO", "FECHAMENTO"],
         };
 
     fastify.log.info(

@@ -74,13 +74,31 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       // Actions
       initialize: async () => {
-        // Wait a bit for persist hydration
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Wait for Zustand persist hydration (up to 2s)
+        const waitForHydration = () =>
+          new Promise<void>((resolve) => {
+            // Check immediately
+            if (get().accessToken !== null || get().refreshToken !== null) {
+              resolve();
+              return;
+            }
+            // Poll every 50ms for up to 2s
+            let elapsed = 0;
+            const interval = setInterval(() => {
+              elapsed += 50;
+              if (get().accessToken !== null || get().refreshToken !== null || elapsed >= 2000) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 50);
+          });
+
+        await waitForHydration();
 
         const accessToken = get().accessToken;
         const refreshToken = get().refreshToken;
 
-        console.log("Auth init - tokens:", { hasAccess: !!accessToken, hasRefresh: !!refreshToken });
+        console.log("[auth] init - tokens:", { hasAccess: !!accessToken, hasRefresh: !!refreshToken });
 
         if (!accessToken || !refreshToken) {
           set({ isLoading: false, isAuthenticated: false });
@@ -108,16 +126,23 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           } else {
             set({ isLoading: false, isAuthenticated: false });
           }
-        } catch (error) {
-          console.log("Auth init error:", error);
-          // Token might be expired or network error, just go to login
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+        } catch (error: any) {
+          console.log("[auth] init /auth/me failed, trying refresh...", error?.message);
+
+          // Token expired — try refreshing before giving up
+          try {
+            await get().refreshAccessToken();
+            console.log("[auth] Token refresh on init succeeded");
+          } catch (refreshError) {
+            console.log("[auth] Token refresh on init failed, clearing auth");
+            set({
+              user: null,
+              accessToken: null,
+              refreshToken: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+          }
         }
       },
 

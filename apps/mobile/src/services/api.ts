@@ -49,12 +49,20 @@ class ApiClient {
       if (response.status === 401 && !skipAuth) {
         try {
           await tokenManager.refreshToken();
-          // Retry the request with skipAuth to prevent further loops
-          return this.request(endpoint, { ...options, skipAuth: true });
+          // Retry with the new token (use _retried flag to prevent loops)
+          const newToken = tokenManager.getAccessToken();
+          return this.request(endpoint, {
+            ...options,
+            skipAuth: true,
+            headers: {
+              ...options.headers,
+              Authorization: `Bearer ${newToken}`,
+            },
+          });
         } catch {
-          // Refresh failed - clear local state only, do NOT make API calls
-          // (calling tokenManager.logout() here would trigger infinite loop)
-          console.log("[api] Token refresh failed, clearing local auth state");
+          // Refresh failed - force logout
+          console.log("[api] Token refresh failed, logging out");
+          tokenManager.logout();
         }
       }
 

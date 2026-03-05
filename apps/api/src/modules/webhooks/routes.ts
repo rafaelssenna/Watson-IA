@@ -574,6 +574,7 @@ async function generateAndSendAIResponse(
           conversationStyle: activePersona.conversationStyle || undefined,
           contactName,
           contactFunnelStage,
+          autoTransferRules: activePersona.autoTransferRules || [],
         }
       : {
           name: "Assistente Watson",

@@ -77,6 +77,7 @@ export const createPersonaSchema = z.object({
   workDays: z.array(z.string()).default(["seg", "ter", "qua", "qui", "sex"]),
   triggerEnabled: z.boolean().default(false),
   triggerMessage: z.string().optional(),
+  autoTransferRules: z.array(z.string()).default([]),
 });
 
 export const updatePersonaSchema = createPersonaSchema.partial();

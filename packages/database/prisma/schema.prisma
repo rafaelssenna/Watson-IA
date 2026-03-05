@@ -474,6 +474,7 @@ model Persona {
   conversationStyle   String?        @db.Text // Extracted communication style from conversation screenshot
   triggerEnabled      Boolean        @default(false) // AI only responds after trigger message
   triggerMessage      String?        // Message that activates AI in a conversation
+  autoTransferRules   String[]       @default([])    // Rules for auto-transfer: AGENDAMENTO, INTERESSE, PEDIDO_PRECO, DADOS_CONTATO, FECHAMENTO
   createdAt           DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 

@@ -53,6 +53,7 @@ export interface CreatePersonaData {
   workDays?: string[];
   triggerEnabled?: boolean;
   triggerMessage?: string;
+  autoTransferRules?: string[];
 }
 
 export interface UpdatePersonaData extends Partial<CreatePersonaData> {}

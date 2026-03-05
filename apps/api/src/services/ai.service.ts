@@ -41,6 +41,7 @@ export interface PersonaConfig {
   contactName?: string;
   contactFunnelStage?: string;
   conversationStyle?: string;
+  autoTransferRules?: string[];
 }
 
 export interface AIResponseResult {
@@ -224,6 +225,30 @@ ${withinHours
 
 - Mande [CHAMAR_ATENDENTE] SOZINHO numa linha separada
 - Use no MAXIMO 1 vez por conversa`;
+
+  // === 5b. AUTO-TRANSFER RULES ===
+  if (persona.autoTransferRules?.length) {
+    const ruleDescriptions: Record<string, string> = {
+      AGENDAMENTO: "O cliente AGENDOU uma reuniao, visita ou ligacao (confirmou dia/horario). Responda confirmando o agendamento e transfira.",
+      INTERESSE: "O cliente demonstrou INTERESSE CLARO no produto/servico (disse que quer saber mais, pediu detalhes, mostrou intencao). Responda positivamente e transfira para um especialista dar continuidade.",
+      PEDIDO_PRECO: "O cliente PEDIU PRECO, orcamento ou valores especificos. Diga que um especialista vai enviar os valores/orcamento e transfira.",
+      DADOS_CONTATO: "O cliente PASSOU DADOS PESSOAIS como nome completo, email, CNPJ ou endereco. Agradeca e transfira para dar continuidade.",
+      FECHAMENTO: "O cliente disse que QUER COMPRAR, fechar ou contratar. Confirme a intencao e transfira para finalizar.",
+    };
+
+    const activeRules = persona.autoTransferRules
+      .map((r) => ruleDescriptions[r])
+      .filter(Boolean);
+
+    if (activeRules.length > 0) {
+      prompt += `
+
+REGRAS DE TRANSFERENCIA AUTOMATICA (use [CHAMAR_ATENDENTE] IMEDIATAMENTE quando qualquer situacao abaixo acontecer, IGNORANDO a regra das 3 mensagens acima):
+${activeRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+
+IMPORTANTE: Estas regras tem PRIORIDADE sobre a regra de esperar 3 mensagens. Se o cliente fizer qualquer uma das acoes acima, transfira IMEDIATAMENTE com [CHAMAR_ATENDENTE].`;
+    }
+  }
 
   // === 6. TEMAS PROIBIDOS ===
   if (persona.prohibitedTopics?.trim()) {

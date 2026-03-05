@@ -49,6 +49,9 @@ export default function PersonaEditScreen() {
   const [triggerEnabled, setTriggerEnabled] = useState(false);
   const [triggerMessage, setTriggerMessage] = useState("");
 
+  // Auto-transfer rules
+  const [autoTransferRules, setAutoTransferRules] = useState<string[]>([]);
+
   // AI Generation modal
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiDescription, setAIDescription] = useState("");
@@ -128,6 +131,7 @@ export default function PersonaEditScreen() {
           workDays: workDays.length > 0 ? workDays : undefined,
           triggerEnabled,
           triggerMessage: triggerEnabled ? triggerMessage.trim() || undefined : undefined,
+          autoTransferRules,
           isDefault: true,
         };
         const newPersona = await createPersona(data);
@@ -230,6 +234,7 @@ export default function PersonaEditScreen() {
       setConversationStyle((selectedPersona as any).conversationStyle || "");
       setTriggerEnabled((selectedPersona as any).triggerEnabled || false);
       setTriggerMessage((selectedPersona as any).triggerMessage || "");
+      setAutoTransferRules((selectedPersona as any).autoTransferRules || []);
       setFormInitialized(true);
     }
   }, [selectedPersona, formInitialized]);
@@ -259,6 +264,7 @@ export default function PersonaEditScreen() {
       workDays: workDays.length > 0 ? workDays : undefined,
       triggerEnabled,
       triggerMessage: triggerEnabled ? triggerMessage.trim() || undefined : undefined,
+      autoTransferRules,
       isDefault: true,
     };
 
@@ -968,6 +974,78 @@ export default function PersonaEditScreen() {
                     A IA ficara silenciosa ate o cliente enviar uma mensagem que contenha esse texto
                   </Text>
                 </YStack>
+              )}
+            </Card>
+
+            {/* Auto-Transfer Rules */}
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack alignItems="center" gap="$2" marginBottom="$3">
+                <Ionicons name="notifications-outline" size={20} color="#8b5cf6" />
+                <YStack flex={1}>
+                  <Text fontSize="$3" fontWeight="600" color="$color">
+                    Transferir para Humano Quando...
+                  </Text>
+                  <Text fontSize="$2" color="$gray8">
+                    A IA notifica e transfere automaticamente
+                  </Text>
+                </YStack>
+              </XStack>
+
+              <YStack gap="$2">
+                {([
+                  { key: "AGENDAMENTO", label: "Agendar reuniao/visita", icon: "calendar-outline" as const, desc: "Cliente marcou dia e horario" },
+                  { key: "INTERESSE", label: "Demonstrar interesse", icon: "heart-outline" as const, desc: "Cliente mostrou interesse claro" },
+                  { key: "PEDIDO_PRECO", label: "Pedir preco/orcamento", icon: "pricetag-outline" as const, desc: "Cliente pediu valores ou orcamento" },
+                  { key: "DADOS_CONTATO", label: "Passar dados pessoais", icon: "person-outline" as const, desc: "Cliente informou nome, email, etc" },
+                  { key: "FECHAMENTO", label: "Querer fechar/comprar", icon: "cart-outline" as const, desc: "Cliente disse que quer comprar" },
+                ] as const).map((rule) => {
+                  const isActive = autoTransferRules.includes(rule.key);
+                  return (
+                    <Pressable
+                      key={rule.key}
+                      onPress={() => {
+                        setAutoTransferRules((prev) =>
+                          prev.includes(rule.key)
+                            ? prev.filter((r) => r !== rule.key)
+                            : [...prev, rule.key]
+                        );
+                      }}
+                    >
+                      <XStack
+                        padding="$3"
+                        borderRadius="$3"
+                        backgroundColor={isActive ? "$purple5" : "$background"}
+                        alignItems="center"
+                        gap="$3"
+                        borderWidth={1}
+                        borderColor={isActive ? "$purple8" : "$gray5"}
+                      >
+                        <Ionicons
+                          name={rule.icon}
+                          size={20}
+                          color={isActive ? "#8b5cf6" : theme.gray8.val}
+                        />
+                        <YStack flex={1}>
+                          <Text fontSize="$3" fontWeight={isActive ? "600" : "400"} color="$color">
+                            {rule.label}
+                          </Text>
+                          <Text fontSize="$1" color="$gray8">{rule.desc}</Text>
+                        </YStack>
+                        <Ionicons
+                          name={isActive ? "checkmark-circle" : "ellipse-outline"}
+                          size={22}
+                          color={isActive ? "#8b5cf6" : theme.gray7.val}
+                        />
+                      </XStack>
+                    </Pressable>
+                  );
+                })}
+              </YStack>
+
+              {autoTransferRules.length === 0 && (
+                <Text fontSize="$1" color="$gray7" marginTop="$2" textAlign="center">
+                  Nenhuma regra selecionada - a IA nao transferira automaticamente
+                </Text>
               )}
             </Card>
 

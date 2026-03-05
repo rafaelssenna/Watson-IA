@@ -630,7 +630,7 @@ async function generateAndSendAIResponse(
       });
 
       // Cancel remarketing (human will take over)
-      cancelFollowUpForConversation(conversation.id);
+      cancelFollowUpForConversation(conversation.id, fastify.log).catch(() => {});
 
       // Emit real-time update
       io.to(`org:${orgId}`).emit("conversation:update", {

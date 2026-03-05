@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ScrollView, Pressable, Alert } from "react-native";
+import { ScrollView, Pressable, Alert, TextInput } from "react-native";
 import { Stack } from "expo-router";
 import { YStack, XStack, Text, Card, Spinner, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +18,8 @@ export default function NotificationGroupScreen() {
   const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedGroupName, setSelectedGroupName] = useState<string | null>(null);
+  const [notificationPhone, setNotificationPhone] = useState("");
+  const [phoneSaved, setPhoneSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -39,11 +41,11 @@ export default function NotificationGroupScreen() {
 
       if (meResponse.data.success) {
         setSelectedGroupId(meResponse.data.data.notificationGroupId || null);
+        setNotificationPhone(meResponse.data.data.notificationPhone || "");
       }
 
       if (groupsResponse.data.success) {
         setGroups(groupsResponse.data.data);
-        // Set name from groups list
         if (meResponse.data.data.notificationGroupId) {
           const current = groupsResponse.data.data.find(
             (g) => g.id === meResponse.data.data.notificationGroupId
@@ -52,7 +54,7 @@ export default function NotificationGroupScreen() {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao carregar grupos");
+      setError(err.message || "Erro ao carregar dados");
     } finally {
       setIsLoading(false);
     }
@@ -82,13 +84,23 @@ export default function NotificationGroupScreen() {
     }
   };
 
+  const saveNotificationPhone = async () => {
+    try {
+      await api.patch("/auth/notification-phone", { notificationPhone: notificationPhone.trim() });
+      setPhoneSaved(true);
+      setTimeout(() => setPhoneSaved(false), 3000);
+    } catch {
+      Alert.alert("Erro", "Nao foi possivel salvar o numero");
+    }
+  };
+
   if (isLoading) {
     return (
       <>
-        <Stack.Screen options={{ title: "Grupo de Notificacoes" }} />
+        <Stack.Screen options={{ title: "Notificacoes" }} />
         <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
           <Spinner size="large" color={primary} />
-          <Text color="$gray8" marginTop="$3">Carregando grupos...</Text>
+          <Text color="$gray8" marginTop="$3">Carregando...</Text>
         </YStack>
       </>
     );
@@ -96,7 +108,7 @@ export default function NotificationGroupScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Grupo de Notificacoes" }} />
+      <Stack.Screen options={{ title: "Notificacoes" }} />
       <ScrollView
         style={{ flex: 1, backgroundColor: theme.background.val }}
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -111,7 +123,7 @@ export default function NotificationGroupScreen() {
                   Como funciona?
                 </Text>
                 <Text color="$gray8" fontSize="$3" marginTop="$1">
-                  Quando a IA transferir um atendimento ou um negocio for fechado, a notificacao sera enviada tambem para o grupo selecionado.
+                  Quando a IA transferir um atendimento ou um negocio for fechado, a notificacao sera enviada para o numero e/ou grupo configurado.
                 </Text>
               </YStack>
             </XStack>
@@ -123,7 +135,57 @@ export default function NotificationGroupScreen() {
             </Card>
           ) : null}
 
-          {/* Current selection */}
+          {/* Notification Phone */}
+          <YStack>
+            <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
+              NUMERO PARA AVISOS
+            </Text>
+            <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+              <XStack gap="$2" alignItems="center">
+                <TextInput
+                  value={notificationPhone}
+                  onChangeText={setNotificationPhone}
+                  placeholder="5531999998888"
+                  placeholderTextColor={theme.gray8.val}
+                  keyboardType="phone-pad"
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.background.val,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    color: theme.color.val,
+                    borderWidth: 1,
+                    borderColor: theme.gray6.val,
+                  }}
+                />
+                <Pressable
+                  onPress={saveNotificationPhone}
+                  style={{
+                    backgroundColor: primary,
+                    borderRadius: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                  }}
+                >
+                  <Text color="white" fontWeight="600">Salvar</Text>
+                </Pressable>
+              </XStack>
+
+              {phoneSaved && (
+                <XStack alignItems="center" gap="$1" marginTop="$2">
+                  <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                  <Text fontSize="$2" color="#10b981">Numero salvo!</Text>
+                </XStack>
+              )}
+
+              <Text fontSize="$1" color="$gray7" marginTop="$2">
+                Se nao configurar, o aviso vai pro numero do WhatsApp conectado
+              </Text>
+            </Card>
+          </YStack>
+
+          {/* Current group selection */}
           {selectedGroupId && (
             <Card backgroundColor="$backgroundStrong" padding="$4" borderRadius="$4">
               <XStack alignItems="center" gap="$3">
@@ -159,7 +221,7 @@ export default function NotificationGroupScreen() {
           {/* Groups list */}
           <YStack>
             <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
-              SELECIONE UM GRUPO
+              GRUPO PARA AVISOS
             </Text>
 
             {groups.length === 0 ? (

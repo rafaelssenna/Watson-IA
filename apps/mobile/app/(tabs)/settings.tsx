@@ -259,8 +259,8 @@ export default function SettingsScreen() {
             <Separator backgroundColor="$gray6" />
             <SettingsItem
               icon="notifications-outline"
-              title="Grupo de Notificacoes"
-              description="Enviar alertas para um grupo do WhatsApp"
+              title="Notificacoes"
+              description="Numero e grupo para receber avisos"
               onPress={() => router.push("/settings/notification-group")}
               primary={primary}
             />

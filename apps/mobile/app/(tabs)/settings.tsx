@@ -198,14 +198,6 @@ export default function SettingsScreen() {
               primary={primary}
             />
             <Separator backgroundColor="$gray6" />
-            <SettingsItem
-              icon="flash-outline"
-              title="Triggers"
-              description="Gatilhos inteligentes"
-              onPress={() => router.push("/settings/triggers")}
-              primary={primary}
-            />
-            <Separator backgroundColor="$gray6" />
             <Pressable onPress={() => router.push("/settings/automations")}>
               <XStack padding="$4" alignItems="center" gap="$3">
                 <Ionicons name="megaphone-outline" size={24} color={theme.gray8.val} />

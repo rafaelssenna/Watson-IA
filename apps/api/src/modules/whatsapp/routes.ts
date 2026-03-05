@@ -537,4 +537,42 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
       return reply.internalServerError("Erro ao configurar Uazapi");
     }
   });
+
+  // GET /whatsapp/groups - List WhatsApp groups
+  fastify.get("/groups", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+
+    const connection = await prisma.whatsAppConnection.findFirst({
+      where: { organizationId: orgId, status: "CONNECTED" },
+      select: { uazapiToken: true },
+    });
+
+    if (!connection?.uazapiToken) {
+      return reply.badRequest("WhatsApp nao conectado");
+    }
+
+    try {
+      const response = await fetch(`${UAZAPI_BASE_URL}/group/list?noparticipants=true`, {
+        headers: { token: connection.uazapiToken },
+      });
+
+      if (!response.ok) {
+        return reply.internalServerError("Erro ao buscar grupos");
+      }
+
+      const groups = await response.json();
+
+      // Return simplified list with id, name, and picture
+      const list = (Array.isArray(groups) ? groups : []).map((g: any) => ({
+        id: g.JID || g.jid,
+        name: g.Name || g.name || "Grupo sem nome",
+        picture: g.PictureURL || g.pictureUrl || null,
+      }));
+
+      return { success: true, data: list };
+    } catch (error) {
+      fastify.log.error("Error fetching groups:", error);
+      return reply.internalServerError("Erro ao buscar grupos");
+    }
+  });
 }

@@ -216,10 +216,10 @@ async function notifyOwnerOnClose(
 
     const message = `${emoji} *${statusText}*\n\nCliente: *${contactName}*\nEtapa: ${stageName}\n\nAcesse o Watson para ver os detalhes.`;
 
-    // Get org notification phone + WhatsApp connection
+    // Get org notification phone/group + WhatsApp connection
     const org = await prisma.organization.findUnique({
       where: { id: orgId },
-      select: { notificationPhone: true },
+      select: { notificationPhone: true, notificationGroupId: true },
     });
 
     const connection = await prisma.whatsAppConnection.findFirst({
@@ -238,6 +238,12 @@ async function notifyOwnerOnClose(
     if (connection?.uazapiToken && notifyPhone) {
       await sendTextMessage(connection.uazapiToken, notifyPhone, message);
       log.info({ orgId, contactName, stage: stageName, phone: notifyPhone }, "Sent WhatsApp close notification");
+    }
+
+    // Send WhatsApp to notification group
+    if (connection?.uazapiToken && org?.notificationGroupId) {
+      await sendTextMessage(connection.uazapiToken, org.notificationGroupId, message);
+      log.info({ orgId, groupId: org.notificationGroupId }, "Sent close notification to group");
     }
 
     // Send Expo push notification to owner(s)
@@ -276,7 +282,7 @@ export async function notifyOwnerOnTransfer(
 
     const org = await prisma.organization.findUnique({
       where: { id: orgId },
-      select: { notificationPhone: true },
+      select: { notificationPhone: true, notificationGroupId: true },
     });
 
     const connection = await prisma.whatsAppConnection.findFirst({
@@ -293,6 +299,12 @@ export async function notifyOwnerOnTransfer(
     if (connection?.uazapiToken && notifyPhone) {
       await sendTextMessage(connection.uazapiToken, notifyPhone, message);
       log.info({ orgId, contactName, phone: notifyPhone }, "Sent WhatsApp transfer notification");
+    }
+
+    // Send WhatsApp to notification group
+    if (connection?.uazapiToken && org?.notificationGroupId) {
+      await sendTextMessage(connection.uazapiToken, org.notificationGroupId, message);
+      log.info({ orgId, groupId: org.notificationGroupId }, "Sent transfer notification to group");
     }
 
     for (const owner of owners) {

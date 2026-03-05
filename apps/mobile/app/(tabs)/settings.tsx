@@ -256,6 +256,14 @@ export default function SettingsScreen() {
               onPress={() => router.push("/settings/whatsapp")}
               primary={primary}
             />
+            <Separator backgroundColor="$gray6" />
+            <SettingsItem
+              icon="notifications-outline"
+              title="Grupo de Notificacoes"
+              description="Enviar alertas para um grupo do WhatsApp"
+              onPress={() => router.push("/settings/notification-group")}
+              primary={primary}
+            />
           </Card>
         </YStack>
 

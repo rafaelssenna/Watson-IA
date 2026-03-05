@@ -336,6 +336,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         subscriptionStatus: user.organization.subscriptionStatus,
         trialEndsAt: user.organization.trialEndsAt,
         notificationPhone: user.organization.notificationPhone,
+        notificationGroupId: user.organization.notificationGroupId,
       },
     };
   });
@@ -354,6 +355,23 @@ export async function authRoutes(fastify: FastifyInstance) {
       });
 
       return { success: true, data: { notificationPhone } };
+    }
+  );
+
+  // Get/Set notification group for organization
+  fastify.patch<{ Body: { notificationGroupId: string | null; notificationGroupName: string | null } }>(
+    "/notification-group",
+    { preHandler: [fastify.authenticate] },
+    async (request) => {
+      const { orgId } = request.user;
+      const { notificationGroupId, notificationGroupName } = request.body;
+
+      await prisma.organization.update({
+        where: { id: orgId },
+        data: { notificationGroupId: notificationGroupId || null },
+      });
+
+      return { success: true, data: { notificationGroupId, notificationGroupName } };
     }
   );
 

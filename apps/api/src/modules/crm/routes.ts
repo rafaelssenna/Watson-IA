@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { classifyLead, leadScoreLabels, type LeadScore, type LeadClassification } from "../../services/lead-classifier.js";
+import { fetchProfilePicUrl } from "../../services/uazapi.service.js";
 
 // Map LeadScore to Prisma ClientProfile enum
 const scoreToProfile: Record<LeadScore, string> = {
@@ -70,6 +71,13 @@ async function getContactMessages(contactId: string, orgId: string): Promise<{ r
     }));
 }
 
+// Map lead score to expected funnel stage name
+const scoreToFunnelStage: Record<LeadScore, string> = {
+  qualified: "Qualificado",
+  interested: "Novo Lead", // keep in Novo Lead until more interaction
+  new_lead: "Novo Lead",
+};
+
 async function classifyAndCache(
   contactId: string,
   orgId: string
@@ -77,10 +85,10 @@ async function classifyAndCache(
   const messages = await getContactMessages(contactId, orgId);
   const classification = await classifyLead(messages);
 
-  // Get current customFields to merge
+  // Get current contact with funnel info
   const contact = await prisma.contact.findUnique({
     where: { id: contactId },
-    select: { customFields: true },
+    select: { customFields: true, funnelId: true, funnelStageId: true },
   });
 
   const existingFields = (contact?.customFields as any) || {};
@@ -100,6 +108,33 @@ async function classifyAndCache(
       },
     },
   });
+
+  // Auto-move in funnel based on classification (only advance, never go back)
+  if (contact?.funnelId && classification.score === "qualified") {
+    try {
+      const stages = await prisma.funnelStage.findMany({
+        where: { funnelId: contact.funnelId },
+        orderBy: { order: "asc" },
+        select: { id: true, name: true, order: true },
+      });
+
+      const currentStage = stages.find((s) => s.id === contact.funnelStageId);
+      const targetStageName = scoreToFunnelStage[classification.score];
+      const targetStage = stages.find(
+        (s) => s.name.toLowerCase() === targetStageName.toLowerCase()
+      );
+
+      // Only move forward (target order > current order)
+      if (targetStage && currentStage && targetStage.order > currentStage.order) {
+        await prisma.contact.update({
+          where: { id: contactId },
+          data: { funnelStageId: targetStage.id },
+        });
+      }
+    } catch {
+      // Non-critical, don't fail the classification
+    }
+  }
 
   return classification;
 }
@@ -134,6 +169,8 @@ export async function crmRoutes(fastify: FastifyInstance) {
         name: true,
         pushName: true,
         phone: true,
+        waId: true,
+        profilePicUrl: true,
         leadScore: true,
         clientProfile: true,
         customFields: true,
@@ -168,6 +205,7 @@ export async function crmRoutes(fastify: FastifyInstance) {
         id: contact.id,
         customerPhone: contact.phone,
         customerName: contact.name || contact.pushName || contact.phone || "Desconhecido",
+        profilePicUrl: contact.profilePicUrl || null,
         lastMessage: lastMsg?.content || null,
         lastMessageAt: lastMsg?.createdAt || contact.lastInteractionAt,
         messageCount: contact._count.conversations,
@@ -209,6 +247,33 @@ export async function crmRoutes(fastify: FastifyInstance) {
           )
         )
       );
+    }
+
+    // Sync profile photos in background for contacts without avatar (max 10)
+    const needsPhoto = allContacts
+      .filter((c) => !c.profilePicUrl && c.waId)
+      .slice(0, 10);
+
+    if (needsPhoto.length > 0) {
+      const connection = await prisma.whatsAppConnection.findFirst({
+        where: { organizationId: orgId, status: "CONNECTED" },
+        select: { uazapiToken: true },
+      });
+
+      if (connection?.uazapiToken) {
+        for (const c of needsPhoto) {
+          fetchProfilePicUrl(connection.uazapiToken, c.waId!)
+            .then(async (picUrl) => {
+              if (picUrl) {
+                await prisma.contact.update({
+                  where: { id: c.id },
+                  data: { profilePicUrl: picUrl },
+                });
+              }
+            })
+            .catch(() => {});
+        }
+      }
     }
 
     return {

@@ -560,10 +560,13 @@ export async function whatsappRoutes(fastify: FastifyInstance) {
         return reply.internalServerError("Erro ao buscar grupos");
       }
 
-      const groups = await response.json();
+      const data = await response.json();
+
+      // UAZAPI returns { groups: [...] } not a direct array
+      const groups = Array.isArray(data) ? data : (data?.groups || []);
 
       // Return simplified list with id, name, and picture
-      const list = (Array.isArray(groups) ? groups : []).map((g: any) => ({
+      const list = groups.map((g: any) => ({
         id: g.JID || g.jid,
         name: g.Name || g.name || "Grupo sem nome",
         picture: g.PictureURL || g.pictureUrl || null,

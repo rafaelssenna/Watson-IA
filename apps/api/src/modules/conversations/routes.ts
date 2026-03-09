@@ -14,7 +14,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       limit: query.limit,
     });
 
-    const where: any = { organizationId: orgId };
+    const where: any = { organizationId: orgId, aiActivated: true };
 
     // Filters
     if (query.status) where.status = query.status;

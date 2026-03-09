@@ -150,17 +150,12 @@ export async function crmRoutes(fastify: FastifyInstance) {
     const scoreFilter = query.score as string | undefined;
     const search = query.search?.trim();
 
-    // Build filter — only contacts whose conversations had AI participation
+    // Build filter — only contacts whose conversations had AI activated
     const where: any = {
       organizationId: orgId,
       status: "ACTIVE",
       conversations: {
-        some: {
-          OR: [
-            { messages: { some: { isAiGenerated: true } } },
-            { lastAiAction: { not: null } },
-          ],
-        },
+        some: { aiActivated: true },
       },
     };
 
@@ -369,12 +364,7 @@ export async function crmRoutes(fastify: FastifyInstance) {
         organizationId: orgId,
         status: "ACTIVE",
         conversations: {
-          some: {
-            OR: [
-              { messages: { some: { isAiGenerated: true } } },
-              { lastAiAction: { not: null } },
-            ],
-          },
+          some: { aiActivated: true },
         },
       },
       select: {

@@ -1,12 +1,9 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 
-// Filter: only conversations where the AI participated (replied or took action)
+// Filter: only conversations where the AI was activated by the trigger command
 const aiParticipated = {
-  OR: [
-    { messages: { some: { isAiGenerated: true } } },
-    { lastAiAction: { not: null } },
-  ],
+  aiActivated: true,
 };
 
 export async function dashboardRoutes(fastify: FastifyInstance) {
@@ -373,9 +370,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       INNER JOIN "Conversation" c ON m."conversationId" = c."id"
       WHERE m."organizationId" = ${orgId}
         AND m."createdAt" >= ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
-        AND (c."lastAiAction" IS NOT NULL OR EXISTS (
-          SELECT 1 FROM "Message" m2 WHERE m2."conversationId" = c."id" AND m2."isAiGenerated" = true
-        ))
+        AND c."aiActivated" = true
       GROUP BY EXTRACT(HOUR FROM m."createdAt" AT TIME ZONE 'America/Sao_Paulo')
       ORDER BY hour
     `;
@@ -395,9 +390,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       INNER JOIN "Conversation" c ON m."conversationId" = c."id"
       WHERE m."organizationId" = ${orgId}
         AND m."createdAt" >= ${msgsPerDayStart}
-        AND (c."lastAiAction" IS NOT NULL OR EXISTS (
-          SELECT 1 FROM "Message" m2 WHERE m2."conversationId" = c."id" AND m2."isAiGenerated" = true
-        ))
+        AND c."aiActivated" = true
       GROUP BY DATE(m."createdAt" AT TIME ZONE 'America/Sao_Paulo'), m."direction"
       ORDER BY date
     `;

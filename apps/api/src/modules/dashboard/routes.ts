@@ -6,8 +6,11 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
   fastify.get("/summary", { preHandler: [fastify.authenticate] }, async (request) => {
     const { orgId } = request.user;
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Use BRT (UTC-3) for date boundaries so "today" matches Brazil time
+    const nowBRT = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const todayBRT = new Date(nowBRT.getFullYear(), nowBRT.getMonth(), nowBRT.getDate());
+    // Convert to UTC for DB queries (add 3h)
+    const today = new Date(todayBRT.getTime() + 3 * 60 * 60 * 1000);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -248,18 +251,21 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
     const { orgId } = request.user;
     const { period } = request.query as { period?: string };
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Use BRT (UTC-3) for date boundaries so "today" matches Brazil time
+    const nowBRT = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const today = new Date(nowBRT.getFullYear(), nowBRT.getMonth(), nowBRT.getDate());
+    // Convert back to UTC for DB queries (add 3h offset)
+    const todayUTC = new Date(today.getTime() + 3 * 60 * 60 * 1000);
     let startDate: Date;
 
     if (period === "7d") {
-      startDate = new Date(today);
+      startDate = new Date(todayUTC);
       startDate.setDate(startDate.getDate() - 7);
     } else if (period === "30d") {
-      startDate = new Date(today);
+      startDate = new Date(todayUTC);
       startDate.setDate(startDate.getDate() - 30);
     } else {
-      startDate = today;
+      startDate = todayUTC;
     }
 
     const dateFilter = { gte: startDate };
@@ -339,13 +345,13 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       : 0;
     const responseRate = inboundCount > 0 ? Math.round((respondedCount / inboundCount) * 100) : 100;
 
-    // Peak hours (last 24h) - raw SQL for grouping by hour
+    // Peak hours (last 24h) - raw SQL for grouping by hour (BRT timezone)
     const peakHoursRaw = await prisma.$queryRaw<Array<{ hour: number; count: bigint }>>`
-      SELECT EXTRACT(HOUR FROM "createdAt") as hour, COUNT(*) as count
+      SELECT EXTRACT(HOUR FROM "createdAt" AT TIME ZONE 'America/Sao_Paulo') as hour, COUNT(*) as count
       FROM "Message"
       WHERE "organizationId" = ${orgId}
         AND "createdAt" >= ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
-      GROUP BY EXTRACT(HOUR FROM "createdAt")
+      GROUP BY EXTRACT(HOUR FROM "createdAt" AT TIME ZONE 'America/Sao_Paulo')
       ORDER BY hour
     `;
     const peakHours = peakHoursRaw.map((r) => ({
@@ -359,23 +365,25 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
     msgsPerDayStart.setDate(msgsPerDayStart.getDate() - daysCount);
 
     const msgsPerDayRaw = await prisma.$queryRaw<Array<{ date: Date; direction: string; count: bigint }>>`
-      SELECT DATE("createdAt") as date, "direction", COUNT(*) as count
+      SELECT DATE("createdAt" AT TIME ZONE 'America/Sao_Paulo') as date, "direction", COUNT(*) as count
       FROM "Message"
       WHERE "organizationId" = ${orgId}
         AND "createdAt" >= ${msgsPerDayStart}
-      GROUP BY DATE("createdAt"), "direction"
+      GROUP BY DATE("createdAt" AT TIME ZONE 'America/Sao_Paulo'), "direction"
       ORDER BY date
     `;
 
     const dayMap = new Map<string, { date: string; inbound: number; outbound: number }>();
     for (let i = 0; i < daysCount; i++) {
-      const d = new Date(msgsPerDayStart);
-      d.setDate(d.getDate() + i + 1);
-      const key = d.toISOString().split("T")[0];
+      // Generate day labels in BRT
+      const d = new Date(today);
+      d.setDate(d.getDate() - daysCount + i + 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       dayMap.set(key, { date: key, inbound: 0, outbound: 0 });
     }
     for (const row of msgsPerDayRaw) {
-      const key = new Date(row.date).toISOString().split("T")[0];
+      const rd = new Date(row.date);
+      const key = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, "0")}-${String(rd.getDate()).padStart(2, "0")}`;
       const entry = dayMap.get(key);
       if (entry) {
         if (row.direction === "INBOUND") entry.inbound = Number(row.count);

@@ -235,3 +235,17 @@ export const darkTheme = {
 };
 
 export type ThemeColors = typeof lightTheme;
+
+// Cores de status para leads/CRM (usadas em crm, insights, conversations)
+export const statusColors = {
+  qualified: watsonColors.success[500],   // #22c55e
+  interested: watsonColors.warning[500],  // #f59e0b
+  new_lead: watsonColors.info[500],       // #06b6d4
+  blue: "#3b82f6",
+};
+
+// Cores de tendencia
+export const trendColors = {
+  up: watsonColors.success[500],   // #22c55e
+  down: watsonColors.error[500],   // #ef4444
+};

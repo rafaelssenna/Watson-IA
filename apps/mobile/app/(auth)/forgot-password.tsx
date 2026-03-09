@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link, router } from "expo-router";
-import { Alert, Pressable } from "react-native";
-import { YStack, XStack, Text, Input, Button, Spinner, useTheme } from "tamagui";
-import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { Alert, StyleSheet, View, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import { YStack, XStack, Text, Input, Button, Spinner } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
 
@@ -17,7 +17,6 @@ export default function ForgotPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const theme = useTheme();
   const { gradient, primary } = useAppColors();
 
   const handleRequestCode = async () => {
@@ -31,7 +30,7 @@ export default function ForgotPasswordScreen() {
       await api.post("/auth/forgot-password", { email: email.toLowerCase().trim() });
       setStep("code");
     } catch (error: any) {
-      Alert.alert("Erro", error?.message || "Nao foi possivel enviar o codigo");
+      Alert.alert("Erro", error?.message || "Não foi possível enviar o código");
     } finally {
       setIsLoading(false);
     }
@@ -39,7 +38,7 @@ export default function ForgotPasswordScreen() {
 
   const handleVerifyCode = async () => {
     if (!code || code.length !== 6) {
-      Alert.alert("Erro", "Digite o codigo de 6 digitos");
+      Alert.alert("Erro", "Digite o código de 6 dígitos");
       return;
     }
 
@@ -51,7 +50,7 @@ export default function ForgotPasswordScreen() {
       });
       setStep("password");
     } catch (error: any) {
-      Alert.alert("Erro", error?.message || "Codigo invalido ou expirado");
+      Alert.alert("Erro", error?.message || "Código inválido ou expirado");
     } finally {
       setIsLoading(false);
     }
@@ -59,12 +58,12 @@ export default function ForgotPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      Alert.alert("Erro", "Senha deve ter no minimo 6 caracteres");
+      Alert.alert("Erro", "Senha deve ter no mínimo 6 caracteres");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Erro", "As senhas nao conferem");
+      Alert.alert("Erro", "As senhas não conferem");
       return;
     }
 
@@ -79,233 +78,279 @@ export default function ForgotPasswordScreen() {
         { text: "OK", onPress: () => router.replace("/(auth)/login") },
       ]);
     } catch (error: any) {
-      Alert.alert("Erro", error?.message || "Nao foi possivel alterar a senha");
+      Alert.alert("Erro", error?.message || "Não foi possível alterar a senha");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 1: Email
-  if (step === "email") {
-    return (
-      <YStack flex={1} padding="$6" justifyContent="center" backgroundColor="$background">
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={theme.color.val} />
-        </Pressable>
+  const getHeaderTitle = () => {
+    if (step === "email") return "Esqueceu a senha?";
+    if (step === "code") return "Verificar código";
+    return "Nova senha";
+  };
 
-        <LinearGradient
-          colors={gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            marginTop: 24,
-            paddingHorizontal: 24,
-            paddingVertical: 24,
-            borderRadius: 20,
-          }}
-        >
-          <Text fontSize={28} fontWeight="bold" color="white">
-            Esqueceu a senha?
-          </Text>
-          <Text color="rgba(255,255,255,0.85)" marginTop="$2" fontSize={15}>
-            Digite seu email e enviaremos um codigo de 6 digitos para recuperar sua senha.
-          </Text>
-        </LinearGradient>
+  const getHeaderSubtitle = () => {
+    if (step === "email") return "Digite seu email e enviaremos um código de 6 dígitos.";
+    if (step === "code") return `Enviamos um código para ${email}`;
+    return "Crie uma nova senha para sua conta.";
+  };
 
-        <YStack gap="$4" marginTop="$8">
-          <YStack>
-            <Text marginBottom="$1" fontSize="$3" color="$gray8">
-              Email
-            </Text>
-            <Input
-              value={email}
-              onChangeText={setEmail}
-              placeholder="seu@email.com"
-              placeholderTextColor={theme.gray7.val}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              size="$4"
-              backgroundColor="$backgroundStrong"
-              borderColor="$gray6"
-              color="$color"
-            />
-          </YStack>
+  const handleBack = () => {
+    if (step === "email") router.back();
+    else if (step === "code") setStep("email");
+    else setStep("code");
+  };
 
-          <Button
-            onPress={handleRequestCode}
-            disabled={isLoading || !email}
-            size="$5"
-            backgroundColor={primary}
-            pressStyle={{ opacity: 0.9 }}
-            marginTop="$4"
-          >
-            {isLoading ? (
-              <Spinner color="white" />
-            ) : (
-              <Text color="white" fontWeight="600">Enviar Codigo</Text>
-            )}
-          </Button>
-        </YStack>
-      </YStack>
-    );
-  }
-
-  // Step 2: Code
-  if (step === "code") {
-    return (
-      <YStack flex={1} padding="$6" justifyContent="center" backgroundColor="$background">
-        <Pressable onPress={() => setStep("email")}>
-          <Ionicons name="arrow-back" size={24} color={theme.color.val} />
-        </Pressable>
-
-        <YStack marginTop="$6" alignItems="center">
-          <YStack
-            width={80}
-            height={80}
-            borderRadius={40}
-            backgroundColor={`${primary}20`}
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Ionicons name="mail-open-outline" size={40} color={primary} />
-          </YStack>
-
-          <Text fontSize={24} fontWeight="bold" color="$color" marginTop="$4">
-            Verifique seu email
-          </Text>
-          <Text color="$gray8" marginTop="$2" fontSize={15} textAlign="center">
-            Enviamos um codigo de 6 digitos para{"\n"}
-            <Text fontWeight="600" color="$color">{email}</Text>
-          </Text>
-        </YStack>
-
-        <YStack gap="$4" marginTop="$8">
-          <YStack>
-            <Text marginBottom="$1" fontSize="$3" color="$gray8" textAlign="center">
-              Codigo de verificacao
-            </Text>
-            <Input
-              value={code}
-              onChangeText={(text) => setCode(text.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              placeholderTextColor={theme.gray7.val}
-              keyboardType="number-pad"
-              maxLength={6}
-              size="$5"
-              backgroundColor="$backgroundStrong"
-              borderColor="$gray6"
-              color="$color"
-              textAlign="center"
-              letterSpacing={8}
-              fontSize={24}
-              fontWeight="bold"
-            />
-          </YStack>
-
-          <Button
-            onPress={handleVerifyCode}
-            disabled={isLoading || code.length !== 6}
-            size="$5"
-            backgroundColor={primary}
-            pressStyle={{ opacity: 0.9 }}
-            marginTop="$2"
-          >
-            {isLoading ? (
-              <Spinner color="white" />
-            ) : (
-              <Text color="white" fontWeight="600">Verificar Codigo</Text>
-            )}
-          </Button>
-
-          <Pressable onPress={handleRequestCode}>
-            <Text color={primary} textAlign="center" marginTop="$2" fontSize={14}>
-              Reenviar codigo
-            </Text>
-          </Pressable>
-        </YStack>
-      </YStack>
-    );
-  }
-
-  // Step 3: New Password
   return (
-    <YStack flex={1} padding="$6" justifyContent="center" backgroundColor="$background">
-      <Pressable onPress={() => setStep("code")}>
-        <Ionicons name="arrow-back" size={24} color={theme.color.val} />
-      </Pressable>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1, backgroundColor: gradient[0] }}
+    >
+      {/* Gradient header — clean */}
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+            <Text style={styles.headerSubtitle}>{getHeaderSubtitle()}</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-      <YStack marginTop="$6">
-        <Text fontSize={28} fontWeight="bold" color="$color">
-          Nova senha
-        </Text>
-        <Text color="$gray8" marginTop="$2" fontSize={15}>
-          Crie uma nova senha para sua conta.
-        </Text>
-      </YStack>
-
-      <YStack gap="$4" marginTop="$8">
-        <YStack>
-          <Text marginBottom="$1" fontSize="$3" color="$gray8">
-            Nova senha
-          </Text>
-          <XStack alignItems="center">
-            <Input
-              flex={1}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Minimo 6 caracteres"
-              placeholderTextColor={theme.gray7.val}
-              secureTextEntry={!showPassword}
-              size="$4"
-              backgroundColor="$backgroundStrong"
-              borderColor="$gray6"
-              color="$color"
-            />
-            <Pressable
-              onPress={() => setShowPassword(!showPassword)}
-              style={{ position: "absolute", right: 12 }}
-            >
-              <Ionicons
-                name={showPassword ? "eye-off-outline" : "eye-outline"}
-                size={20}
-                color={theme.gray7.val}
+      {/* Card */}
+      <View style={styles.card}>
+        {/* Step 1: Email */}
+        {step === "email" && (
+          <YStack gap="$3">
+            <YStack>
+              <Text style={styles.label}>Email</Text>
+              <Input
+                value={email}
+                onChangeText={setEmail}
+                placeholder="seu@email.com"
+                placeholderTextColor="#999"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                size="$4"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
-            </Pressable>
-          </XStack>
-        </YStack>
+            </YStack>
 
-        <YStack>
-          <Text marginBottom="$1" fontSize="$3" color="$gray8">
-            Confirmar senha
-          </Text>
-          <Input
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Repita a senha"
-            placeholderTextColor={theme.gray7.val}
-            secureTextEntry={!showPassword}
-            size="$4"
-            backgroundColor="$backgroundStrong"
-            borderColor="$gray6"
-            color="$color"
-          />
-        </YStack>
+            <Button
+              onPress={handleRequestCode}
+              disabled={isLoading || !email}
+              size="$5"
+              backgroundColor={primary}
+              pressStyle={{ opacity: 0.8 }}
+              marginTop="$2"
+              borderRadius={14}
+            >
+              {isLoading ? (
+                <Spinner color="white" />
+              ) : (
+                <Text color="white" fontWeight="700" fontSize={16}>
+                  Enviar Código
+                </Text>
+              )}
+            </Button>
+          </YStack>
+        )}
 
-        <Button
-          onPress={handleResetPassword}
-          disabled={isLoading || !newPassword || !confirmPassword}
-          size="$5"
-          backgroundColor={primary}
-          pressStyle={{ opacity: 0.9 }}
-          marginTop="$4"
-        >
-          {isLoading ? (
-            <Spinner color="white" />
-          ) : (
-            <Text color="white" fontWeight="600">Alterar Senha</Text>
-          )}
-        </Button>
-      </YStack>
-    </YStack>
+        {/* Step 2: Code */}
+        {step === "code" && (
+          <YStack gap="$3">
+            <YStack alignItems="center" marginBottom="$2">
+              <View style={[styles.iconCircle, { backgroundColor: `${primary}18` }]}>
+                <Ionicons name="mail-open-outline" size={40} color={primary} />
+              </View>
+            </YStack>
+
+            <YStack>
+              <Text style={[styles.label, { textAlign: "center" }]}>Código de verificação</Text>
+              <Input
+                value={code}
+                onChangeText={(text) => setCode(text.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                placeholderTextColor="#999"
+                keyboardType="number-pad"
+                maxLength={6}
+                size="$5"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
+                textAlign="center"
+                letterSpacing={8}
+                fontSize={24}
+                fontWeight="bold"
+              />
+            </YStack>
+
+            <Button
+              onPress={handleVerifyCode}
+              disabled={isLoading || code.length !== 6}
+              size="$5"
+              backgroundColor={primary}
+              pressStyle={{ opacity: 0.8 }}
+              marginTop="$2"
+              borderRadius={14}
+            >
+              {isLoading ? (
+                <Spinner color="white" />
+              ) : (
+                <Text color="white" fontWeight="700" fontSize={16}>
+                  Verificar Código
+                </Text>
+              )}
+            </Button>
+
+            <TouchableOpacity onPress={handleRequestCode}>
+              <Text color={primary} textAlign="center" marginTop="$2" fontSize={14}>
+                Reenviar código
+              </Text>
+            </TouchableOpacity>
+          </YStack>
+        )}
+
+        {/* Step 3: New Password */}
+        {step === "password" && (
+          <YStack gap="$3">
+            <YStack>
+              <Text style={styles.label}>Nova senha</Text>
+              <XStack alignItems="center">
+                <Input
+                  flex={1}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Mínimo 6 caracteres"
+                  placeholderTextColor="#999"
+                  secureTextEntry={!showPassword}
+                  size="$4"
+                  backgroundColor="#f8f8f8"
+                  borderColor="#e0e0e0"
+                  borderWidth={1}
+                  borderRadius={12}
+                  color="#000"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={{ position: "absolute", right: 12 }}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#999"
+                  />
+                </TouchableOpacity>
+              </XStack>
+            </YStack>
+
+            <YStack>
+              <Text style={styles.label}>Confirmar senha</Text>
+              <Input
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Repita a senha"
+                placeholderTextColor="#999"
+                secureTextEntry={!showPassword}
+                size="$4"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
+              />
+            </YStack>
+
+            <Button
+              onPress={handleResetPassword}
+              disabled={isLoading || !newPassword || !confirmPassword}
+              size="$5"
+              backgroundColor={primary}
+              pressStyle={{ opacity: 0.8 }}
+              marginTop="$2"
+              borderRadius={14}
+            >
+              {isLoading ? (
+                <Spinner color="white" />
+              ) : (
+                <Text color="white" fontWeight="700" fontSize={16}>
+                  Alterar Senha
+                </Text>
+              )}
+            </Button>
+          </YStack>
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    height: 160,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+    paddingBottom: 24,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 4,
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    marginTop: -20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 6,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

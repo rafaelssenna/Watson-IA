@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { ScrollView, KeyboardAvoidingView, Platform, StyleSheet, View, TouchableOpacity } from "react-native";
 import { Link, router } from "expo-router";
-import { YStack, XStack, H1, Text, Input, Button, Spinner, Checkbox, Label, useTheme } from "tamagui";
+import { YStack, XStack, Text, Input, Button, Spinner, Checkbox, Label } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "@/stores/authStore";
 import { useAppColors } from "@/hooks/useAppColors";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
@@ -17,7 +18,6 @@ export default function RegisterScreen() {
     acceptTerms: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const theme = useTheme();
   const { gradient, primary } = useAppColors();
 
   const { register, isLoading } = useAuthStore();
@@ -30,14 +30,14 @@ export default function RegisterScreen() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name) newErrors.name = "Nome obrigatorio";
-    if (!formData.email) newErrors.email = "Email obrigatorio";
-    if (!formData.organizationName) newErrors.organizationName = "Nome da empresa obrigatorio";
+    if (!formData.name) newErrors.name = "Nome obrigatório";
+    if (!formData.email) newErrors.email = "Email obrigatório";
+    if (!formData.organizationName) newErrors.organizationName = "Nome da empresa obrigatório";
     if (formData.password.length < 8) {
-      newErrors.password = "Senha deve ter no minimo 8 caracteres";
+      newErrors.password = "Senha deve ter no mínimo 8 caracteres";
     }
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Senhas nao conferem";
+      newErrors.confirmPassword = "Senhas não conferem";
     }
     if (!formData.acceptTerms) {
       newErrors.acceptTerms = "Aceite os termos para continuar";
@@ -61,144 +61,143 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: theme.background.val }}
+      style={{ flex: 1, backgroundColor: gradient[0] }}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        style={{ backgroundColor: theme.background.val }}
+      {/* Gradient header — clean */}
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
       >
-        <YStack flex={1} padding="$6" paddingTop="$10" backgroundColor="$background">
-          <LinearGradient
-            colors={gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              paddingHorizontal: 24,
-              paddingVertical: 24,
-              borderRadius: 20,
-              marginBottom: 24,
-            }}
-          >
-            <H1 color="white">Criar Conta</H1>
-            <Text color="rgba(255,255,255,0.85)">
-              Comece seu teste gratuito de 7 dias
-            </Text>
-          </LinearGradient>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Criar Conta</Text>
+        </View>
+      </LinearGradient>
 
-          <YStack gap="$4">
+      {/* Card with form */}
+      <View style={styles.card}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        >
+          <YStack gap="$3">
             <YStack>
-              <Text marginBottom="$1" fontSize="$3" color="$gray8">
-                Seu nome
-              </Text>
+              <Text style={styles.label}>Nome</Text>
               <Input
                 value={formData.name}
                 onChangeText={(v) => updateField("name", v)}
-                placeholder="Joao Silva"
-                placeholderTextColor={theme.gray7.val}
+                placeholder="João Silva"
+                placeholderTextColor="#999"
                 size="$4"
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
-                color="$color"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
               {errors.name && (
-                <Text color="$red10" fontSize="$2">{errors.name}</Text>
+                <Text color="#c62828" fontSize={12} marginTop="$1">{errors.name}</Text>
               )}
             </YStack>
 
             <YStack>
-              <Text marginBottom="$1" fontSize="$3" color="$gray8">
-                Email
-              </Text>
+              <Text style={styles.label}>Email</Text>
               <Input
                 value={formData.email}
                 onChangeText={(v) => updateField("email", v)}
                 placeholder="seu@email.com"
-                placeholderTextColor={theme.gray7.val}
+                placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 size="$4"
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
-                color="$color"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
               {errors.email && (
-                <Text color="$red10" fontSize="$2">{errors.email}</Text>
+                <Text color="#c62828" fontSize={12} marginTop="$1">{errors.email}</Text>
               )}
             </YStack>
 
             <YStack>
-              <Text marginBottom="$1" fontSize="$3" color="$gray8">
-                Telefone (WhatsApp)
-              </Text>
+              <Text style={styles.label}>Telefone (WhatsApp)</Text>
               <Input
                 value={formData.phone}
                 onChangeText={(v) => updateField("phone", v)}
                 placeholder="(11) 99999-9999"
-                placeholderTextColor={theme.gray7.val}
+                placeholderTextColor="#999"
                 keyboardType="phone-pad"
                 size="$4"
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
-                color="$color"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
             </YStack>
 
             <YStack>
-              <Text marginBottom="$1" fontSize="$3" color="$gray8">
-                Nome da Empresa
-              </Text>
+              <Text style={styles.label}>Nome da Empresa</Text>
               <Input
                 value={formData.organizationName}
                 onChangeText={(v) => updateField("organizationName", v)}
                 placeholder="Minha Empresa LTDA"
-                placeholderTextColor={theme.gray7.val}
+                placeholderTextColor="#999"
                 size="$4"
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
-                color="$color"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
               {errors.organizationName && (
-                <Text color="$red10" fontSize="$2">{errors.organizationName}</Text>
+                <Text color="#c62828" fontSize={12} marginTop="$1">{errors.organizationName}</Text>
               )}
             </YStack>
 
             <YStack>
-              <Text marginBottom="$1" fontSize="$3" color="$gray8">
-                Senha
-              </Text>
+              <Text style={styles.label}>Senha</Text>
               <Input
                 value={formData.password}
                 onChangeText={(v) => updateField("password", v)}
-                placeholder="Minimo 8 caracteres"
-                placeholderTextColor={theme.gray7.val}
+                placeholder="Mínimo 8 caracteres"
+                placeholderTextColor="#999"
                 secureTextEntry
                 size="$4"
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
-                color="$color"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
               {errors.password && (
-                <Text color="$red10" fontSize="$2">{errors.password}</Text>
+                <Text color="#c62828" fontSize={12} marginTop="$1">{errors.password}</Text>
               )}
             </YStack>
 
             <YStack>
-              <Text marginBottom="$1" fontSize="$3" color="$gray8">
-                Confirmar Senha
-              </Text>
+              <Text style={styles.label}>Confirmar Senha</Text>
               <Input
                 value={formData.confirmPassword}
                 onChangeText={(v) => updateField("confirmPassword", v)}
                 placeholder="Confirme sua senha"
-                placeholderTextColor={theme.gray7.val}
+                placeholderTextColor="#999"
                 secureTextEntry
                 size="$4"
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
-                color="$color"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
+                borderWidth={1}
+                borderRadius={12}
+                color="#000"
               />
               {errors.confirmPassword && (
-                <Text color="$red10" fontSize="$2">{errors.confirmPassword}</Text>
+                <Text color="#c62828" fontSize={12} marginTop="$1">{errors.confirmPassword}</Text>
               )}
             </YStack>
 
@@ -207,23 +206,33 @@ export default function RegisterScreen() {
                 id="terms"
                 checked={formData.acceptTerms}
                 onCheckedChange={(v) => updateField("acceptTerms", v)}
-                backgroundColor="$backgroundStrong"
-                borderColor="$gray6"
+                backgroundColor="#f8f8f8"
+                borderColor="#e0e0e0"
               >
                 <Checkbox.Indicator>
                   <Text color={primary}>✓</Text>
                 </Checkbox.Indicator>
               </Checkbox>
-              <Label htmlFor="terms" fontSize="$2" color="$gray8">
-                Li e aceito os Termos de Uso e Politica de Privacidade
+              <Label htmlFor="terms" fontSize={12} color="#666">
+                Li e aceito os Termos de Uso e Política de Privacidade
               </Label>
             </XStack>
             {errors.acceptTerms && (
-              <Text color="$red10" fontSize="$2">{errors.acceptTerms}</Text>
+              <Text color="#c62828" fontSize={12}>{errors.acceptTerms}</Text>
             )}
 
             {errors.general && (
-              <Text color="$red10" textAlign="center">{errors.general}</Text>
+              <YStack
+                backgroundColor="#fde8e8"
+                borderRadius={12}
+                padding="$3"
+                borderWidth={1}
+                borderColor="#ef5350"
+              >
+                <Text color="#c62828" textAlign="center" fontWeight="600" fontSize={13}>
+                  {errors.general}
+                </Text>
+              </YStack>
             )}
 
             <Button
@@ -231,22 +240,73 @@ export default function RegisterScreen() {
               disabled={isLoading}
               size="$5"
               backgroundColor={primary}
-              pressStyle={{ opacity: 0.9 }}
+              pressStyle={{ opacity: 0.8 }}
               marginTop="$2"
-              borderRadius="$4"
+              borderRadius={14}
             >
-              {isLoading ? <Spinner color="white" /> : <Text color="white" fontWeight="600" fontSize="$4">Criar Conta Gratuita</Text>}
+              {isLoading ? (
+                <Spinner color="white" />
+              ) : (
+                <Text color="white" fontWeight="700" fontSize={16}>
+                  Criar Conta
+                </Text>
+              )}
             </Button>
 
             <XStack justifyContent="center" marginTop="$4">
-              <Text color="$gray8">Ja tem conta? </Text>
+              <Text color="#666" fontSize={14}>Já tem conta? </Text>
               <Link href="/(auth)/login" asChild>
-                <Text color={primary} fontWeight="600">Entrar</Text>
+                <Text color={primary} fontWeight="700" fontSize={14}>
+                  Entrar
+                </Text>
               </Link>
             </XStack>
           </YStack>
-        </YStack>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    height: 140,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+    paddingBottom: 24,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    marginTop: -20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 6,
+  },
+});

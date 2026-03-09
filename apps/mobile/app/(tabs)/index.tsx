@@ -4,6 +4,7 @@ import { YStack, XStack, H2, Text, Card, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
+import { watsonColors, trendColors } from "@/theme/colors";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
@@ -66,43 +67,43 @@ export default function DashboardScreen() {
         <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
       }
     >
-      <YStack gap="$4">
+      <YStack gap="$3">
         {/* Main Stats */}
-        <XStack flexWrap="wrap" gap="$3">
+        <XStack flexWrap="wrap" gap="$2">
           <StatCard
             title="Conversas Ativas"
             value={data?.activeConversations || 0}
             icon="chatbubbles-outline"
-            color="$teal10"
+            color={primary}
           />
           <StatCard
             title="Intencao de Compra"
             value={data?.purchaseIntentCount || 0}
             icon="cart-outline"
-            color="$green10"
+            color={watsonColors.success[500]}
           />
           <StatCard
             title="Urgentes"
             value={data?.urgentCount || 0}
             icon="flame-outline"
-            color="$red10"
+            color={watsonColors.error[500]}
             highlight={data?.urgentCount ? data.urgentCount > 0 : false}
           />
           <StatCard
             title="Esfriando"
             value={data?.coolingCount || 0}
             icon="snow-outline"
-            color="$yellow10"
+            color={watsonColors.warning[500]}
           />
         </XStack>
 
         {/* Response Stats */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <H2 fontSize="$5" marginBottom="$3" color="$color">Metricas de Resposta</H2>
+        <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$2" color="$color">Metricas de Resposta</H2>
           <XStack gap="$6">
             <YStack>
               <Text color="$gray8" fontSize="$2">Taxa de Resposta</Text>
-              <Text fontSize="$7" fontWeight="bold" color="$green10">
+              <Text fontSize="$7" fontWeight="bold" color={watsonColors.success[500]}>
                 {data?.responseRate || 0}%
               </Text>
             </YStack>
@@ -117,7 +118,7 @@ export default function DashboardScreen() {
 
         {/* Alerts */}
         {(data?.hotLeadsNotResponded ?? 0) > 0 && (
-          <Card padding="$4" backgroundColor="$red10" borderRadius="$4">
+          <Card padding="$3" backgroundColor="$red10" borderRadius="$4">
             <XStack alignItems="center" gap="$3">
               <Ionicons name="warning-outline" size={24} color="white" />
               <YStack flex={1}>
@@ -133,8 +134,8 @@ export default function DashboardScreen() {
         )}
 
         {/* Today's Summary */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <H2 fontSize="$5" marginBottom="$3" color="$color">Resumo de Hoje</H2>
+        <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <H2 fontSize="$5" marginBottom="$2" color="$color">Resumo de Hoje</H2>
           <XStack justifyContent="space-between">
             <YStack alignItems="center">
               <Text fontSize="$8" fontWeight="bold" color="$color">
@@ -156,7 +157,7 @@ export default function DashboardScreen() {
                 <Ionicons
                   name={(data?.conversationTrend ?? 0) >= 0 ? "arrow-up" : "arrow-down"}
                   size={20}
-                  color={(data?.conversationTrend ?? 0) >= 0 ? "#22c55e" : "#ef4444"}
+                  color={(data?.conversationTrend ?? 0) >= 0 ? trendColors.up : trendColors.down}
                 />
               </XStack>
               <Text color="$gray8" fontSize="$2">vs Ontem</Text>
@@ -182,29 +183,17 @@ function StatCard({
   highlight?: boolean;
 }) {
   const theme = useTheme();
-  const { primary } = useAppColors();
-
-  // Map tamagui colors to hex (Watson IA brand)
-  const colorMap: Record<string, string> = {
-    "$teal10": primary,
-    "$blue10": primary,
-    "$green10": "#22c55e",
-    "$red10": "#ef4444",
-    "$yellow10": "#eab308",
-  };
-
-  const iconColor = highlight ? "white" : (colorMap[color] || theme.gray8.val);
 
   return (
     <Card
       flex={1}
       minWidth={150}
-      padding="$4"
-      backgroundColor={highlight ? color : "$backgroundStrong"}
+      padding="$3"
+      backgroundColor={highlight ? "$red10" : "$backgroundStrong"}
       borderRadius="$4"
     >
-      <XStack alignItems="center" gap="$2" marginBottom="$2">
-        <Ionicons name={icon} size={18} color={iconColor} />
+      <XStack alignItems="center" gap="$2" marginBottom="$1">
+        <Ionicons name={icon} size={18} color={highlight ? "white" : color} />
         <Text
           fontSize="$2"
           color={highlight ? "white" : "$gray8"}

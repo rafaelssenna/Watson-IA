@@ -1,10 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { FlatList, RefreshControl, Pressable } from "react-native";
 import { router } from "expo-router";
-import { YStack, XStack, Text, Input, Card, useTheme } from "tamagui";
+import { YStack, XStack, Text, Card, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
+import { FilterChip } from "@/components/shared/FilterChip";
+import { MiniStat } from "@/components/shared/MiniStat";
+import { SearchBar } from "@/components/shared/SearchBar";
+import { formatTime } from "@/utils/formatters";
+import { statusColors, watsonColors } from "@/theme/colors";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 type ScoreFilter = "all" | "qualified" | "interested" | "new_lead";
@@ -38,9 +43,9 @@ interface Counts {
 }
 
 const SCORE_COLORS: Record<string, string> = {
-  qualified: "#22c55e",
-  interested: "#eab308",
-  new_lead: "#3b82f6",
+  qualified: statusColors.qualified,
+  interested: statusColors.interested,
+  new_lead: statusColors.blue,
 };
 
 const SCORE_ICONS: Record<string, IoniconsName> = {
@@ -142,10 +147,10 @@ export default function CRMScreen() {
         {/* Stats Cards */}
         {stats && (
           <XStack gap="$2" flexWrap="wrap">
-            <MiniStat label="Total" value={stats.total} color="$gray8" icon="people-outline" />
-            <MiniStat label="Qualificados" value={stats.qualified} color="#22c55e" icon="checkmark-circle-outline" />
-            <MiniStat label="Interessados" value={stats.interested} color="#eab308" icon="star-outline" />
-            <MiniStat label="Novos" value={stats.newLead} color="#3b82f6" icon="person-add-outline" />
+            <MiniStat label="Total" value={stats.total} color={watsonColors.gray[500]} icon="people-outline" />
+            <MiniStat label="Qualificados" value={stats.qualified} color={statusColors.qualified} icon="checkmark-circle-outline" />
+            <MiniStat label="Interessados" value={stats.interested} color={statusColors.interested} icon="star-outline" />
+            <MiniStat label="Novos" value={stats.newLead} color={statusColors.blue} icon="person-add-outline" />
             <MiniStat label="Conversao" value={`${stats.conversionRate}%`} color={primary} icon="trending-up-outline" />
           </XStack>
         )}
@@ -165,7 +170,7 @@ export default function CRMScreen() {
             active={scoreFilter === "qualified"}
             onPress={() => { setScoreFilter("qualified"); setPage(1); }}
             primary={primary}
-            dotColor="#22c55e"
+            dotColor={statusColors.qualified}
           />
           <FilterChip
             label="Interessado"
@@ -173,7 +178,7 @@ export default function CRMScreen() {
             active={scoreFilter === "interested"}
             onPress={() => { setScoreFilter("interested"); setPage(1); }}
             primary={primary}
-            dotColor="#eab308"
+            dotColor={statusColors.interested}
           />
           <FilterChip
             label="Novo Lead"
@@ -181,36 +186,17 @@ export default function CRMScreen() {
             active={scoreFilter === "new_lead"}
             onPress={() => { setScoreFilter("new_lead"); setPage(1); }}
             primary={primary}
-            dotColor="#3b82f6"
+            dotColor={statusColors.blue}
           />
         </XStack>
 
         {/* Search */}
-        <XStack
-          backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
-          borderRadius={12}
-          paddingHorizontal="$3"
-          alignItems="center"
-          gap="$2"
-        >
-          <Ionicons name="search" size={18} color="#94a3b8" />
-          <Input
-            unstyled
-            flex={1}
-            placeholder="Buscar por nome ou telefone..."
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={setSearch}
-            fontSize={15}
-            color="$color"
-            paddingVertical={10}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color="#94a3b8" />
-            </Pressable>
-          )}
-        </XStack>
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Buscar por nome ou telefone..."
+          isDark={isDark}
+        />
       </YStack>
 
       {/* Leads List */}
@@ -233,7 +219,7 @@ export default function CRMScreen() {
           <YStack height={1} backgroundColor="$borderColor" marginLeft={76} />
         )}
         ListEmptyComponent={
-          <YStack alignItems="center" padding="$8">
+          <YStack alignItems="center" padding="$4">
             <Ionicons name="analytics-outline" size={48} color="#71717a" />
             <Text marginTop="$4" color="$gray8">
               Nenhum lead encontrado
@@ -249,85 +235,6 @@ export default function CRMScreen() {
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  color,
-  icon,
-}: {
-  label: string;
-  value: number | string;
-  color: string;
-  icon: IoniconsName;
-}) {
-  return (
-    <Card flex={1} minWidth={100} padding="$2" backgroundColor="$backgroundStrong" borderRadius="$3">
-      <YStack alignItems="center" gap={2}>
-        <Ionicons name={icon} size={14} color={color} />
-        <Text fontSize="$5" fontWeight="bold" color={color}>
-          {value}
-        </Text>
-        <Text fontSize={10} color="$gray8" numberOfLines={1}>
-          {label}
-        </Text>
-      </YStack>
-    </Card>
-  );
-}
-
-function FilterChip({
-  label,
-  count,
-  active,
-  onPress,
-  primary,
-  dotColor,
-}: {
-  label: string;
-  count?: number;
-  active: boolean;
-  onPress: () => void;
-  primary: string;
-  dotColor?: string;
-}) {
-  return (
-    <Pressable onPress={onPress}>
-      <XStack
-        paddingHorizontal="$3"
-        paddingVertical="$2"
-        borderRadius={20}
-        backgroundColor={active ? primary : "$backgroundStrong"}
-        alignItems="center"
-        gap="$1"
-      >
-        {dotColor && !active && (
-          <YStack width={8} height={8} borderRadius={4} backgroundColor={dotColor} />
-        )}
-        <Text
-          fontSize="$2"
-          color={active ? "white" : "$color"}
-          fontWeight={active ? "600" : "400"}
-        >
-          {label}
-        </Text>
-        {count !== undefined && count > 0 && (
-          <YStack
-            backgroundColor={active ? "white" : primary}
-            paddingHorizontal={6}
-            borderRadius={8}
-            minWidth={18}
-            alignItems="center"
-          >
-            <Text fontSize={10} color={active ? primary : "white"} fontWeight="bold">
-              {count}
-            </Text>
-          </YStack>
-        )}
-      </XStack>
-    </Pressable>
-  );
-}
-
 function LeadRow({
   lead,
   onPress,
@@ -339,7 +246,7 @@ function LeadRow({
   isDark: boolean;
   primary: string;
 }) {
-  const scoreColor = SCORE_COLORS[lead.score] || "#6b7280";
+  const scoreColor = SCORE_COLORS[lead.score] || watsonColors.gray[500];
   const scoreIcon = SCORE_ICONS[lead.score] || "person-outline";
 
   return (
@@ -409,14 +316,14 @@ function LeadRow({
           {/* Meta info */}
           <XStack gap="$3" marginTop={2}>
             <XStack alignItems="center" gap={3}>
-              <Ionicons name="chatbubble-outline" size={10} color="#94a3b8" />
+              <Ionicons name="chatbubble-outline" size={10} color={watsonColors.gray[400]} />
               <Text fontSize={11} color="$gray8">
                 {lead.messageCount} conv
               </Text>
             </XStack>
             {lead.confidence > 0 && (
               <XStack alignItems="center" gap={3}>
-                <Ionicons name="analytics-outline" size={10} color="#94a3b8" />
+                <Ionicons name="analytics-outline" size={10} color={watsonColors.gray[400]} />
                 <Text fontSize={11} color="$gray8">
                   {lead.confidence}% conf
                 </Text>
@@ -427,23 +334,4 @@ function LeadRow({
       </XStack>
     </Pressable>
   );
-}
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-
-  if (hours < 1) return "Agora";
-  if (hours < 24) return `${hours}h`;
-
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "Ontem";
-  if (days < 7) {
-    const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
-    return weekDays[date.getDay()];
-  }
-
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }

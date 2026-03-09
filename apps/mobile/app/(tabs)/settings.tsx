@@ -9,9 +9,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
 import { useThemeStore, COLOR_PRESETS } from "@/stores/themeStore";
+import { SettingsItem } from "@/components/shared/SettingsItem";
+import { watsonColors } from "@/theme/colors";
 import * as Haptics from "expo-haptics";
-
-type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 interface RemarketingConfig {
   enabled: boolean;
@@ -95,16 +95,16 @@ export default function SettingsScreen() {
     >
       <YStack gap="$4">
         {/* User Card with gradient avatar */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <XStack gap="$4" alignItems="center">
-            <YStack width={60} height={60} borderRadius={30} overflow="hidden">
+        <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <XStack gap="$3" alignItems="center">
+            <YStack width={52} height={52} borderRadius={26} overflow="hidden">
               <LinearGradient
                 colors={gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={{ width: 60, height: 60, alignItems: "center", justifyContent: "center" }}
+                style={{ width: 52, height: 52, alignItems: "center", justifyContent: "center" }}
               >
-                <Text color="white" fontSize="$7" fontWeight="bold">
+                <Text color="white" fontSize="$6" fontWeight="bold">
                   {user?.name?.charAt(0)?.toUpperCase() || "?"}
                 </Text>
               </LinearGradient>
@@ -124,7 +124,7 @@ export default function SettingsScreen() {
           <Text fontSize="$3" fontWeight="600" marginBottom="$3" color="$gray8" letterSpacing={1}>
             APARENCIA
           </Text>
-          <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
             <XStack alignItems="center" gap="$2" marginBottom="$3">
               <Ionicons name="color-palette-outline" size={20} color={primary} />
               <Text fontSize="$4" fontWeight="600" color="$color">
@@ -187,7 +187,6 @@ export default function SettingsScreen() {
               title="Base de Conhecimento"
               description="PDFs, FAQs e informacoes da empresa"
               onPress={() => router.push("/settings/knowledge-base")}
-              primary={primary}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem
@@ -195,7 +194,6 @@ export default function SettingsScreen() {
               title="Persona da IA"
               description="Configure a personalidade do Watson"
               onPress={() => router.push("/settings/persona-edit")}
-              primary={primary}
             />
             <Separator backgroundColor="$gray6" />
             <Pressable onPress={() => router.push("/settings/automations")}>
@@ -246,7 +244,6 @@ export default function SettingsScreen() {
               title="Conexao WhatsApp"
               description="Status e configuracoes da conexao"
               onPress={() => router.push("/settings/whatsapp")}
-              primary={primary}
             />
             <Separator backgroundColor="$gray6" />
             <SettingsItem
@@ -254,7 +251,6 @@ export default function SettingsScreen() {
               title="Notificacoes"
               description="Numero e grupo para receber avisos"
               onPress={() => router.push("/settings/notification-group")}
-              primary={primary}
             />
           </Card>
         </YStack>
@@ -269,9 +265,8 @@ export default function SettingsScreen() {
               icon="card-outline"
               title="Assinatura"
               description="Gerenciar plano e pagamento"
-              badge="Trial"
+              badge="Teste"
               badgeColor="$yellow10"
-              primary={primary}
             />
           </Card>
         </YStack>
@@ -279,9 +274,9 @@ export default function SettingsScreen() {
         {/* Danger Zone */}
         <YStack marginTop="$2">
           <Pressable onPress={handleLogout}>
-            <Card padding="$4" backgroundColor="$red5" borderRadius="$4">
+            <Card padding="$3" backgroundColor="$red5" borderRadius="$4">
               <XStack alignItems="center" justifyContent="center" gap="$2">
-                <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+                <Ionicons name="log-out-outline" size={20} color={watsonColors.error[500]} />
                 <Text color="$red10" fontWeight="600" fontSize="$4">Sair da Conta</Text>
               </XStack>
             </Card>
@@ -294,50 +289,5 @@ export default function SettingsScreen() {
         </Text>
       </YStack>
     </ScrollView>
-  );
-}
-
-function SettingsItem({
-  icon,
-  title,
-  description,
-  badge,
-  badgeColor,
-  onPress,
-  primary,
-}: {
-  icon: IoniconsName;
-  title: string;
-  description: string;
-  badge?: string;
-  badgeColor?: string;
-  onPress?: () => void;
-  primary?: string;
-}) {
-  const theme = useTheme();
-
-  return (
-    <Pressable onPress={onPress}>
-      <XStack padding="$4" alignItems="center" gap="$3">
-        <Ionicons name={icon} size={24} color={theme.gray8.val} />
-        <YStack flex={1}>
-          <XStack alignItems="center" gap="$2">
-            <Text fontWeight="600" color="$color" fontSize="$4">{title}</Text>
-            {badge && (
-              <YStack
-                backgroundColor={badgeColor || "$blue10"}
-                paddingHorizontal="$2"
-                paddingVertical={2}
-                borderRadius="$2"
-              >
-                <Text fontSize={10} color="white" fontWeight="600">{badge}</Text>
-              </YStack>
-            )}
-          </XStack>
-          <Text fontSize="$2" color="$gray8" marginTop={2}>{description}</Text>
-        </YStack>
-        <Ionicons name="chevron-forward" size={20} color={theme.gray7.val} />
-      </XStack>
-    </Pressable>
   );
 }

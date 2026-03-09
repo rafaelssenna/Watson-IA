@@ -1,10 +1,14 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { FlatList, RefreshControl, Pressable, Image } from "react-native";
 import { router } from "expo-router";
-import { YStack, XStack, Text, Input, useTheme } from "tamagui";
+import { YStack, XStack, Text, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
+import { FilterChip } from "@/components/shared/FilterChip";
+import { SearchBar } from "@/components/shared/SearchBar";
+import { formatTime } from "@/utils/formatters";
+import { watsonColors } from "@/theme/colors";
 
 interface Conversation {
   id: string;
@@ -79,13 +83,11 @@ export default function ConversationsScreen() {
   // Group conversations by contactId — keep only the most recent, sum unreadCount
   const grouped = useMemo(() => {
     const map = new Map<string, Conversation>();
-    // conversations are already sorted by lastMessageAt desc from API
     for (const conv of conversations) {
       const existing = map.get(conv.contactId);
       if (!existing) {
         map.set(conv.contactId, { ...conv });
       } else {
-        // Sum unread counts from all conversations of same contact
         existing.unreadCount = (existing.unreadCount || 0) + (conv.unreadCount || 0);
       }
     }
@@ -122,31 +124,12 @@ export default function ConversationsScreen() {
     <YStack flex={1} backgroundColor="$background">
       {/* Search */}
       <YStack paddingHorizontal="$4" paddingTop="$3" paddingBottom="$2">
-        <XStack
-          backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
-          borderRadius={12}
-          paddingHorizontal="$3"
-          alignItems="center"
-          gap="$2"
-        >
-          <Ionicons name="search" size={18} color="#94a3b8" />
-          <Input
-            unstyled
-            flex={1}
-            placeholder="Buscar conversas..."
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={setSearch}
-            fontSize={15}
-            color="$color"
-            paddingVertical={10}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color="#94a3b8" />
-            </Pressable>
-          )}
-        </XStack>
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Buscar conversas..."
+          isDark={isDark}
+        />
       </YStack>
 
       {/* Filter chips */}
@@ -193,7 +176,7 @@ export default function ConversationsScreen() {
           <YStack height={1} backgroundColor="$borderColor" marginLeft={76} />
         )}
         ListEmptyComponent={
-          <YStack alignItems="center" padding="$8">
+          <YStack alignItems="center" padding="$4">
             <Ionicons name="chatbubbles-outline" size={48} color="#71717a" />
             <Text marginTop="$4" color="$gray8">
               Nenhuma conversa encontrada
@@ -251,7 +234,7 @@ function ConversationRow({
               </Text>
             </YStack>
           )}
-          {/* Mode indicator — bottom-right badge */}
+          {/* Mode indicator */}
           <YStack
             position="absolute"
             bottom={-2}
@@ -259,7 +242,7 @@ function ConversationRow({
             width={18}
             height={18}
             borderRadius={9}
-            backgroundColor={isAI ? "#22c55e" : "#f59e0b"}
+            backgroundColor={isAI ? watsonColors.success[500] : watsonColors.warning[500]}
             borderWidth={2}
             borderColor="$background"
             alignItems="center"
@@ -289,7 +272,7 @@ function ConversationRow({
                 <Ionicons
                   name="alert-circle"
                   size={14}
-                  color={conversation.urgency === "CRITICAL" ? "#ef4444" : "#eab308"}
+                  color={conversation.urgency === "CRITICAL" ? watsonColors.error[500] : watsonColors.warning[500]}
                 />
               )}
             </XStack>
@@ -329,71 +312,4 @@ function ConversationRow({
       </XStack>
     </Pressable>
   );
-}
-
-function FilterChip({
-  label,
-  count,
-  active = false,
-  onPress,
-  primary,
-}: {
-  label: string;
-  count?: number;
-  active?: boolean;
-  onPress: () => void;
-  primary: string;
-}) {
-  return (
-    <Pressable onPress={onPress}>
-      <XStack
-        paddingHorizontal="$3"
-        paddingVertical="$2"
-        borderRadius={20}
-        backgroundColor={active ? primary : "$backgroundStrong"}
-        alignItems="center"
-        gap="$1"
-      >
-        <Text
-          fontSize="$2"
-          color={active ? "white" : "$color"}
-          fontWeight={active ? "600" : "400"}
-        >
-          {label}
-        </Text>
-        {count !== undefined && count > 0 && (
-          <YStack
-            backgroundColor={active ? "white" : primary}
-            paddingHorizontal={6}
-            borderRadius={8}
-            minWidth={18}
-            alignItems="center"
-          >
-            <Text fontSize={10} color={active ? primary : "white"} fontWeight="bold">
-              {count}
-            </Text>
-          </YStack>
-        )}
-      </XStack>
-    </Pressable>
-  );
-}
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-
-  if (hours < 1) return "Agora";
-  if (hours < 24) return `${hours}h`;
-
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "Ontem";
-  if (days < 7) {
-    const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
-    return weekDays[date.getDay()];
-  }
-
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }

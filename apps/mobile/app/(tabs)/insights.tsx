@@ -5,8 +5,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
 import { LinearGradient } from "expo-linear-gradient";
-
-type IoniconsName = keyof typeof Ionicons.glyphMap;
+import { PeriodChip } from "@/components/shared/PeriodChip";
+import { formatDayLabel } from "@/utils/formatters";
+import { statusColors, watsonColors } from "@/theme/colors";
 
 interface InsightsData {
   totalOutbound: number;
@@ -80,9 +81,9 @@ export default function InsightsScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
     >
-      <YStack gap="$4">
+      <YStack gap="$3">
         {/* Header */}
-        <YStack gap="$3">
+        <YStack gap="$2">
           <Text fontSize="$7" fontWeight="bold" color="$color">
             Insights
           </Text>
@@ -93,27 +94,27 @@ export default function InsightsScreen() {
           </XStack>
         </YStack>
 
-        {/* Card 1 - Performance IA */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <XStack alignItems="center" gap="$2" marginBottom="$3">
+        {/* Card 1 - Performance IA + Conversas */}
+        <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <XStack alignItems="center" gap="$2" marginBottom="$2">
             <Ionicons name="sparkles-outline" size={18} color={primary} />
             <Text fontSize="$4" fontWeight="600" color="$color">
               Performance da IA
             </Text>
           </XStack>
 
-          <YStack alignItems="center" marginBottom="$4">
-            <Text fontSize={48} fontWeight="bold" color={primary}>
+          <YStack alignItems="center" marginBottom="$3">
+            <Text fontSize={42} fontWeight="bold" color={primary}>
               {data?.aiPercentage || 0}%
             </Text>
-            <Text color="$gray8" fontSize="$3">
+            <Text color="$gray8" fontSize="$2">
               das respostas foram automaticas
             </Text>
           </YStack>
 
           {/* AI vs Human bar */}
-          <YStack marginBottom="$3">
-            <XStack height={12} borderRadius={6} overflow="hidden" backgroundColor="$gray5">
+          <YStack marginBottom="$2">
+            <XStack height={10} borderRadius={5} overflow="hidden" backgroundColor="$gray5">
               <LinearGradient
                 colors={gradient}
                 start={{ x: 0, y: 0 }}
@@ -121,11 +122,11 @@ export default function InsightsScreen() {
                 style={{
                   height: "100%",
                   width: `${data?.aiPercentage || 0}%`,
-                  borderRadius: 6,
+                  borderRadius: 5,
                 }}
               />
             </XStack>
-            <XStack justifyContent="space-between" marginTop="$2">
+            <XStack justifyContent="space-between" marginTop="$1">
               <XStack alignItems="center" gap="$1">
                 <YStack width={8} height={8} borderRadius={4} backgroundColor={primary} />
                 <Text fontSize="$2" color="$gray8">
@@ -141,67 +142,52 @@ export default function InsightsScreen() {
             </XStack>
           </YStack>
 
+          {/* Conversations summary inline */}
+          <XStack justifyContent="space-between" padding="$2" backgroundColor="$background" borderRadius="$3">
+            <YStack alignItems="center" flex={1}>
+              <Text fontSize="$4" fontWeight="bold" color="$color">{data?.totalConversations || 0}</Text>
+              <Text fontSize={10} color="$gray8">Total</Text>
+            </YStack>
+            <YStack alignItems="center" flex={1}>
+              <Text fontSize="$4" fontWeight="bold" color={statusColors.blue}>{data?.openConversations || 0}</Text>
+              <Text fontSize={10} color="$gray8">Abertas</Text>
+            </YStack>
+            <YStack alignItems="center" flex={1}>
+              <Text fontSize="$4" fontWeight="bold" color={statusColors.qualified}>{data?.resolvedConversations || 0}</Text>
+              <Text fontSize={10} color="$gray8">Resolvidas</Text>
+            </YStack>
+            <YStack alignItems="center" flex={1}>
+              <Text fontSize="$4" fontWeight="bold" color={watsonColors.gray[500]}>{data?.closedConversations || 0}</Text>
+              <Text fontSize={10} color="$gray8">Fechadas</Text>
+            </YStack>
+          </XStack>
+
           <XStack
-            padding="$3"
+            padding="$2"
+            marginTop="$2"
             backgroundColor="$background"
             borderRadius="$3"
             alignItems="center"
             gap="$2"
           >
-            <Ionicons name="people-outline" size={16} color="#eab308" />
+            <Ionicons name="people-outline" size={14} color={watsonColors.warning[500]} />
             <Text fontSize="$2" color="$gray8">
               {data?.transfersToHuman || 0} transferencia(s) para humano
             </Text>
           </XStack>
         </Card>
 
-        {/* Card 2 - Conversas */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <XStack alignItems="center" gap="$2" marginBottom="$3">
-            <Ionicons name="chatbubbles-outline" size={18} color={primary} />
-            <Text fontSize="$4" fontWeight="600" color="$color">
-              Conversas
-            </Text>
-          </XStack>
-          <XStack flexWrap="wrap" gap="$3">
-            <MiniStat
-              label="Total"
-              value={data?.totalConversations || 0}
-              icon="chatbubble-outline"
-              color={primary}
-            />
-            <MiniStat
-              label="Abertas"
-              value={data?.openConversations || 0}
-              icon="ellipse-outline"
-              color="#3b82f6"
-            />
-            <MiniStat
-              label="Resolvidas"
-              value={data?.resolvedConversations || 0}
-              icon="checkmark-circle-outline"
-              color="#22c55e"
-            />
-            <MiniStat
-              label="Fechadas"
-              value={data?.closedConversations || 0}
-              icon="lock-closed-outline"
-              color="#64748b"
-            />
-          </XStack>
-        </Card>
-
-        {/* Card 3 - Velocidade */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <XStack alignItems="center" gap="$2" marginBottom="$3">
+        {/* Card 2 - Velocidade + Contatos */}
+        <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+          <XStack alignItems="center" gap="$2" marginBottom="$2">
             <Ionicons name="speedometer-outline" size={18} color={primary} />
             <Text fontSize="$4" fontWeight="600" color="$color">
-              Velocidade
+              Metricas
             </Text>
           </XStack>
-          <XStack justifyContent="space-around">
+          <XStack justifyContent="space-around" marginBottom="$3">
             <YStack alignItems="center">
-              <Text fontSize="$8" fontWeight="bold" color="#22c55e">
+              <Text fontSize="$7" fontWeight="bold" color={watsonColors.success[500]}>
                 {data?.responseRate || 0}%
               </Text>
               <Text fontSize="$2" color="$gray8">
@@ -209,7 +195,7 @@ export default function InsightsScreen() {
               </Text>
             </YStack>
             <YStack alignItems="center">
-              <Text fontSize="$8" fontWeight="bold" color="$color">
+              <Text fontSize="$7" fontWeight="bold" color="$color">
                 {data?.avgResponseTime || 0}min
               </Text>
               <Text fontSize="$2" color="$gray8">
@@ -217,66 +203,56 @@ export default function InsightsScreen() {
               </Text>
             </YStack>
           </XStack>
-        </Card>
-
-        {/* Card 4 - Contatos */}
-        <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-          <XStack alignItems="center" gap="$2" marginBottom="$3">
-            <Ionicons name="person-add-outline" size={18} color={primary} />
-            <Text fontSize="$4" fontWeight="600" color="$color">
-              Contatos
-            </Text>
-          </XStack>
-          <XStack justifyContent="space-around">
+          <XStack justifyContent="space-around" padding="$2" backgroundColor="$background" borderRadius="$3">
             <YStack alignItems="center">
-              <Text fontSize="$8" fontWeight="bold" color={primary}>
+              <Text fontSize="$5" fontWeight="bold" color={primary}>
                 {data?.newContacts || 0}
               </Text>
               <Text fontSize="$2" color="$gray8">
-                Novos no Periodo
+                Novos Contatos
               </Text>
             </YStack>
             <YStack alignItems="center">
-              <Text fontSize="$8" fontWeight="bold" color="$color">
+              <Text fontSize="$5" fontWeight="bold" color="$color">
                 {data?.totalContacts || 0}
               </Text>
               <Text fontSize="$2" color="$gray8">
-                Total
+                Total Contatos
               </Text>
             </YStack>
           </XStack>
         </Card>
 
-        {/* Card 5 - Horarios de Pico */}
+        {/* Card 3 - Horarios de Pico */}
         {(data?.peakHours?.length || 0) > 0 && (
-          <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-            <XStack alignItems="center" gap="$2" marginBottom="$3">
+          <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+            <XStack alignItems="center" gap="$2" marginBottom="$2">
               <Ionicons name="time-outline" size={18} color={primary} />
               <Text fontSize="$4" fontWeight="600" color="$color">
                 Horarios de Pico
               </Text>
             </XStack>
-            <Text color="$gray8" fontSize="$2" marginBottom="$3">
+            <Text color="$gray8" fontSize="$2" marginBottom="$2">
               Mensagens por hora (ultimas 24h)
             </Text>
-            <YStack gap="$2">
+            <YStack gap="$1">
               {data!.peakHours.map((h) => (
-                <XStack key={h.hour} alignItems="center" gap="$3">
+                <XStack key={h.hour} alignItems="center" gap="$2">
                   <Text width={45} fontSize="$2" color="$gray8">
                     {h.hour}
                   </Text>
                   <YStack
                     flex={1}
-                    height={16}
+                    height={14}
                     backgroundColor="$gray5"
-                    borderRadius={8}
+                    borderRadius={7}
                     overflow="hidden"
                   >
                     <YStack
                       height="100%"
                       width={`${Math.max((h.count / maxPeakCount) * 100, 2)}%`}
                       backgroundColor={primary}
-                      borderRadius={8}
+                      borderRadius={7}
                     />
                   </YStack>
                   <Text width={35} fontSize="$2" textAlign="right" color="$color" fontWeight="600">
@@ -288,21 +264,21 @@ export default function InsightsScreen() {
           </Card>
         )}
 
-        {/* Card 6 - Mensagens por Dia */}
+        {/* Card 4 - Mensagens por Dia */}
         {(data?.messagesPerDay?.length || 0) > 1 && (
-          <Card padding="$4" backgroundColor="$backgroundStrong" borderRadius="$4">
-            <XStack alignItems="center" gap="$2" marginBottom="$3">
+          <Card padding="$3" backgroundColor="$backgroundStrong" borderRadius="$4">
+            <XStack alignItems="center" gap="$2" marginBottom="$2">
               <Ionicons name="bar-chart-outline" size={18} color={primary} />
               <Text fontSize="$4" fontWeight="600" color="$color">
                 Mensagens por Dia
               </Text>
             </XStack>
-            <YStack gap="$2">
+            <YStack gap="$1">
               {data!.messagesPerDay.map((d) => {
                 const label = formatDayLabel(d.date);
                 const total = d.inbound + d.outbound;
                 return (
-                  <YStack key={d.date} gap="$1">
+                  <YStack key={d.date} gap={2}>
                     <XStack justifyContent="space-between">
                       <Text fontSize="$2" color="$gray8">
                         {label}
@@ -315,7 +291,7 @@ export default function InsightsScreen() {
                       <YStack
                         height="100%"
                         width={`${maxDayCount > 0 ? (d.inbound / maxDayCount) * 100 : 0}%`}
-                        backgroundColor="#3b82f6"
+                        backgroundColor={statusColors.blue}
                       />
                       <YStack
                         height="100%"
@@ -327,9 +303,9 @@ export default function InsightsScreen() {
                 );
               })}
             </YStack>
-            <XStack marginTop="$3" gap="$4">
+            <XStack marginTop="$2" gap="$4">
               <XStack alignItems="center" gap="$1">
-                <YStack width={8} height={8} borderRadius={4} backgroundColor="#3b82f6" />
+                <YStack width={8} height={8} borderRadius={4} backgroundColor={statusColors.blue} />
                 <Text fontSize="$1" color="$gray8">
                   Recebidas
                 </Text>
@@ -346,66 +322,4 @@ export default function InsightsScreen() {
       </YStack>
     </ScrollView>
   );
-}
-
-function PeriodChip({
-  label,
-  value,
-  active,
-  onPress,
-  primary,
-}: {
-  label: string;
-  value: Period;
-  active: boolean;
-  onPress: (v: Period) => void;
-  primary: string;
-}) {
-  return (
-    <YStack
-      paddingHorizontal="$3"
-      paddingVertical="$2"
-      borderRadius="$3"
-      backgroundColor={active ? primary : "$backgroundStrong"}
-      pressStyle={{ opacity: 0.7 }}
-      onPress={() => onPress(value)}
-    >
-      <Text fontSize="$2" color={active ? "white" : "$color"} fontWeight={active ? "600" : "400"}>
-        {label}
-      </Text>
-    </YStack>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: number;
-  icon: IoniconsName;
-  color: string;
-}) {
-  return (
-    <YStack flex={1} minWidth={140} alignItems="center" padding="$3" gap="$1">
-      <Ionicons name={icon} size={16} color={color} />
-      <Text fontSize="$7" fontWeight="bold" color="$color">
-        {value}
-      </Text>
-      <Text fontSize="$1" color="$gray8">
-        {label}
-      </Text>
-    </YStack>
-  );
-}
-
-function formatDayLabel(dateStr: string): string {
-  const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
-  const date = new Date(dateStr + "T12:00:00");
-  const day = days[date.getDay()];
-  const num = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  return `${day} ${num}/${month}`;
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Image, Alert } from "react-native";
+import { KeyboardAvoidingView, Platform, Image, Alert, StyleSheet, View } from "react-native";
 import { Link, router } from "expo-router";
-import { YStack, XStack, Text, Input, Button, Spinner, useTheme } from "tamagui";
+import { YStack, XStack, Text, Input, Button, Spinner } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "@/stores/authStore";
 import { useAppColors } from "@/hooks/useAppColors";
@@ -10,7 +10,6 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const theme = useTheme();
   const { gradient, primary } = useAppColors();
 
   const { login, isLoading } = useAuthStore();
@@ -30,7 +29,6 @@ export default function LoginScreen() {
       const msg = err.message || "Erro ao fazer login";
       setError(msg);
 
-      // Show alert for subscription/trial issues
       if (msg.includes("expirou") || msg.includes("cancelada")) {
         Alert.alert("Acesso bloqueado", msg);
       }
@@ -40,87 +38,77 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: theme.background.val }}
+      style={{ flex: 1, backgroundColor: gradient[0] }}
     >
-      <YStack
-        flex={1}
-        backgroundColor="$background"
-        padding="$6"
-        justifyContent="center"
+      {/* Gradient header — clean, no shapes */}
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
       >
-        {/* Logo Watson IA */}
-        <LinearGradient
-          colors={gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            alignItems: "center",
-            paddingVertical: 32,
-            borderRadius: 24,
-            marginBottom: 32,
-          }}
-        >
-          <Image
-            source={require("../../assets/watson-logo.png")}
-            style={{ width: 180, height: 180, marginBottom: 8 }}
-            resizeMode="contain"
-          />
-          <Text color="white" marginTop="$2" fontSize="$3">
-            Assistente de vendas inteligente
-          </Text>
-        </LinearGradient>
+        <Image
+          source={require("../../assets/watson-logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </LinearGradient>
 
-        {/* Form */}
-        <YStack gap="$4">
+      {/* Card with form */}
+      <View style={styles.card}>
+        <Text style={styles.title}>Entrar</Text>
+
+        <YStack gap="$3" marginTop="$3">
           <YStack>
-            <Text marginBottom="$1" fontSize="$3" color="$gray8">
-              Email
-            </Text>
+            <Text style={styles.label}>Email</Text>
             <Input
               value={email}
               onChangeText={setEmail}
               placeholder="seu@email.com"
-              placeholderTextColor={theme.gray7.val}
+              placeholderTextColor="#999"
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
               size="$4"
-              backgroundColor="$backgroundStrong"
-              borderColor="$gray6"
-              color="$color"
+              backgroundColor="#f8f8f8"
+              borderColor="#e0e0e0"
+              borderWidth={1}
+              borderRadius={12}
+              color="#000"
             />
           </YStack>
 
           <YStack>
-            <Text marginBottom="$1" fontSize="$3" color="$gray8">
-              Senha
-            </Text>
+            <Text style={styles.label}>Senha</Text>
             <Input
               value={password}
               onChangeText={setPassword}
               placeholder="••••••••"
-              placeholderTextColor={theme.gray7.val}
+              placeholderTextColor="#999"
               secureTextEntry
               autoComplete="password"
               size="$4"
-              backgroundColor="$backgroundStrong"
-              borderColor="$gray6"
-              color="$color"
+              backgroundColor="#f8f8f8"
+              borderColor="#e0e0e0"
+              borderWidth={1}
+              borderRadius={12}
+              color="#000"
             />
           </YStack>
 
           {error && (
             <YStack
-              backgroundColor={error.includes("expirou") || error.includes("cancelada") ? "$orange2" : "$red2"}
-              borderRadius="$3"
+              backgroundColor={error.includes("expirou") || error.includes("cancelada") ? "#fff3e0" : "#fde8e8"}
+              borderRadius={12}
               padding="$3"
               borderWidth={1}
-              borderColor={error.includes("expirou") || error.includes("cancelada") ? "$orange6" : "$red6"}
+              borderColor={error.includes("expirou") || error.includes("cancelada") ? "#ffb74d" : "#ef5350"}
             >
               <Text
-                color={error.includes("expirou") || error.includes("cancelada") ? "$orange11" : "$red10"}
+                color={error.includes("expirou") || error.includes("cancelada") ? "#e65100" : "#c62828"}
                 textAlign="center"
                 fontWeight="600"
+                fontSize={13}
               >
                 {error}
               </Text>
@@ -132,30 +120,70 @@ export default function LoginScreen() {
             disabled={isLoading}
             size="$5"
             backgroundColor={primary}
-            pressStyle={{ opacity: 0.9 }}
+            pressStyle={{ opacity: 0.8 }}
             marginTop="$2"
-            borderRadius="$4"
+            borderRadius={14}
           >
-            {isLoading ? <Spinner color="white" /> : <Text color="white" fontWeight="600" fontSize="$4">Entrar</Text>}
+            {isLoading ? (
+              <Spinner color="white" />
+            ) : (
+              <Text color="white" fontWeight="700" fontSize={16}>
+                Entrar
+              </Text>
+            )}
           </Button>
 
           <Link href="/(auth)/forgot-password" asChild>
-            <Text color={primary} textAlign="center" marginTop="$3" fontSize="$3">
+            <Text color="#666" textAlign="center" marginTop="$2" fontSize={13}>
               Esqueceu a senha?
             </Text>
           </Link>
         </YStack>
 
-        {/* Register Link */}
-        <XStack justifyContent="center" marginTop="$8">
-          <Text color="$gray8">Nao tem conta? </Text>
+        <XStack justifyContent="center" marginTop="$6">
+          <Text color="#666" fontSize={14}>Não tem conta? </Text>
           <Link href="/(auth)/register" asChild>
-            <Text color={primary} fontWeight="600">
-              Criar conta
+            <Text color={primary} fontWeight="700" fontSize={14}>
+              Criar Conta
             </Text>
           </Link>
         </XStack>
-      </YStack>
+      </View>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    height: "25%",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    tintColor: "#fff",
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    marginTop: -20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#000",
+    textAlign: "center",
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 6,
+  },
+});

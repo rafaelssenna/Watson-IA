@@ -1,6 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 
+// Filter: only conversations where the AI participated (replied or took action)
+const aiParticipated = {
+  OR: [
+    { messages: { some: { isAiGenerated: true } } },
+    { lastAiAction: { not: null } },
+  ],
+};
+
 export async function dashboardRoutes(fastify: FastifyInstance) {
   // Get dashboard summary (Watson Insights)
   fastify.get("/summary", { preHandler: [fastify.authenticate] }, async (request) => {
@@ -14,7 +22,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    // Run all queries in parallel
+    // Run all queries in parallel — only conversations where AI participated
     const [
       activeConversations,
       purchaseIntentCount,
@@ -26,98 +34,109 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       avgResponseTime,
       hotLeadsNotResponded,
     ] = await Promise.all([
-      // Active conversations
+      // Active conversations (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           status: { in: ["OPEN", "WAITING_CLIENT", "WAITING_AGENT", "IN_PROGRESS"] },
+          ...aiParticipated,
         },
       }),
 
-      // Purchase intent
+      // Purchase intent (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           intent: "purchase",
           status: { notIn: ["CLOSED", "RESOLVED"] },
+          ...aiParticipated,
         },
       }),
 
-      // Urgent conversations
+      // Urgent conversations (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           urgency: { in: ["HIGH", "CRITICAL"] },
           status: { notIn: ["CLOSED", "RESOLVED"] },
+          ...aiParticipated,
         },
       }),
 
-      // Cooling conversations (hot leads with no reply in 24h)
+      // Cooling conversations (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           status: { notIn: ["CLOSED", "RESOLVED"] },
           closingProbability: { gte: 60 },
           lastMessageAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          ...aiParticipated,
         },
       }),
 
-      // Today's conversations
+      // Today's conversations (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           createdAt: { gte: today },
+          ...aiParticipated,
         },
       }),
 
-      // Yesterday's conversations
+      // Yesterday's conversations (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           createdAt: { gte: yesterday, lt: today },
+          ...aiParticipated,
         },
       }),
 
-      // Today's messages
+      // Today's messages (only in conversations where AI participated)
       prisma.message.count({
         where: {
           organizationId: orgId,
           createdAt: { gte: today },
+          conversation: { ...aiParticipated },
         },
       }),
 
-      // Average response time (outbound messages today)
+      // Average response time (AI participated)
       prisma.conversation.aggregate({
         where: {
           organizationId: orgId,
           avgResponseTime: { not: null },
+          ...aiParticipated,
         },
         _avg: { avgResponseTime: true },
       }),
 
-      // Hot leads not responded (urgency high + last message inbound + >30min)
+      // Hot leads not responded (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
           urgency: { in: ["HIGH", "CRITICAL"] },
           status: "WAITING_AGENT",
           lastMessageAt: { lt: new Date(Date.now() - 30 * 60 * 1000) },
+          ...aiParticipated,
         },
       }),
     ]);
 
-    // Calculate response rate
+    // Calculate response rate (only AI conversations)
     const [inboundToday, respondedToday] = await Promise.all([
       prisma.message.count({
         where: {
           organizationId: orgId,
           direction: "INBOUND",
           createdAt: { gte: today },
+          conversation: { ...aiParticipated },
         },
       }),
       prisma.conversation.count({
         where: {
           organizationId: orgId,
+          ...aiParticipated,
           messages: {
             some: {
               direction: "OUTBOUND",
@@ -270,6 +289,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
 
     const dateFilter = { gte: startDate };
 
+    // Only conversations where AI participated
     const [
       totalOutbound,
       aiMessages,
@@ -284,9 +304,9 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       inboundCount,
       respondedCount,
     ] = await Promise.all([
-      // Total outbound messages
+      // Total outbound messages (in AI conversations)
       prisma.message.count({
-        where: { organizationId: orgId, direction: "OUTBOUND", createdAt: dateFilter },
+        where: { organizationId: orgId, direction: "OUTBOUND", createdAt: dateFilter, conversation: { ...aiParticipated } },
       }),
       // AI generated messages
       prisma.message.count({
@@ -296,43 +316,44 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       prisma.conversation.count({
         where: { organizationId: orgId, lastAiAction: "ESCALATED_TO_HUMAN", updatedAt: dateFilter },
       }),
-      // Total conversations
+      // Total conversations (AI participated)
       prisma.conversation.count({
-        where: { organizationId: orgId, createdAt: dateFilter },
+        where: { organizationId: orgId, createdAt: dateFilter, ...aiParticipated },
       }),
-      // Open
+      // Open (AI participated)
       prisma.conversation.count({
-        where: { organizationId: orgId, status: { in: ["OPEN", "WAITING_CLIENT", "WAITING_AGENT", "IN_PROGRESS"] }, createdAt: dateFilter },
+        where: { organizationId: orgId, status: { in: ["OPEN", "WAITING_CLIENT", "WAITING_AGENT", "IN_PROGRESS"] }, createdAt: dateFilter, ...aiParticipated },
       }),
-      // Resolved
+      // Resolved (AI participated)
       prisma.conversation.count({
-        where: { organizationId: orgId, status: "RESOLVED", createdAt: dateFilter },
+        where: { organizationId: orgId, status: "RESOLVED", createdAt: dateFilter, ...aiParticipated },
       }),
-      // Closed
+      // Closed (AI participated)
       prisma.conversation.count({
-        where: { organizationId: orgId, status: "CLOSED", createdAt: dateFilter },
+        where: { organizationId: orgId, status: "CLOSED", createdAt: dateFilter, ...aiParticipated },
       }),
-      // Avg response time
+      // Avg response time (AI participated)
       prisma.conversation.aggregate({
-        where: { organizationId: orgId, avgResponseTime: { not: null }, createdAt: dateFilter },
+        where: { organizationId: orgId, avgResponseTime: { not: null }, createdAt: dateFilter, ...aiParticipated },
         _avg: { avgResponseTime: true },
       }),
-      // New contacts
+      // New contacts (that interacted with AI)
       prisma.contact.count({
-        where: { organizationId: orgId, createdAt: dateFilter },
+        where: { organizationId: orgId, createdAt: dateFilter, conversations: { some: { ...aiParticipated } } },
       }),
-      // Total contacts
+      // Total contacts (that interacted with AI)
       prisma.contact.count({
-        where: { organizationId: orgId },
+        where: { organizationId: orgId, conversations: { some: { ...aiParticipated } } },
       }),
-      // Inbound messages (for response rate)
+      // Inbound messages (in AI conversations)
       prisma.message.count({
-        where: { organizationId: orgId, direction: "INBOUND", createdAt: dateFilter },
+        where: { organizationId: orgId, direction: "INBOUND", createdAt: dateFilter, conversation: { ...aiParticipated } },
       }),
-      // Conversations that got a reply
+      // Conversations that got a reply (AI participated)
       prisma.conversation.count({
         where: {
           organizationId: orgId,
+          ...aiParticipated,
           messages: { some: { direction: "OUTBOUND", createdAt: dateFilter } },
         },
       }),
@@ -345,13 +366,17 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       : 0;
     const responseRate = inboundCount > 0 ? Math.round((respondedCount / inboundCount) * 100) : 100;
 
-    // Peak hours (last 24h) - raw SQL for grouping by hour (BRT timezone)
+    // Peak hours (last 24h) - only messages in AI conversations (BRT timezone)
     const peakHoursRaw = await prisma.$queryRaw<Array<{ hour: number; count: bigint }>>`
-      SELECT EXTRACT(HOUR FROM "createdAt" AT TIME ZONE 'America/Sao_Paulo') as hour, COUNT(*) as count
-      FROM "Message"
-      WHERE "organizationId" = ${orgId}
-        AND "createdAt" >= ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
-      GROUP BY EXTRACT(HOUR FROM "createdAt" AT TIME ZONE 'America/Sao_Paulo')
+      SELECT EXTRACT(HOUR FROM m."createdAt" AT TIME ZONE 'America/Sao_Paulo') as hour, COUNT(*) as count
+      FROM "Message" m
+      INNER JOIN "Conversation" c ON m."conversationId" = c."id"
+      WHERE m."organizationId" = ${orgId}
+        AND m."createdAt" >= ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
+        AND (c."lastAiAction" IS NOT NULL OR EXISTS (
+          SELECT 1 FROM "Message" m2 WHERE m2."conversationId" = c."id" AND m2."isAiGenerated" = true
+        ))
+      GROUP BY EXTRACT(HOUR FROM m."createdAt" AT TIME ZONE 'America/Sao_Paulo')
       ORDER BY hour
     `;
     const peakHours = peakHoursRaw.map((r) => ({
@@ -365,11 +390,15 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
     msgsPerDayStart.setDate(msgsPerDayStart.getDate() - daysCount);
 
     const msgsPerDayRaw = await prisma.$queryRaw<Array<{ date: Date; direction: string; count: bigint }>>`
-      SELECT DATE("createdAt" AT TIME ZONE 'America/Sao_Paulo') as date, "direction", COUNT(*) as count
-      FROM "Message"
-      WHERE "organizationId" = ${orgId}
-        AND "createdAt" >= ${msgsPerDayStart}
-      GROUP BY DATE("createdAt" AT TIME ZONE 'America/Sao_Paulo'), "direction"
+      SELECT DATE(m."createdAt" AT TIME ZONE 'America/Sao_Paulo') as date, m."direction", COUNT(*) as count
+      FROM "Message" m
+      INNER JOIN "Conversation" c ON m."conversationId" = c."id"
+      WHERE m."organizationId" = ${orgId}
+        AND m."createdAt" >= ${msgsPerDayStart}
+        AND (c."lastAiAction" IS NOT NULL OR EXISTS (
+          SELECT 1 FROM "Message" m2 WHERE m2."conversationId" = c."id" AND m2."isAiGenerated" = true
+        ))
+      GROUP BY DATE(m."createdAt" AT TIME ZONE 'America/Sao_Paulo'), m."direction"
       ORDER BY date
     `;
 

@@ -150,14 +150,29 @@ export async function crmRoutes(fastify: FastifyInstance) {
     const scoreFilter = query.score as string | undefined;
     const search = query.search?.trim();
 
-    // Build filter
-    const where: any = { organizationId: orgId, status: "ACTIVE" };
+    // Build filter — only contacts whose conversations had AI participation
+    const where: any = {
+      organizationId: orgId,
+      status: "ACTIVE",
+      conversations: {
+        some: {
+          OR: [
+            { messages: { some: { isAiGenerated: true } } },
+            { lastAiAction: { not: null } },
+          ],
+        },
+      },
+    };
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search } },
-        { pushName: { contains: search, mode: "insensitive" } },
+      where.AND = [
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search } },
+            { pushName: { contains: search, mode: "insensitive" } },
+          ],
+        },
       ];
     }
 
@@ -350,7 +365,18 @@ export async function crmRoutes(fastify: FastifyInstance) {
     const { orgId } = request.user;
 
     const contacts = await prisma.contact.findMany({
-      where: { organizationId: orgId, status: "ACTIVE" },
+      where: {
+        organizationId: orgId,
+        status: "ACTIVE",
+        conversations: {
+          some: {
+            OR: [
+              { messages: { some: { isAiGenerated: true } } },
+              { lastAiAction: { not: null } },
+            ],
+          },
+        },
+      },
       select: {
         clientProfile: true,
         leadScore: true,

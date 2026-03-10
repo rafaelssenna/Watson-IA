@@ -602,8 +602,8 @@ export interface FaqWithAudio {
 export async function matchFaqAudio(
   incomingMessage: string,
   faqs: FaqWithAudio[]
-): Promise<FaqWithAudio | null> {
-  if (!faqs.length) return null;
+): Promise<FaqWithAudio[]> {
+  if (!faqs.length) return [];
 
   try {
     const ai = getGenAI();
@@ -621,23 +621,25 @@ FAQs DISPONIVEIS:
 ${faqList}
 
 REGRAS:
-- Se a mensagem do cliente tem a MESMA INTENCAO de algum FAQ (nao precisa ser identica, basta ter o mesmo sentido), retorne APENAS o ID do FAQ
-- Se a mensagem NAO corresponde a nenhum FAQ, retorne APENAS a palavra "NONE"
-- Retorne SOMENTE o ID ou "NONE", sem explicacao
+- A mensagem do cliente pode conter MULTIPLAS perguntas ou intencoes
+- Para CADA FAQ que corresponde a alguma parte da mensagem (mesmo sentido/intencao), inclua o ID
+- Retorne os IDs separados por virgula. Ex: "id1,id2"
+- Se NENHUM FAQ corresponde, retorne APENAS "NONE"
+- Retorne SOMENTE os IDs ou "NONE", sem explicacao
 
 Resposta:`;
 
     const result = await model.generateContent(prompt);
     const response = result.response.text().trim();
 
-    if (response === "NONE") return null;
+    if (response === "NONE") return [];
 
-    // Extract ID from response (might have extra text)
-    const matchedFaq = faqs.find((f) => response.includes(f.id));
-    return matchedFaq || null;
+    // Extract all matched FAQ IDs from response
+    const matchedFaqs = faqs.filter((f) => response.includes(f.id));
+    return matchedFaqs;
   } catch (error) {
     console.error("[matchFaqAudio] Error:", error);
-    return null;
+    return [];
   }
 }
 

@@ -630,48 +630,58 @@ async function generateAndSendAIResponse(
           audioBase64: f.audioBase64!,
         }));
 
-        const matchedFaq = await matchFaqAudio(incomingMessage, faqsWithAudio);
+        const matchedFaqs = await matchFaqAudio(incomingMessage, faqsWithAudio);
 
-        if (matchedFaq) {
-          fastify.log.info({ faqId: matchedFaq.id, question: matchedFaq.question }, "FAQ audio match found - sending audio instead of AI text");
+        if (matchedFaqs.length > 0) {
+          fastify.log.info({ count: matchedFaqs.length, questions: matchedFaqs.map(f => f.question) }, "FAQ audio matches found - sending audios");
 
-          const sendResult = await sendMediaMessage(connection.uazapiToken, waId, matchedFaq.audioBase64, "ptt");
+          let allSent = true;
+          for (const faq of matchedFaqs) {
+            const sendResult = await sendMediaMessage(connection.uazapiToken, waId, faq.audioBase64, "ptt");
 
-          if (sendResult.success) {
-            // Save outbound audio message
-            const outboundMessage = await prisma.message.create({
-              data: {
-                organizationId: orgId,
+            if (sendResult.success) {
+              const outboundMessage = await prisma.message.create({
+                data: {
+                  organizationId: orgId,
+                  conversationId: conversation.id,
+                  waMessageId: sendResult.messageId,
+                  direction: "OUTBOUND",
+                  type: "AUDIO",
+                  content: `[FAQ Audio: ${faq.question}]`,
+                  status: "SENT",
+                  isAiGenerated: true,
+                  aiConfidence: 0.95,
+                },
+              });
+
+              const io = fastify.io;
+              io.to(`org:${orgId}`).emit("message:new", {
                 conversationId: conversation.id,
-                waMessageId: sendResult.messageId,
-                direction: "OUTBOUND",
-                type: "AUDIO",
-                content: `[FAQ Audio: ${matchedFaq.question}]`,
-                status: "SENT",
-                isAiGenerated: true,
-                aiConfidence: 0.95,
-              },
-            });
+                message: outboundMessage,
+              });
+            } else {
+              fastify.log.warn({ error: sendResult.error, faqId: faq.id }, "FAQ audio send failed");
+              allSent = false;
+            }
 
+            // Small delay between audios so they arrive in order
+            if (matchedFaqs.length > 1) {
+              await new Promise((r) => setTimeout(r, 1000));
+            }
+          }
+
+          if (allSent || matchedFaqs.length > 1) {
             await prisma.conversation.update({
               where: { id: conversation.id },
               data: {
                 lastMessageAt: new Date(),
-                messageCount: { increment: 1 },
+                messageCount: { increment: matchedFaqs.length },
                 lastAiAction: "AUTO_REPLIED",
               },
             });
 
-            const io = fastify.io;
-            io.to(`org:${orgId}`).emit("message:new", {
-              conversationId: conversation.id,
-              message: outboundMessage,
-            });
-
             scheduleFollowUp(conversation.id, fastify.log).catch(() => {});
-            return; // Done - audio sent, skip normal AI flow
-          } else {
-            fastify.log.warn({ error: sendResult.error }, "FAQ audio send failed, falling back to normal AI");
+            return; // Done - audios sent, skip normal AI flow
           }
         }
       }

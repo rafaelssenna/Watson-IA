@@ -543,6 +543,24 @@ async function generateAndSendAIResponse(
         .join("\n\n---\n\n");
     }
 
+    // Add FAQ answers (including audio transcriptions) as knowledge
+    try {
+      const allFaqs = await prisma.fAQ.findMany({
+        where: { knowledgeBase: { organizationId: orgId } },
+        select: { question: true, answer: true },
+      });
+      if (allFaqs.length > 0) {
+        const faqText = allFaqs
+          .map((f) => `P: ${f.question}\nR: ${f.answer}`)
+          .join("\n\n");
+        knowledgeContent = knowledgeContent
+          ? `${knowledgeContent}\n\n---\n\nPERGUNTAS FREQUENTES (FAQ):\n${faqText}`
+          : `PERGUNTAS FREQUENTES (FAQ):\n${faqText}`;
+      }
+    } catch (faqErr) {
+      fastify.log.warn({ error: faqErr }, "Failed to load FAQs for knowledge content");
+    }
+
     // Get contact name and funnel stage for AI context
     const contactData = await prisma.contact.findUnique({
       where: { id: conversation.contactId },

@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { createKnowledgeBaseSchema, createFaqSchema } from "@watson/shared";
+import { transcribeAudio } from "../../services/ai.service.js";
 
 export async function knowledgeRoutes(fastify: FastifyInstance) {
   // List knowledge bases
@@ -281,10 +282,32 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
 
     const base = await getOrCreateDefaultBase(orgId);
 
+    // If FAQ has audio, transcribe it to enrich the answer with the audio content
+    let answer = result.data.answer;
+    if (result.data.audioBase64) {
+      try {
+        // Extract raw base64 (remove data URI prefix if present)
+        const raw = result.data.audioBase64.replace(/^data:audio\/[^;]+;base64,/, "");
+        const buffer = Buffer.from(raw, "base64");
+        const transcription = await transcribeAudio(buffer, "audio/mp4");
+
+        if (transcription) {
+          // Combine original answer with transcription so AI has full context
+          answer = answer === "[Audio]"
+            ? `[Audio transcrito]: ${transcription}`
+            : `${answer}\n\n[Audio transcrito]: ${transcription}`;
+          fastify.log.info(`[FAQ] Audio transcribed: "${transcription.substring(0, 100)}..."`);
+        }
+      } catch (err) {
+        fastify.log.warn({ error: err }, "[FAQ] Audio transcription failed, saving without transcription");
+      }
+    }
+
     const faq = await prisma.fAQ.create({
       data: {
         knowledgeBaseId: base.id,
         ...result.data,
+        answer,
       },
     });
 

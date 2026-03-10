@@ -117,7 +117,8 @@ export const createKnowledgeBaseSchema = z.object({
 
 export const createFaqSchema = z.object({
   question: z.string().min(5, "Pergunta obrigatoria"),
-  answer: z.string().min(10, "Resposta obrigatoria"),
+  answer: z.string().min(1, "Resposta obrigatoria"),
+  audioBase64: z.string().optional(),
   category: z.string().optional(),
   priority: z.number().default(0),
 });

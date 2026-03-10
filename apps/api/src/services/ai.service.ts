@@ -592,6 +592,55 @@ Retorne APENAS a descricao detalhada do estilo e fluxo, sem introducao ou conclu
   return result.response.text().trim();
 }
 
+// Match incoming message against FAQs that have audio responses
+export interface FaqWithAudio {
+  id: string;
+  question: string;
+  audioBase64: string;
+}
+
+export async function matchFaqAudio(
+  incomingMessage: string,
+  faqs: FaqWithAudio[]
+): Promise<FaqWithAudio | null> {
+  if (!faqs.length) return null;
+
+  try {
+    const ai = getGenAI();
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const faqList = faqs
+      .map((f, i) => `${i + 1}. [ID: ${f.id}] Pergunta: "${f.question}"`)
+      .join("\n");
+
+    const prompt = `Voce e um classificador de intencao. Analise a mensagem do cliente e decida se ela corresponde a alguma das perguntas de FAQ abaixo.
+
+MENSAGEM DO CLIENTE: "${incomingMessage}"
+
+FAQs DISPONIVEIS:
+${faqList}
+
+REGRAS:
+- Se a mensagem do cliente tem a MESMA INTENCAO de algum FAQ (nao precisa ser identica, basta ter o mesmo sentido), retorne APENAS o ID do FAQ
+- Se a mensagem NAO corresponde a nenhum FAQ, retorne APENAS a palavra "NONE"
+- Retorne SOMENTE o ID ou "NONE", sem explicacao
+
+Resposta:`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response.text().trim();
+
+    if (response === "NONE") return null;
+
+    // Extract ID from response (might have extra text)
+    const matchedFaq = faqs.find((f) => response.includes(f.id));
+    return matchedFaq || null;
+  } catch (error) {
+    console.error("[matchFaqAudio] Error:", error);
+    return null;
+  }
+}
+
 // Simple response for when AI is not configured
 export function getDefaultResponse(): string {
   return "Ola! Recebi sua mensagem. Em breve um atendente ira responder.";

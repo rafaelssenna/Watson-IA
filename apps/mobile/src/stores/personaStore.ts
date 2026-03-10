@@ -8,6 +8,17 @@ export interface PersonaKnowledgeFile {
   createdAt: string;
 }
 
+export interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
+  audioBase64?: string | null;
+  category?: string | null;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Persona {
   id: string;
   name: string;
@@ -62,6 +73,7 @@ interface PersonaState {
   personas: Persona[];
   selectedPersona: Persona | null;
   knowledgeFiles: PersonaKnowledgeFile[];
+  faqs: FAQ[];
   isLoading: boolean;
   isUploading: boolean;
   error: string | null;
@@ -96,6 +108,10 @@ interface PersonaActions {
   fetchKnowledgeFiles: (personaId: string) => Promise<void>;
   uploadKnowledgeFile: (personaId: string, file: { uri: string; name: string; mimeType: string }) => Promise<void>;
   deleteKnowledgeFile: (personaId: string, fileId: string) => Promise<void>;
+  // FAQ management
+  fetchFaqs: () => Promise<void>;
+  createFaq: (data: { question: string; answer: string; audioBase64?: string }) => Promise<FAQ>;
+  deleteFaq: (faqId: string) => Promise<void>;
   // AI generation
   generateFromDescription: (description: string, name?: string, businessName?: string) => Promise<GeneratedPersonaConfig>;
   generateFromAudio: (audioUri: string, name?: string, businessName?: string) => Promise<GeneratedPersonaConfig>;
@@ -106,6 +122,7 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
   personas: [],
   selectedPersona: null,
   knowledgeFiles: [],
+  faqs: [],
   isLoading: false,
   isUploading: false,
   error: null,
@@ -299,6 +316,53 @@ export const usePersonaStore = create<PersonaState & PersonaActions>((set, get) 
     } catch (error: any) {
       set({
         error: error.response?.data?.error?.message || "Erro ao deletar arquivo",
+      });
+      throw error;
+    }
+  },
+
+  fetchFaqs: async () => {
+    try {
+      const response = await api.get<{ success: boolean; data: FAQ[] }>("/knowledge/faqs");
+      if (response.data.success) {
+        set({ faqs: response.data.data });
+      }
+    } catch (error: any) {
+      console.error("Error fetching FAQs:", error);
+    }
+  },
+
+  createFaq: async (data: { question: string; answer: string; audioBase64?: string }) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post<{ success: boolean; data: FAQ }>("/knowledge/faqs", data);
+      if (response.data.success) {
+        const newFaq = response.data.data;
+        set((state) => ({
+          faqs: [newFaq, ...state.faqs],
+          isLoading: false,
+        }));
+        return newFaq;
+      }
+      throw new Error("Erro ao criar FAQ");
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error.response?.data?.error?.message || "Erro ao criar FAQ",
+      });
+      throw error;
+    }
+  },
+
+  deleteFaq: async (faqId: string) => {
+    try {
+      await api.delete(`/knowledge/faqs/${faqId}`);
+      set((state) => ({
+        faqs: state.faqs.filter((f) => f.id !== faqId),
+      }));
+    } catch (error: any) {
+      set({
+        error: error.response?.data?.error?.message || "Erro ao deletar FAQ",
       });
       throw error;
     }

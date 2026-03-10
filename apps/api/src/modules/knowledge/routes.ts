@@ -239,6 +239,78 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
     return { success: true };
   });
 
+  // === SIMPLIFIED FAQ ENDPOINTS (auto-creates default knowledge base) ===
+
+  // Helper: get or create default knowledge base for organization
+  async function getOrCreateDefaultBase(orgId: string) {
+    let base = await prisma.knowledgeBase.findFirst({
+      where: { organizationId: orgId, type: "GENERAL" },
+    });
+    if (!base) {
+      base = await prisma.knowledgeBase.create({
+        data: {
+          organizationId: orgId,
+          name: "Base Geral",
+          type: "GENERAL",
+        },
+      });
+    }
+    return base;
+  }
+
+  // List all FAQs for the organization
+  fastify.get("/faqs", { preHandler: [fastify.authenticate] }, async (request) => {
+    const { orgId } = request.user;
+
+    const faqs = await prisma.fAQ.findMany({
+      where: { knowledgeBase: { organizationId: orgId } },
+      orderBy: { priority: "desc" },
+    });
+
+    return { success: true, data: faqs };
+  });
+
+  // Create FAQ (auto-creates default base if needed)
+  fastify.post("/faqs", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+
+    const result = createFaqSchema.safeParse(request.body);
+    if (!result.success) {
+      return reply.badRequest(result.error.message);
+    }
+
+    const base = await getOrCreateDefaultBase(orgId);
+
+    const faq = await prisma.fAQ.create({
+      data: {
+        knowledgeBaseId: base.id,
+        ...result.data,
+      },
+    });
+
+    return reply.code(201).send({ success: true, data: faq });
+  });
+
+  // Delete FAQ
+  fastify.delete<{ Params: { faqId: string } }>("/faqs/:faqId", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { faqId } = request.params;
+
+    const faq = await prisma.fAQ.findFirst({
+      where: {
+        id: faqId,
+        knowledgeBase: { organizationId: orgId },
+      },
+    });
+
+    if (!faq) {
+      return reply.notFound("FAQ nao encontrado");
+    }
+
+    await prisma.fAQ.delete({ where: { id: faqId } });
+    return { success: true };
+  });
+
   // Semantic search across all knowledge bases
   fastify.post("/search", { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { orgId } = request.user;

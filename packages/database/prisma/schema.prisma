@@ -431,6 +431,7 @@ model FAQ {
   knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   question        String
   answer          String        @db.Text
+  audioBase64     String?       @db.Text
   category        String?
   priority        Int           @default(0)
   // questionEmbedding field will be added when pgvector is available

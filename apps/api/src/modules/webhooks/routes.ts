@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
-import { generateResponse, getDefaultResponse, transcribeAudio, type ConversationMessage, type PersonaConfig } from "../../services/ai.service.js";
-import { sendTextMessage, downloadMedia, fetchProfilePicUrl } from "../../services/uazapi.service.js";
+import { generateResponse, getDefaultResponse, transcribeAudio, matchFaqAudio, type ConversationMessage, type PersonaConfig, type FaqWithAudio } from "../../services/ai.service.js";
+import { sendTextMessage, sendMediaMessage, downloadMedia, fetchProfilePicUrl } from "../../services/uazapi.service.js";
 import { messageBuffer } from "../../services/messageBuffer.service.js";
 import { processTriggers, shouldSkipAIResponse } from "../../services/trigger.service.js";
 import { autoClassifyFunnelStage, notifyOwnerOnTransfer } from "../../services/autoFunnelStage.service.js";
@@ -593,6 +593,73 @@ async function generateAndSendAIResponse(
     fastify.log.info(
       `Using persona: ${persona.name} | formality=${persona.formalityLevel} | energy=${persona.energyLevel} | responseLength=${persona.responseLength} | hasKnowledge=${!!persona.knowledgeContent}`
     );
+
+    // === CHECK FAQ AUDIO BEFORE AI RESPONSE ===
+    // If any FAQ has audio that matches the incoming message, send audio instead of text
+    try {
+      const audioFaqs = await prisma.fAQ.findMany({
+        where: {
+          knowledgeBase: { organizationId: orgId },
+          audioBase64: { not: null },
+        },
+        select: { id: true, question: true, audioBase64: true },
+      });
+
+      if (audioFaqs.length > 0) {
+        const faqsWithAudio: FaqWithAudio[] = audioFaqs.map((f) => ({
+          id: f.id,
+          question: f.question,
+          audioBase64: f.audioBase64!,
+        }));
+
+        const matchedFaq = await matchFaqAudio(incomingMessage, faqsWithAudio);
+
+        if (matchedFaq) {
+          fastify.log.info({ faqId: matchedFaq.id, question: matchedFaq.question }, "FAQ audio match found - sending audio instead of AI text");
+
+          const sendResult = await sendMediaMessage(connection.uazapiToken, waId, matchedFaq.audioBase64, "ptt");
+
+          if (sendResult.success) {
+            // Save outbound audio message
+            const outboundMessage = await prisma.message.create({
+              data: {
+                organizationId: orgId,
+                conversationId: conversation.id,
+                waMessageId: sendResult.messageId,
+                direction: "OUTBOUND",
+                type: "AUDIO",
+                content: `[FAQ Audio: ${matchedFaq.question}]`,
+                status: "SENT",
+                isAiGenerated: true,
+                aiConfidence: 0.95,
+              },
+            });
+
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: {
+                lastMessageAt: new Date(),
+                messageCount: { increment: 1 },
+                lastAiAction: "AUTO_REPLIED",
+              },
+            });
+
+            const io = fastify.io;
+            io.to(`org:${orgId}`).emit("message:new", {
+              conversationId: conversation.id,
+              message: outboundMessage,
+            });
+
+            scheduleFollowUp(conversation.id, fastify.log).catch(() => {});
+            return; // Done - audio sent, skip normal AI flow
+          } else {
+            fastify.log.warn({ error: sendResult.error }, "FAQ audio send failed, falling back to normal AI");
+          }
+        }
+      }
+    } catch (faqError) {
+      fastify.log.error({ error: faqError }, "FAQ audio check failed, continuing with normal AI");
+    }
 
     // Generate AI response
     let responseText: string;

@@ -247,6 +247,16 @@ export default function ConversationDetailScreen() {
     }
   };
 
+  const reactivateAI = async () => {
+    try {
+      await api.post(`/conversations/${id}/reactivate`, {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      fetchConversation();
+    } catch (error) {
+      console.error("Error reactivating AI:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" backgroundColor="$background">
@@ -328,7 +338,23 @@ export default function ConversationDetailScreen() {
           ),
           headerRight: () => (
             <XStack gap="$2" alignItems="center">
-              {conversation.mode !== "HUMAN_ONLY" && (
+              {conversation.mode === "HUMAN_ONLY" ? (
+                <Pressable onPress={reactivateAI}>
+                  <XStack
+                    backgroundColor={primary}
+                    paddingHorizontal="$2"
+                    paddingVertical="$1"
+                    borderRadius="$2"
+                    alignItems="center"
+                    gap={4}
+                  >
+                    <Ionicons name="flash" size={12} color="white" />
+                    <Text fontSize="$1" color="white" fontWeight="600">
+                      Ligar IA
+                    </Text>
+                  </XStack>
+                </Pressable>
+              ) : (
                 <Pressable onPress={overrideWatson}>
                   <XStack
                     backgroundColor="#eab308"

@@ -47,6 +47,7 @@ export const sendMessageSchema = z.object({
 export const updateConversationSchema = z.object({
   status: z.enum(["OPEN", "WAITING_CLIENT", "WAITING_AGENT", "IN_PROGRESS", "RESOLVED", "CLOSED"]).optional(),
   mode: z.enum(["AI_AUTO", "AI_ASSISTED", "HUMAN_ONLY"]).optional(),
+  aiActivated: z.boolean().optional(),
   assignedToId: z.string().optional(),
   activePersonaId: z.string().optional(),
 });

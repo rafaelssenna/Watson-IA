@@ -344,4 +344,38 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       data: updated,
     };
   });
+
+  // Reactivate Watson AI for a conversation
+  fastify.post<{ Params: { id: string } }>("/:id/reactivate", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { orgId } = request.user;
+    const { id } = request.params;
+
+    const conversation = await prisma.conversation.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!conversation) {
+      return reply.notFound("Conversa nao encontrada");
+    }
+
+    const updated = await prisma.conversation.update({
+      where: { id },
+      data: {
+        mode: "AI_AUTO",
+        aiActivated: true,
+        assignedToId: null,
+      },
+    });
+
+    const io = fastify.io;
+    io.to(`org:${orgId}`).emit("conversation:update", {
+      conversationId: id,
+      updates: { mode: "AI_AUTO", aiActivated: true, assignedToId: null },
+    });
+
+    return {
+      success: true,
+      data: updated,
+    };
+  });
 }

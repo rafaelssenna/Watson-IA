@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "@watson/database";
 import { paginationSchema, updateConversationSchema, sendMessageSchema } from "@watson/shared";
-import { sendTextMessage } from "../../services/uazapi.service.js";
+import { sendTextMessage, sendMediaMessage } from "../../services/uazapi.service.js";
 
 export async function conversationRoutes(fastify: FastifyInstance) {
   // List conversations
@@ -234,24 +234,36 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       select: { uazapiToken: true },
     });
 
-    if (connection?.uazapiToken && result.data.type === "TEXT") {
-      const sendResult = await sendTextMessage(
-        connection.uazapiToken,
-        conversation.contact.waId,
-        result.data.content
-      );
+    if (connection?.uazapiToken) {
+      let sendResult: { success: boolean; messageId?: string; error?: string } | null = null;
 
-      // Update message status based on send result
-      await prisma.message.update({
-        where: { id: message.id },
-        data: {
-          status: sendResult.success ? "SENT" : "FAILED",
-          waMessageId: sendResult.messageId || undefined,
-        },
-      });
+      if (result.data.type === "TEXT") {
+        sendResult = await sendTextMessage(
+          connection.uazapiToken,
+          conversation.contact.waId,
+          result.data.content
+        );
+      } else if (result.data.type === "AUDIO" && result.data.audioBase64) {
+        sendResult = await sendMediaMessage(
+          connection.uazapiToken,
+          conversation.contact.waId,
+          result.data.audioBase64,
+          "ptt"
+        );
+      }
 
-      if (!sendResult.success) {
-        fastify.log.error({ error: sendResult.error }, "Failed to send message via UAZAPI");
+      if (sendResult) {
+        await prisma.message.update({
+          where: { id: message.id },
+          data: {
+            status: sendResult.success ? "SENT" : "FAILED",
+            waMessageId: sendResult.messageId || undefined,
+          },
+        });
+
+        if (!sendResult.success) {
+          fastify.log.error({ error: sendResult.error }, "Failed to send message via UAZAPI");
+        }
       }
     }
 

@@ -41,6 +41,7 @@ export const sendMessageSchema = z.object({
   type: z.enum(["TEXT", "IMAGE", "DOCUMENT", "AUDIO", "VIDEO"]).default("TEXT"),
   mediaUrl: z.string().url().optional(),
   caption: z.string().optional(),
+  audioBase64: z.string().optional(),
 });
 
 export const updateConversationSchema = z.object({

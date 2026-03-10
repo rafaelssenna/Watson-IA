@@ -48,6 +48,48 @@ export async function sendTextMessage(
   }
 }
 
+// Send a media message (audio PTT, image, document, etc.) via Uazapi
+export async function sendMediaMessage(
+  instanceToken: string,
+  phone: string,
+  base64Data: string,
+  mediaType: "ptt" | "audio" | "image" | "document" = "ptt"
+): Promise<SendMessageResult> {
+  try {
+    console.log(`[uazapi.sendMediaMessage] Sending ${mediaType} to ${phone}`);
+
+    const response = await fetch(`${UAZAPI_BASE_URL}/send/media`, {
+      method: "POST",
+      headers: {
+        token: instanceToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        number: phone.replace(/\D/g, ""),
+        type: mediaType,
+        file: base64Data,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[uazapi.sendMediaMessage] Failed: ${response.status} - ${errorText}`);
+      return { success: false, error: errorText };
+    }
+
+    const data = await response.json() as { messageId?: string; id?: string; key?: { id?: string } };
+    console.log(`[uazapi.sendMediaMessage] Success:`, data);
+
+    return {
+      success: true,
+      messageId: data.messageId || data.id || data.key?.id,
+    };
+  } catch (error) {
+    console.error("[uazapi.sendMediaMessage] Exception:", error);
+    return { success: false, error: String(error) };
+  }
+}
+
 // Fetch profile picture URL for a contact via /chat/find
 export async function fetchProfilePicUrl(
   instanceToken: string,

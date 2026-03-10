@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, Animated } from "react-native";
 import { useLocalSearchParams, router, Stack } from "expo-router";
 import { YStack, XStack, Text, Input, Card, Spinner, useTheme } from "tamagui";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
+import Slider from "@react-native-community/slider";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";
 
@@ -50,6 +53,11 @@ export default function ConversationDetailScreen() {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const flatListRef = useRef<FlatList>(null);
   const theme = useTheme();
   const { gradient, primary, primaryLight, bubbleOut } = useAppColors();
@@ -118,6 +126,115 @@ export default function ConversationDetailScreen() {
       setSuggestion(null);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+  };
+
+  // -- Audio Recording --
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.startAsync();
+
+      recordingRef.current = recording;
+      setIsRecording(true);
+      setRecordingDuration(0);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // Timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((d) => {
+          if (d >= 120) {
+            stopAndSendRecording();
+            return d;
+          }
+          return d + 1;
+        });
+      }, 1000);
+
+      // Pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    } catch (error) {
+      console.error("Error starting recording:", error);
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(1);
+    setIsRecording(false);
+    setRecordingDuration(0);
+
+    try {
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync();
+        recordingRef.current = null;
+      }
+    } catch {}
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+  };
+
+  const stopAndSendRecording = async () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(1);
+    setIsRecording(false);
+    setRecordingDuration(0);
+
+    try {
+      if (!recordingRef.current) return;
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      if (!uri) return;
+
+      setIsSending(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+
+      const response = await api.post<{ success: boolean; data: Message }>(
+        `/conversations/${id}/messages`,
+        {
+          type: "AUDIO",
+          content: "[Audio]",
+          audioBase64: `data:audio/mp4;base64,${base64}`,
+        }
+      );
+
+      setConversation((prev) => {
+        if (!prev) return prev;
+        return { ...prev, messages: [...prev.messages, response.data.data] };
+      });
+
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (error) {
+      console.error("Error sending audio:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const formatDuration = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
   };
 
   const overrideWatson = async () => {
@@ -300,54 +417,43 @@ export default function ConversationDetailScreen() {
         )}
 
         {/* Input Area */}
-        <XStack
-          paddingHorizontal="$3"
-          paddingTop="$2"
-          paddingBottom={Math.max(insets.bottom, 8)}
-          gap="$2"
-          backgroundColor="$background"
-          borderTopWidth={1}
-          borderTopColor="$borderColor"
-          alignItems="flex-end"
-        >
-          <Pressable>
-            <YStack
-              width={40}
-              height={40}
-              borderRadius={20}
-              backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Ionicons name="add" size={22} color={primary} />
-            </YStack>
-          </Pressable>
-
-          <YStack
-            flex={1}
-            backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
-            borderRadius={20}
+        {isRecording ? (
+          <XStack
             paddingHorizontal="$3"
-            paddingVertical={Platform.OS === "ios" ? 8 : 4}
-            minHeight={40}
-            justifyContent="center"
+            paddingTop="$2"
+            paddingBottom={Math.max(insets.bottom, 8)}
+            gap="$3"
+            backgroundColor="$background"
+            borderTopWidth={1}
+            borderTopColor="#ef4444"
+            alignItems="center"
           >
-            <Input
-              unstyled
-              placeholder="Mensagem..."
-              placeholderTextColor="#94a3b8"
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              maxLength={1000}
-              fontSize={15}
-              color="$color"
-              style={{ maxHeight: 100 }}
-            />
-          </YStack>
+            <Pressable onPress={cancelRecording}>
+              <YStack
+                width={40}
+                height={40}
+                borderRadius={20}
+                backgroundColor="#fee2e2"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              </YStack>
+            </Pressable>
 
-          <Pressable onPress={sendMessage} disabled={isSending || !message.trim()}>
-            {message.trim() ? (
+            <XStack flex={1} alignItems="center" gap="$2">
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <YStack width={12} height={12} borderRadius={6} backgroundColor="#ef4444" />
+              </Animated.View>
+              <Text color="#ef4444" fontWeight="700" fontSize={16}>
+                {formatDuration(recordingDuration)}
+              </Text>
+              <Text color="$gray8" fontSize={13}>
+                Gravando...
+              </Text>
+            </XStack>
+
+            <Pressable onPress={stopAndSendRecording}>
               <LinearGradient
                 colors={gradient}
                 start={{ x: 0, y: 0 }}
@@ -358,16 +464,24 @@ export default function ConversationDetailScreen() {
                   borderRadius: 20,
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: isSending ? 0.5 : 1,
                 }}
               >
-                {isSending ? (
-                  <Spinner size="small" color="white" />
-                ) : (
-                  <Ionicons name="send" size={18} color="white" />
-                )}
+                <Ionicons name="send" size={18} color="white" />
               </LinearGradient>
-            ) : (
+            </Pressable>
+          </XStack>
+        ) : (
+          <XStack
+            paddingHorizontal="$3"
+            paddingTop="$2"
+            paddingBottom={Math.max(insets.bottom, 8)}
+            gap="$2"
+            backgroundColor="$background"
+            borderTopWidth={1}
+            borderTopColor="$borderColor"
+            alignItems="flex-end"
+          >
+            <Pressable>
               <YStack
                 width={40}
                 height={40}
@@ -376,11 +490,72 @@ export default function ConversationDetailScreen() {
                 alignItems="center"
                 justifyContent="center"
               >
-                <Ionicons name="send" size={18} color="#94a3b8" />
+                <Ionicons name="add" size={22} color={primary} />
               </YStack>
+            </Pressable>
+
+            <YStack
+              flex={1}
+              backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
+              borderRadius={20}
+              paddingHorizontal="$3"
+              paddingVertical={Platform.OS === "ios" ? 8 : 4}
+              minHeight={40}
+              justifyContent="center"
+            >
+              <Input
+                unstyled
+                placeholder="Mensagem..."
+                placeholderTextColor="#94a3b8"
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                maxLength={1000}
+                fontSize={15}
+                color="$color"
+                style={{ maxHeight: 100 }}
+              />
+            </YStack>
+
+            {message.trim() ? (
+              <Pressable onPress={sendMessage} disabled={isSending}>
+                <LinearGradient
+                  colors={gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: isSending ? 0.5 : 1,
+                  }}
+                >
+                  {isSending ? (
+                    <Spinner size="small" color="white" />
+                  ) : (
+                    <Ionicons name="send" size={18} color="white" />
+                  )}
+                </LinearGradient>
+              </Pressable>
+            ) : (
+              <Pressable onPress={startRecording} disabled={isSending}>
+                <YStack
+                  width={40}
+                  height={40}
+                  borderRadius={20}
+                  backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
+                  alignItems="center"
+                  justifyContent="center"
+                  opacity={isSending ? 0.5 : 1}
+                >
+                  <Ionicons name="mic" size={22} color={primary} />
+                </YStack>
+              </Pressable>
             )}
-          </Pressable>
-        </XStack>
+          </XStack>
+        )}
       </YStack>
     </KeyboardAvoidingView>
   );
@@ -433,13 +608,22 @@ function MessageBubble({
       )}
 
       {/* Content */}
-      <Text
-        color={isOut ? "white" : "$color"}
-        fontSize={15}
-        lineHeight={20}
-      >
-        {message.content}
-      </Text>
+      {message.type === "AUDIO" ? (
+        <AudioPlayer
+          mediaUrl={message.mediaUrl}
+          messageId={message.id}
+          isOut={isOut}
+          primary={primary}
+        />
+      ) : (
+        <Text
+          color={isOut ? "white" : "$color"}
+          fontSize={15}
+          lineHeight={20}
+        >
+          {message.content}
+        </Text>
+      )}
 
       {/* Time + Status */}
       <XStack justifyContent="flex-end" alignItems="center" gap={4} marginTop={4}>
@@ -487,6 +671,118 @@ function MessageBubble({
           {bubbleContent}
         </YStack>
       )}
+    </XStack>
+  );
+}
+
+// -- Audio Player --
+function AudioPlayer({
+  mediaUrl,
+  messageId,
+  isOut,
+  primary,
+}: {
+  mediaUrl?: string;
+  messageId: string;
+  isOut: boolean;
+  primary: string;
+}) {
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    return () => {
+      sound?.unloadAsync();
+    };
+  }, [sound]);
+
+  const togglePlayback = async () => {
+    try {
+      if (sound && isPlaying) {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+        return;
+      }
+
+      if (sound) {
+        await sound.playAsync();
+        setIsPlaying(true);
+        return;
+      }
+
+      if (!mediaUrl) return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: mediaUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded) {
+            setPosition(status.positionMillis || 0);
+            setDuration(status.durationMillis || 0);
+            if (status.didJustFinish) {
+              setIsPlaying(false);
+              setPosition(0);
+              newSound.setPositionAsync(0);
+            }
+          }
+        }
+      );
+
+      setSound(newSound);
+      setIsPlaying(true);
+    } catch (error) {
+      console.error("Audio playback error:", error);
+    }
+  };
+
+  const onSlide = async (value: number) => {
+    if (sound) {
+      await sound.setPositionAsync(value);
+    }
+  };
+
+  const fmtTime = (ms: number) => {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
+  const iconColor = isOut ? "white" : primary;
+  const trackColor = isOut ? "rgba(255,255,255,0.3)" : "#cbd5e1";
+  const thumbColor = isOut ? "white" : primary;
+
+  return (
+    <XStack alignItems="center" gap={8} minWidth={180}>
+      <Pressable onPress={togglePlayback}>
+        <Ionicons
+          name={isPlaying ? "pause-circle" : "play-circle"}
+          size={36}
+          color={iconColor}
+        />
+      </Pressable>
+      <YStack flex={1}>
+        <Slider
+          style={{ height: 20 }}
+          minimumValue={0}
+          maximumValue={duration || 1}
+          value={position}
+          onSlidingComplete={onSlide}
+          minimumTrackTintColor={thumbColor}
+          maximumTrackTintColor={trackColor}
+          thumbTintColor={thumbColor}
+        />
+        <Text fontSize={10} color={isOut ? "rgba(255,255,255,0.6)" : "$gray8"}>
+          {fmtTime(position)} / {fmtTime(duration)}
+        </Text>
+      </YStack>
     </XStack>
   );
 }

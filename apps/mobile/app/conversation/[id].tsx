@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import Slider from "@react-native-community/slider";
 import { api } from "@/services/api";
 import { useAppColors } from "@/hooks/useAppColors";

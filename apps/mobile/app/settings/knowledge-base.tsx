@@ -5,7 +5,7 @@ import { YStack, XStack, Text, Card, ScrollView, Input, useTheme } from "tamagui
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { usePersonaStore, type PersonaKnowledgeFile, type FAQ } from "@/stores/personaStore";
 import { useAppColors } from "@/hooks/useAppColors";
 

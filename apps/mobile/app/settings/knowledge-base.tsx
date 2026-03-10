@@ -128,6 +128,16 @@ export default function KnowledgeBaseScreen() {
   // === FAQ Audio Recording ===
   const startRecording = async () => {
     try {
+      // Clean up any previous recording first
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch {
+          // ignore - may already be stopped
+        }
+        recordingRef.current = null;
+      }
+
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permissao necessaria", "Permita o acesso ao microfone para gravar audio.");
@@ -139,9 +149,9 @@ export default function KnowledgeBaseScreen() {
         playsInSilentModeIOS: true,
       });
 
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await recording.startAsync();
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
 
       recordingRef.current = recording;
       setIsRecording(true);
@@ -178,12 +188,13 @@ export default function KnowledgeBaseScreen() {
 
       if (uri) {
         const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: "base64" as any,
         });
         setFaqAudioBase64(`data:audio/mp4;base64,${base64}`);
       }
     } catch (error) {
       console.error("Failed to stop recording:", error);
+      recordingRef.current = null;
       setIsRecording(false);
     }
   };

@@ -42,9 +42,11 @@ export default function KnowledgeBaseScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [savingFaq, setSavingFaq] = useState(false);
+  const [playingFaqId, setPlayingFaqId] = useState<string | null>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previewSoundRef = useRef<Audio.Sound | null>(null);
+  const faqSoundRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
     loadData();
@@ -240,6 +242,51 @@ export default function KnowledgeBaseScreen() {
     setRecordingDuration(0);
   };
 
+  const playFaqAudio = async (faq: FAQ) => {
+    if (!faq.audioBase64) return;
+
+    try {
+      // If already playing this FAQ, stop it
+      if (playingFaqId === faq.id && faqSoundRef.current) {
+        await faqSoundRef.current.stopAsync();
+        await faqSoundRef.current.unloadAsync();
+        faqSoundRef.current = null;
+        setPlayingFaqId(null);
+        return;
+      }
+
+      // Stop any currently playing FAQ audio
+      if (faqSoundRef.current) {
+        await faqSoundRef.current.stopAsync();
+        await faqSoundRef.current.unloadAsync();
+        faqSoundRef.current = null;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: faq.audioBase64 },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setPlayingFaqId(null);
+            sound.unloadAsync();
+            faqSoundRef.current = null;
+          }
+        }
+      );
+
+      faqSoundRef.current = sound;
+      setPlayingFaqId(faq.id);
+    } catch (error) {
+      console.error("Failed to play FAQ audio:", error);
+      setPlayingFaqId(null);
+    }
+  };
+
   const resetFaqModal = () => {
     setFaqQuestion("");
     setFaqAnswer("");
@@ -402,55 +449,106 @@ export default function KnowledgeBaseScreen() {
               </YStack>
             ) : (
               <YStack gap="$3">
-                {faqs.map((faq) => (
-                  <XStack
-                    key={faq.id}
-                    padding="$3"
-                    backgroundColor="$background"
-                    borderRadius="$3"
-                    alignItems="center"
-                    gap="$3"
-                  >
+                {faqs.map((faq) => {
+                  const isPlaying = playingFaqId === faq.id;
+                  // Extract transcription from answer if present
+                  const transcription = faq.answer?.includes("[Audio transcrito]:")
+                    ? faq.answer.replace(/.*\[Audio transcrito\]:\s*/s, "")
+                    : null;
+                  const displayAnswer = faq.answer && faq.answer !== "[Audio]" && !faq.answer.startsWith("[Audio transcrito]:")
+                    ? faq.answer.split("\n\n[Audio transcrito]:")[0]
+                    : null;
+
+                  return (
                     <YStack
-                      width={44}
-                      height={44}
-                      borderRadius={8}
-                      backgroundColor={faq.audioBase64 ? `${primary}18` : "$backgroundHover"}
-                      alignItems="center"
-                      justifyContent="center"
+                      key={faq.id}
+                      padding="$3"
+                      backgroundColor="$background"
+                      borderRadius="$3"
+                      gap="$2"
                     >
-                      <Ionicons
-                        name={faq.audioBase64 ? "volume-high" : "chatbubble-outline"}
-                        size={22}
-                        color={faq.audioBase64 ? primary : theme.gray8.val}
-                      />
-                    </YStack>
-                    <YStack flex={1}>
-                      <Text color="$color" fontSize="$3" fontWeight="500" numberOfLines={2}>
-                        {faq.question}
-                      </Text>
-                      <XStack alignItems="center" gap="$1" marginTop={2}>
-                        {faq.audioBase64 ? (
-                          <Text color={primary} fontSize="$2" fontWeight="500">Audio cadastrado</Text>
-                        ) : (
-                          <Text color="$gray8" fontSize="$2" numberOfLines={1}>{faq.answer}</Text>
-                        )}
+                      {/* Header row: question + delete */}
+                      <XStack alignItems="flex-start" gap="$3">
+                        <YStack flex={1}>
+                          <Text color="$color" fontSize="$3" fontWeight="600">
+                            {faq.question}
+                          </Text>
+                          {displayAnswer && (
+                            <Text color="$gray8" fontSize="$2" marginTop={4} numberOfLines={2}>
+                              {displayAnswer}
+                            </Text>
+                          )}
+                        </YStack>
+                        <Pressable onPress={() => handleDeleteFaq(faq)}>
+                          <YStack
+                            width={32}
+                            height={32}
+                            borderRadius={16}
+                            backgroundColor="$red5"
+                            alignItems="center"
+                            justifyContent="center"
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                          </YStack>
+                        </Pressable>
                       </XStack>
+
+                      {/* Audio player */}
+                      {faq.audioBase64 && (
+                        <Pressable onPress={() => playFaqAudio(faq)}>
+                          <XStack
+                            backgroundColor={isPlaying ? `${primary}20` : `${primary}10`}
+                            borderRadius="$3"
+                            padding="$2"
+                            paddingHorizontal="$3"
+                            alignItems="center"
+                            gap="$2"
+                          >
+                            <YStack
+                              width={36}
+                              height={36}
+                              borderRadius={18}
+                              backgroundColor={primary}
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <Ionicons
+                                name={isPlaying ? "pause" : "play"}
+                                size={18}
+                                color="white"
+                              />
+                            </YStack>
+                            <Ionicons name="musical-notes-outline" size={16} color={primary} />
+                            <Text color={primary} fontSize="$2" fontWeight="500" flex={1}>
+                              {isPlaying ? "Reproduzindo..." : "Ouvir audio"}
+                            </Text>
+                            <Ionicons name="volume-high-outline" size={16} color={primary} />
+                          </XStack>
+                        </Pressable>
+                      )}
+
+                      {/* Transcription */}
+                      {transcription && (
+                        <YStack
+                          backgroundColor="$backgroundHover"
+                          borderRadius="$2"
+                          padding="$2"
+                          paddingHorizontal="$3"
+                        >
+                          <XStack alignItems="center" gap="$1" marginBottom={4}>
+                            <Ionicons name="document-text-outline" size={14} color={theme.gray8.val} />
+                            <Text color="$gray8" fontSize="$1" fontWeight="600">
+                              TRANSCRICAO
+                            </Text>
+                          </XStack>
+                          <Text color="$gray9" fontSize="$2" fontStyle="italic">
+                            {transcription}
+                          </Text>
+                        </YStack>
+                      )}
                     </YStack>
-                    <Pressable onPress={() => handleDeleteFaq(faq)}>
-                      <YStack
-                        width={36}
-                        height={36}
-                        borderRadius={18}
-                        backgroundColor="$red5"
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                      </YStack>
-                    </Pressable>
-                  </XStack>
-                ))}
+                  );
+                })}
               </YStack>
             )}
           </Card>
